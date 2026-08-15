@@ -5,12 +5,20 @@ import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import Onboarding from "./pages/Onboarding";
+import ImageSolver from "./pages/ImageSolver";
+import AdminWorkspace from "./pages/AdminWorkspace";
+import { useState } from "react";
 
-function Router() {
+function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
-      <Route path={"/"} component={Home} />
+      <Route path={"/onboarding"}>{() => <Onboarding language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/image-solver"}>{() => <ImageSolver language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/admin"}>{() => <AdminWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/"}>{() => <Home language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/:rest*"}>{() => <Home language={language} onLanguageChange={onLanguageChange} />}</Route>
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}
       <Route component={NotFound} />
@@ -24,6 +32,7 @@ function Router() {
 // - If you want to make theme switchable, pass `switchable` ThemeProvider and use `useTheme` hook
 
 function App() {
+  const [language, setLanguage] = useState<"bn" | "en">("bn");
   return (
     <ErrorBoundary>
       <ThemeProvider
@@ -32,7 +41,7 @@ function App() {
       >
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <Router language={language} onLanguageChange={setLanguage} />
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

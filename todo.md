@@ -1,0 +1,22 @@
+# Project TODO
+
+- [x] Define the education-platform domain model, including academic hierarchy, sourced questions, immutable assessment attempts, student learning records, and content governance entities.
+- [x] Implement database tables and secured API contracts for profiles, content, questions, practice sessions, exams, attempts, mistakes, bookmarks, study plans, and administrative review.
+- [x] Create a distinctive bilingual visual system using deep navy, teal, Noto Sans Bengali, and Inter with accessible responsive behavior.
+- [x] Implement a student onboarding flow for language, academic year, HSC group, target exam, institution, and daily study time.
+- [x] Implement the desktop sidebar and mobile bottom navigation with all core student destinations.
+- [x] Build the student dashboard with goals, progress indicators, recommended practice, daily challenge, upcoming exam, and study streak.
+- [x] Build the configurable practice selection and question-solving experience with answer feedback and end-of-session analysis.
+- [x] Build the exam setup, timed attempt interface, answer palette, review states, auto-submit behavior, and immutable attempt snapshot foundation.
+- [x] Build results, performance analytics, strong/weak-topic insight, and next-practice recommendations.
+- [x] Build mistake notebook, bookmarks, revision queue, and personal notes interactions.
+- [x] Build study-plan views and a practical daily/weekly plan foundation.
+- [x] Build AI Tutor experience with grounded-source citation placeholders and image-solver upload integration point.
+- [x] Build administrative content, question review, source monitoring, pattern versioning, analytics, and audit-log interfaces.
+- [x] Add language switching across the primary experience.
+- [x] Add automated tests for core domain calculations and API behaviors.
+- [x] Verify the interface at desktop and mobile breakpoints, correct any issues, and create the final project checkpoint.
+- [x] Resolve the root-homepage routing issue found during visual verification.
+- [x] Connect the approved-source Tutor flow to live server-side model invocation and protected image storage before production use.
+- [x] Connect administrative review actions to governed question records with role checks and audit logging.
+- [x] Add explicit access-denied and service-error states to the administrative review workspace.

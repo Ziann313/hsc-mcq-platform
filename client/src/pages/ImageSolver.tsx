@@ -1,0 +1,38 @@
+import { PlatformShell, type Language } from "@/components/PlatformShell";
+import { Button } from "@/components/ui/button";
+import { trpc } from "@/lib/trpc";
+import { Camera, FileImage, ShieldCheck, Sparkles, Upload } from "lucide-react";
+import { useRef, useState } from "react";
+
+type Result = {
+  imageUrl: string;
+  transcript: string;
+  verified: boolean;
+  answer: string;
+  sources: Array<{ book: string; chapter: string; page: string }>;
+};
+
+export default function ImageSolver({ language, onLanguageChange }: { language: Language; onLanguageChange: (value: Language) => void }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [preview, setPreview] = useState<string | null>(null);
+  const [fileName, setFileName] = useState("");
+  const [result, setResult] = useState<Result | null>(null);
+  const solve = trpc.learning.solveQuestionImage.useMutation({ onSuccess: setResult });
+  const copy = (en: string, bn: string) => language === "bn" ? bn : en;
+
+  const chooseFile = (file?: File) => {
+    if (!file) return;
+    if (!file.type.match(/^image\/(png|jpeg|webp)$/) || file.size > 3_000_000) {
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPreview(typeof reader.result === "string" ? reader.result : null);
+      setFileName(file.name);
+      setResult(null);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  return <PlatformShell language={language} onLanguageChange={onLanguageChange}><div className="mx-auto max-w-5xl"><div className="grid gap-6 xl:grid-cols-[.72fr_1.28fr]"><aside className="rounded-[24px] bg-[#071d33] p-6 text-white"><span className="grid size-11 place-items-center rounded-2xl bg-[#16b89b] text-[#071d33]"><Camera /></span><p className="mt-5 text-xs font-bold uppercase tracking-[.16em] text-[#7ce3d1]">{copy("QUESTION IMAGE SOLVER", "প্রশ্ন ইমেজ সলভার")}</p><h1 className="mt-2 font-display text-2xl font-extrabold">{copy("Turn a question image into an evidence-led explanation.", "প্রশ্নের ইমেজ থেকে প্রমাণভিত্তিক ব্যাখ্যা।")}</h1><p className="mt-4 text-sm leading-6 text-slate-300">{copy("Upload a clear Maths, Physics or Chemistry question. Shikha first reads it, then only solves it when approved textbook evidence can support the explanation.", "স্পষ্ট ম্যাথ, ফিজিক্স বা কেমিস্ট্রি প্রশ্ন আপলোড করো। শিখা আগে প্রশ্নটি পড়ে, তারপর অনুমোদিত বইয়ের প্রমাণ থাকলে সমাধান দেয়।")}</p><div className="mt-8 space-y-3"><div className="flex items-center gap-3 rounded-xl bg-white/7 p-3 text-sm text-slate-200"><FileImage size={16} className="text-[#7ce3d1]" />PNG, JPG, WEBP · max 3 MB</div><div className="flex items-center gap-3 rounded-xl bg-white/7 p-3 text-sm text-slate-200"><ShieldCheck size={16} className="text-[#7ce3d1]" />{copy("No invented textbook citations", "কৃত্রিম বইয়ের উদ্ধৃতি নয়")}</div></div></aside><section className="rounded-[24px] bg-white p-5 shadow-sm sm:p-7"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#088a78]">{copy("IMAGE INPUT", "ইমেজ ইনপুট")}</p><h2 className="mt-1 font-display text-xl font-extrabold text-[#071d33]">{copy("Upload your question", "তোমার প্রশ্ন আপলোড করো")}</h2></div></div><input ref={inputRef} onChange={event => chooseFile(event.target.files?.[0])} type="file" accept="image/png,image/jpeg,image/webp" className="hidden" />{preview ? <div className="mt-5 overflow-hidden rounded-2xl border border-slate-100 bg-slate-50"><img src={preview} alt="Question preview" className="max-h-80 w-full object-contain" /><div className="flex items-center justify-between gap-3 border-t border-slate-100 bg-white p-3"><span className="truncate text-xs font-semibold text-slate-500">{fileName}</span><button onClick={() => inputRef.current?.click()} className="text-xs font-bold text-[#088a78]">{copy("Replace", "পরিবর্তন")}</button></div></div> : <button onClick={() => inputRef.current?.click()} className="mt-5 grid min-h-60 w-full place-items-center rounded-2xl border-2 border-dashed border-[#b8ded8] bg-[#f7fdfc] p-6 text-center hover:border-[#16b89b]"><span><span className="mx-auto grid size-12 place-items-center rounded-2xl bg-white text-[#088a78] shadow-sm"><Upload size={21} /></span><b className="mt-4 block text-sm text-[#071d33]">{copy("Choose an image", "একটি ইমেজ নির্বাচন করো")}</b><span className="mt-1 block text-xs text-slate-500">{copy("or take a clear photo of the question", "অথবা প্রশ্নের পরিষ্কার ছবি তোলো")}</span></span></button>}<Button disabled={!preview || solve.isPending} onClick={() => preview && solve.mutate({ dataUrl: preview, fileName, academicYear: "2027", language })} className="mt-5 h-11 w-full rounded-xl bg-[#071d33]"><Sparkles size={16} />{solve.isPending ? copy("Checking approved sources…", "অনুমোদিত উৎস যাচাই হচ্ছে…") : copy("Read and verify question", "প্রশ্ন পড়ো ও যাচাই করো")}</Button>{result && <div className="mt-6 rounded-2xl border border-slate-100 bg-[#fbfdfd] p-5"><div className="flex items-center justify-between"><p className="text-xs font-bold uppercase tracking-wider text-[#088a78]">{copy("READ QUESTION", "পড়া প্রশ্ন")}</p><span className={`rounded-md px-2 py-1 text-[10px] font-extrabold ${result.verified ? "bg-[#e9fbf7] text-[#087b6c]" : "bg-[#fff5e4] text-[#b86b09]"}`}>{result.verified ? copy("SOURCE VERIFIED", "সোর্স যাচাইকৃত") : copy("NOT VERIFIED", "যাচাইকৃত নয়")}</span></div><p className="mt-3 text-sm leading-6 text-slate-700">{result.transcript}</p><div className="mt-5 border-t border-slate-100 pt-5"><p className="text-xs font-bold uppercase tracking-wider text-[#088a78]">{copy("SOLUTION", "সমাধান")}</p><p className="mt-3 whitespace-pre-wrap text-sm leading-7 text-slate-700">{result.answer}</p></div>{result.sources.length > 0 && <div className="mt-5 rounded-xl bg-[#e9fbf7] p-4"><p className="text-xs font-bold text-[#087b6c]">{copy("APPROVED SOURCES", "অনুমোদিত উৎস")}</p>{result.sources.map(source => <p key={`${source.book}-${source.page}`} className="mt-2 text-xs text-slate-600">{source.book} → {source.chapter} → {source.page}</p>)}</div>}</div>}</section></div></div></PlatformShell>;
+}

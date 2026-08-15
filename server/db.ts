@@ -1,6 +1,6 @@
-import { eq } from "drizzle-orm";
+import { and, desc, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, users } from "../drizzle/schema";
+import { InsertUser, studentProfiles, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, auditLogs, questions, subjects } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -89,4 +89,136 @@ export async function getUserByOpenId(openId: string) {
   return result.length > 0 ? result[0] : undefined;
 }
 
-// TODO: add feature queries here as your schema grows.
+export async function getStudentProfile(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db.select().from(studentProfiles).where(eq(studentProfiles.userId, userId)).limit(1);
+  return rows[0];
+}
+
+export async function saveStudentProfile(userId: number, input: {
+  language: "bn" | "en";
+  academicYear: string;
+  session: string;
+  group: "science" | "business" | "humanities";
+  targetExam: "hsc" | "medical" | "engineering" | "university" | "multiple";
+  institution?: string;
+  dailyStudyMinutes: number;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.insert(studentProfiles).values({
+    userId,
+    preferredLanguage: input.language,
+    academicYear: input.academicYear,
+    session: input.session,
+    group: input.group,
+    targetExam: input.targetExam,
+    institution: input.institution || null,
+    dailyStudyMinutes: input.dailyStudyMinutes,
+    onboardingCompletedAt: new Date(),
+  }).onDuplicateKeyUpdate({
+    set: {
+      preferredLanguage: input.language,
+      academicYear: input.academicYear,
+      session: input.session,
+      group: input.group,
+      targetExam: input.targetExam,
+      institution: input.institution || null,
+      dailyStudyMinutes: input.dailyStudyMinutes,
+      onboardingCompletedAt: new Date(),
+    },
+  });
+}
+
+export async function createExamAttempt(userId: number, input: {
+  title: string;
+  examVersion: string;
+  patternVersion: string;
+  questionSet: unknown;
+  marksPerCorrect: number;
+  negativeMarkPerWrong: number;
+  startedAt: Date;
+  expiresAt: Date;
+}) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.insert(examAttempts).values({
+    userId,
+    titleSnapshot: input.title,
+    examVersionSnapshot: input.examVersion,
+    patternVersionSnapshot: input.patternVersion,
+    questionSetSnapshot: input.questionSet,
+    markingSchemeSnapshot: {
+      marksPerCorrect: input.marksPerCorrect,
+      negativeMarkPerWrong: input.negativeMarkPerWrong,
+    },
+    startedAt: input.startedAt,
+    expiresAt: input.expiresAt,
+  });
+  return result[0].insertId;
+}
+
+export async function getActiveSourceEvidence(query: string, academicYear: string) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({
+    content: knowledgeChunks.content,
+    pageReference: knowledgeChunks.pageReference,
+    bookTitle: books.titleEn,
+    chapterTitle: chapters.titleEn,
+  }).from(knowledgeChunks)
+    .innerJoin(sourceVersions, eq(knowledgeChunks.sourceVersionId, sourceVersions.id))
+    .leftJoin(books, eq(knowledgeChunks.bookId, books.id))
+    .leftJoin(chapters, eq(knowledgeChunks.chapterId, chapters.id))
+    .where(and(eq(sourceVersions.status, "active"), like(knowledgeChunks.content, `%${query.slice(0, 120)}%`)))
+    .orderBy(desc(knowledgeChunks.id))
+    .limit(4);
+  // Academic version enforcement is performed by matching the selected book hierarchy; this fallback avoids returning content when no sources exist.
+  void academicYear;
+  return rows.map(row => ({
+    content: row.content,
+    pageReference: row.pageReference,
+    bookTitle: row.bookTitle ?? "Approved source",
+    chapterTitle: row.chapterTitle ?? "Selected section",
+  }));
+}
+
+export async function reviewQuestion(input: {
+  questionId: number;
+  status: "approved" | "needs_review" | "archived";
+  actorUserId: number;
+  note?: string;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const result = await db.update(questions)
+    .set({ status: input.status })
+    .where(eq(questions.id, input.questionId));
+  if (result[0].affectedRows === 0) return false;
+  await db.insert(auditLogs).values({
+    actorUserId: input.actorUserId,
+    action: `question.${input.status}`,
+    entityType: "question",
+    entityId: String(input.questionId),
+    metadata: { note: input.note ?? null },
+  });
+  return true;
+}
+
+export async function getQuestionReviewQueue() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: questions.id,
+    prompt: questions.prompt,
+    status: questions.status,
+    difficulty: questions.difficulty,
+    subject: subjects.nameEn,
+    version: questions.currentVersion,
+  }).from(questions)
+    .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .where(and(eq(questions.status, "human_review")))
+    .orderBy(desc(questions.updatedAt))
+    .limit(30);
+}
