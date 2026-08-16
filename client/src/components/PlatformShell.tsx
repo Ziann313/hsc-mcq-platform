@@ -10,6 +10,7 @@ import {
   ChevronRight,
   ClipboardCheck,
   Flame,
+  FileText,
   GraduationCap,
   Home,
   LockKeyhole,
@@ -30,6 +31,9 @@ const items = [
   { path: "/exams", label: "Exams", bn: "পরীক্ষা", icon: ClipboardCheck },
   { path: "/tutor", label: "AI Tutor", bn: "এআই টিউটর", icon: Bot },
   { path: "/image-solver", label: "Image solver", bn: "ইমেজ সলভার", icon: Camera },
+  { path: "/notices", label: "Official notices", bn: "অফিসিয়াল নোটিশ", icon: Bell },
+  { path: "/questions/new", label: "Question intake", bn: "প্রশ্ন ইনটেক", icon: BookOpen },
+  { path: "/admission-patterns", label: "Admission patterns", bn: "ভর্তি প্যাটার্ন", icon: FileText },
   { path: "/progress", label: "Progress", bn: "অগ্রগতি", icon: BarChart3 },
   { path: "/study-plan", label: "Study Plan", bn: "স্টাডি প্ল্যান", icon: CalendarDays },
   { path: "/mistakes", label: "Mistakes", bn: "ভুলের খাতা", icon: Brain },
@@ -68,7 +72,7 @@ export function PlatformShell({ children, language, onLanguageChange }: { childr
         </nav>
         <div className="space-y-1 border-t border-white/10 pt-4">
           <button onClick={() => navigate("/settings")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 hover:bg-white/8"><Settings size={18} />{copy("Settings", "সেটিংস")}</button>
-          <button onClick={() => navigate("/admin")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 hover:bg-white/8"><LockKeyhole size={18} />{copy("Content workspace", "কনটেন্ট ওয়ার্কস্পেস")}</button>
+          <button onClick={() => navigate("/governance")} className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-slate-300 hover:bg-white/8"><LockKeyhole size={18} />{copy("Content workspace", "কনটেন্ট ওয়ার্কস্পেস")}</button>
         </div>
       </aside>
 
@@ -81,7 +85,7 @@ export function PlatformShell({ children, language, onLanguageChange }: { childr
           <div className="hidden lg:block"><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#168f80]">{copy("Your learning space", "তোমার লার্নিং স্পেস")}</p><p className="text-sm text-slate-500">{copy("HSC & admission preparation", "এইচএসসি ও ভর্তি প্রস্তুতি")}</p></div>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
             <div className="rounded-xl bg-white p-1 shadow-sm ring-1 ring-slate-200"><button onClick={() => onLanguageChange("bn")} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold ${language === "bn" ? "bg-[#071d33] text-white" : "text-slate-500"}`}>বাং</button><button onClick={() => onLanguageChange("en")} className={`rounded-lg px-2.5 py-1.5 text-xs font-bold ${language === "en" ? "bg-[#071d33] text-white" : "text-slate-500"}`}>EN</button></div>
-            <button className="relative grid size-10 place-items-center rounded-xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-200"><Bell size={18} /><span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#f59e0b]" /></button>
+            <button onClick={() => navigate("/notifications")} className="relative grid size-10 place-items-center rounded-xl bg-white text-slate-500 shadow-sm ring-1 ring-slate-200"><Bell size={18} /><span className="absolute right-2 top-2 size-1.5 rounded-full bg-[#f59e0b]" /></button>
             <button onClick={() => navigate("/profile")} className="hidden items-center gap-2 rounded-xl bg-white py-1.5 pl-1.5 pr-3 shadow-sm ring-1 ring-slate-200 sm:flex"><span className="grid size-8 place-items-center rounded-lg bg-[#dff8f1] text-xs font-bold text-[#087b6c]">RA</span><span className="text-sm font-semibold text-slate-700">Rafi</span></button>
           </div>
         </header>

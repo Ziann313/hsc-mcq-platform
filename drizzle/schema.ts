@@ -288,6 +288,34 @@ export const aiMessages = mysqlTable("ai_messages", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const notifications = mysqlTable("notifications", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  type: mysqlEnum("type", ["study", "admission", "content", "account", "system"]).default("system").notNull(),
+  priority: mysqlEnum("priority", ["normal", "high", "critical"]).default("normal").notNull(),
+  title: varchar("title", { length: 220 }).notNull(),
+  body: text("body").notNull(),
+  actionUrl: varchar("actionUrl", { length: 500 }),
+  readAt: timestamp("readAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("notification_user_read_idx").on(table.userId, table.readAt, table.createdAt)]);
+
+export const admissionNotices = mysqlTable("admission_notices", {
+  id: int("id").autoincrement().primaryKey(),
+  sourceId: int("sourceId").notNull().references(() => sources.id),
+  examProfileId: int("examProfileId").references(() => examProfiles.id),
+  institution: varchar("institution", { length: 180 }).notNull(),
+  title: varchar("title", { length: 260 }).notNull(),
+  session: varchar("session", { length: 80 }).notNull(),
+  noticeType: mysqlEnum("noticeType", ["application", "schedule", "result", "pattern", "other"]).notNull(),
+  sourceUrl: varchar("sourceUrl", { length: 1000 }).notNull(),
+  summary: text("summary"),
+  status: mysqlEnum("status", ["under_review", "published", "archived"]).default("under_review").notNull(),
+  retrievedAt: timestamp("retrievedAt").defaultNow().notNull(),
+  publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("admission_notice_status_idx").on(table.status, table.retrievedAt), index("admission_notice_source_idx").on(table.sourceId)]);
+
 export const auditLogs = mysqlTable("audit_logs", {
   id: int("id").autoincrement().primaryKey(),
   actorUserId: int("actorUserId").references(() => users.id),

@@ -2,16 +2,29 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { calculateAttemptSummary } from "../../shared/assessment";
 import {
+  createAdmissionNotice,
+  createAdmissionPatternVersion,
   createExamAttempt,
+  createNotification,
+  createReviewQuestion,
   getActiveSourceEvidence,
+  getAdmissionPatternVersions,
+  getApprovedSources,
+  getNotificationsForUser,
+  getQuestionIntakeOptions,
+  getPublishedAdmissionNotices,
   getQuestionReviewQueue,
   getStudentProfile,
+  markNotificationRead,
+  registerOfficialSource,
   reviewQuestion,
   saveStudentProfile,
+  updateStudentPreferences,
 } from "../db";
 import { invokeLLM } from "../_core/llm";
+import { notifyOwner } from "../_core/notification";
 import { storagePut } from "../storage";
-import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
+import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 const onboardingInput = z.object({
   language: z.enum(["bn", "en"]),
@@ -43,6 +56,26 @@ export const learningRouter = router({
     await saveStudentProfile(ctx.user.id, input);
     return { success: true } as const;
   }),
+
+  updatePreferences: protectedProcedure.input(z.object({
+    preferredLanguage: z.enum(["bn", "en"]).optional(),
+    institution: z.string().max(160).nullable().optional(),
+    dailyStudyMinutes: z.number().int().min(15).max(720).optional(),
+  })).mutation(async ({ ctx, input }) => {
+    const changed = await updateStudentPreferences(ctx.user.id, input);
+    if (!changed) throw new TRPCError({ code: "NOT_FOUND", message: "Complete onboarding before updating preferences" });
+    return { success: true } as const;
+  }),
+
+  notifications: protectedProcedure.query(async ({ ctx }) => getNotificationsForUser(ctx.user.id)),
+
+  markNotificationRead: protectedProcedure.input(z.object({ notificationId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const changed = await markNotificationRead(ctx.user.id, input.notificationId);
+    if (!changed) throw new TRPCError({ code: "NOT_FOUND", message: "Notification not found" });
+    return { success: true } as const;
+  }),
+
+  publishedAdmissionNotices: publicProcedure.query(async () => getPublishedAdmissionNotices()),
 
   gradePreview: protectedProcedure.input(gradeInput).mutation(({ input }) => {
     return calculateAttemptSummary(input.answers, input.marksPerCorrect, input.negativeMarkPerWrong);
@@ -186,4 +219,83 @@ export const learningRouter = router({
   }),
 
   questionReviewQueue: adminProcedure.query(async () => getQuestionReviewQueue()),
+
+  approvedSources: adminProcedure.query(async () => getApprovedSources()),
+
+  registerOfficialSource: adminProcedure.input(z.object({
+    organization: z.string().min(2).max(180),
+    title: z.string().min(3).max(300),
+    sourceUrl: z.string().url().max(1000),
+    sourceType: z.enum(["nctb", "official_syllabus", "official_admission", "licensed"]),
+    licenseNotes: z.string().max(2000).optional(),
+    versionLabel: z.string().min(1).max(80),
+    contentHash: z.string().min(8).max(128),
+    status: z.enum(["under_review", "active"]),
+  })).mutation(async ({ ctx, input }) => registerOfficialSource({ ...input, actorUserId: ctx.user.id })),
+
+  createAdmissionNotice: adminProcedure.input(z.object({
+    sourceId: z.number().int().positive(),
+    institution: z.string().min(2).max(180),
+    title: z.string().min(3).max(260),
+    session: z.string().min(3).max(80),
+    noticeType: z.enum(["application", "schedule", "result", "pattern", "other"]),
+    sourceUrl: z.string().url().max(1000),
+    summary: z.string().max(4000).optional(),
+    status: z.enum(["under_review", "published"]),
+  })).mutation(async ({ ctx, input }) => {
+    const noticeId = await createAdmissionNotice({ ...input, actorUserId: ctx.user.id });
+    const ownerNotified = input.status === "published"
+      ? await notifyOwner({ title: "Admission notice published", content: `${input.institution}: ${input.title}` })
+      : false;
+    return { noticeId, ownerNotified };
+  }),
+
+  sendCustomNotification: adminProcedure.input(z.object({
+    userId: z.number().int().positive(),
+    type: z.enum(["study", "admission", "content", "account", "system"]),
+    priority: z.enum(["normal", "high", "critical"]),
+    title: z.string().min(2).max(220),
+    body: z.string().min(2).max(2000),
+    actionUrl: z.string().startsWith("/").max(500).optional(),
+  })).mutation(async ({ ctx, input }) => {
+    const notificationId = await createNotification({ ...input, actorUserId: ctx.user.id });
+    const ownerNotified = input.priority === "critical"
+      ? await notifyOwner({ title: `Critical student notification: ${input.title}`, content: input.body })
+      : false;
+    return { notificationId, ownerNotified };
+  }),
+
+  createReviewQuestion: adminProcedure.input(z.object({
+    academicYearId: z.number().int().positive(),
+    subjectId: z.number().int().positive(),
+    bookId: z.number().int().positive().optional(),
+    prompt: z.string().min(10).max(5000),
+    explanation: z.string().max(5000).optional(),
+    difficulty: z.enum(["easy", "medium", "hard"]),
+    options: z.array(z.object({ text: z.string().min(1).max(1000), isCorrect: z.boolean() })).min(2).max(6)
+      .refine(options => options.filter(option => option.isCorrect).length === 1, "Exactly one correct option is required"),
+    sourceVersionId: z.number().int().positive(),
+    pageReference: z.string().min(1).max(100),
+  })).mutation(async ({ ctx, input }) => {
+    const questionId = await createReviewQuestion({ ...input, actorUserId: ctx.user.id });
+    return { questionId };
+  }),
+
+  admissionPatternVersions: adminProcedure.query(async () => getAdmissionPatternVersions()),
+
+  questionIntakeOptions: adminProcedure.query(async () => getQuestionIntakeOptions()),
+
+  createAdmissionPatternVersion: adminProcedure.input(z.object({
+    institution: z.string().min(2).max(180),
+    title: z.string().min(3).max(180),
+    unit: z.string().max(120).optional(),
+    versionLabel: z.string().min(1).max(80),
+    sourceUrl: z.string().url().max(1000),
+    notes: z.string().max(3000).optional(),
+    questionCount: z.number().int().positive().max(500).optional(),
+    durationMinutes: z.number().int().positive().max(600).optional(),
+    marksPerCorrect: z.number().min(0).max(10).optional(),
+    negativeMarkPerWrong: z.number().min(0).max(5).optional(),
+    status: z.enum(["draft", "under_review", "active"]),
+  })).mutation(async ({ ctx, input }) => createAdmissionPatternVersion({ ...input, actorUserId: ctx.user.id })),
 });

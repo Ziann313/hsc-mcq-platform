@@ -25,4 +25,28 @@ describe("learning.reviewQuestion", () => {
     const caller = appRouter.createCaller(contextFor("user"));
     await expect(caller.learning.reviewQuestion({ questionId: 1, status: "approved" })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("blocks non-admin users from sending a custom student notification", async () => {
+    const caller = appRouter.createCaller(contextFor("user"));
+    await expect(caller.learning.sendCustomNotification({
+      userId: 2,
+      type: "system",
+      priority: "normal",
+      title: "Platform update",
+      body: "A new update is available.",
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("blocks non-admin users from entering review-ready source-linked questions", async () => {
+    const caller = appRouter.createCaller(contextFor("user"));
+    await expect(caller.learning.createReviewQuestion({
+      academicYearId: 1,
+      subjectId: 1,
+      sourceVersionId: 1,
+      pageReference: "p. 1",
+      difficulty: "easy",
+      prompt: "What is the requested answer to this source-linked question?",
+      options: [{ text: "A", isCorrect: true }, { text: "B", isCorrect: false }],
+    })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
 });

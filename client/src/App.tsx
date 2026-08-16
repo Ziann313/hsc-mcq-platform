@@ -8,6 +8,14 @@ import Home from "./pages/Home";
 import Onboarding from "./pages/Onboarding";
 import ImageSolver from "./pages/ImageSolver";
 import AdminWorkspace from "./pages/AdminWorkspace";
+import NotificationsPage from "./pages/NotificationsPage";
+import OfficialNoticesPage from "./pages/OfficialNoticesPage";
+import AccountPage from "./pages/AccountPage";
+import GovernanceHub from "./pages/GovernanceHub";
+import GovernanceWorkspace from "./pages/GovernanceWorkspace";
+import QuestionIntakePage from "./pages/QuestionIntakePage";
+import QuestionIntakeWorkspace from "./pages/QuestionIntakeWorkspace";
+import AdmissionPatternsPage from "./pages/AdmissionPatternsPage";
 import { useState } from "react";
 
 function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
@@ -17,6 +25,12 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
       <Route path={"/onboarding"}>{() => <Onboarding language={language} onLanguageChange={onLanguageChange} />}</Route>
       <Route path={"/image-solver"}>{() => <ImageSolver language={language} onLanguageChange={onLanguageChange} />}</Route>
       <Route path={"/admin"}>{() => <AdminWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/governance"}>{() => <GovernanceWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/notifications"}>{() => <NotificationsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/notices"}>{() => <OfficialNoticesPage language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/profile"}>{() => <AccountPage language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/questions/new"}>{() => <QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
+      <Route path={"/admission-patterns"}>{() => <AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
       <Route path={"/"}>{() => <Home language={language} onLanguageChange={onLanguageChange} />}</Route>
       <Route path={"/:rest*"}>{() => <Home language={language} onLanguageChange={onLanguageChange} />}</Route>
       <Route path={"/404"} component={NotFound} />

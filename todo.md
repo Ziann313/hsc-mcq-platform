@@ -20,3 +20,14 @@
 - [x] Connect the approved-source Tutor flow to live server-side model invocation and protected image storage before production use.
 - [x] Connect administrative review actions to governed question records with role checks and audit logging.
 - [x] Add explicit access-denied and service-error states to the administrative review workspace.
+- [x] Add role-aware, in-app custom notifications with read-state tracking and owner escalation for critical content events.
+- [x] Add administrative workflows to register approved NCTB source metadata and create review-ready questions without copying unlicensed textbook content.
+- [x] Add official admission-notice records, source links, and versioned admission-pattern management.
+- [x] Implement supported real-profile improvements and clarify the available sign-in pathway without introducing an insecure custom OAuth flow.
+- [x] Test and visually verify the completion enhancements.
+- [ ] Complete Google sign-in callback integration after a valid Google OAuth web-client credential pair is provided.
+- [ ] Create the checkpoint for the verified custom-notification and source-governance enhancement set.
+- [x] Add explicit protected-access and service-error states to the governance workspace.
+- [x] Replace manual governance IDs with live source, academic, and hierarchy selectors.
+- [x] Create and verify a published official admission-notice record from the registered University of Dhaka source.
+- [x] Verify the published University of Dhaka record through the live public-notices feed and document the result.
