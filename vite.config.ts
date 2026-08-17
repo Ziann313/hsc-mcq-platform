@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig, type Plugin, type ViteDevServer } from "vite";
 import { vitePluginManusRuntime } from "vite-plugin-manus-runtime";
+import { VitePWA } from "vite-plugin-pwa";
 
 // =============================================================================
 // Manus Debug Collector - Vite Plugin
@@ -150,7 +151,31 @@ function vitePluginManusDebugCollector(): Plugin {
   };
 }
 
-const plugins = [react(), tailwindcss(), jsxLocPlugin(), vitePluginManusRuntime(), vitePluginManusDebugCollector()];
+const plugins = [
+  react(),
+  tailwindcss(),
+  jsxLocPlugin(),
+  vitePluginManusRuntime(),
+  VitePWA({
+    registerType: "autoUpdate",
+    includeAssets: ["favicon.ico"],
+    manifest: {
+      name: "MCQ GURU — HSC Preparation",
+      short_name: "MCQ GURU",
+      description: "Offline-capable HSC and competitive exam practice for Bangladesh students.",
+      theme_color: "#071d33",
+      background_color: "#f4f7f7",
+      display: "standalone",
+      start_url: "/",
+      icons: [],
+    },
+    workbox: {
+      navigateFallback: "/index.html",
+      globPatterns: ["**/*.{js,css,html,ico,svg,png,woff2}"],
+      maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
+    },
+  }),
+];
 
 export default defineConfig({
   plugins,

@@ -139,14 +139,32 @@ export const questions = mysqlTable("questions", {
   chapterId: int("chapterId").references(() => chapters.id),
   topicId: int("topicId").references(() => topics.id),
   conceptId: int("conceptId").references(() => concepts.id),
+  stemId: int("stemId"),
   prompt: text("prompt").notNull(),
+  questionType: mysqlEnum("questionType", ["single_mcq", "multi_statement", "stem_subquestion"]).default("single_mcq").notNull(),
+  boardStandard: mysqlEnum("boardStandard", ["board_standard", "varsity_admission_standard"]).default("board_standard").notNull(),
+  boardName: varchar("boardName", { length: 100 }),
+  boardExamYear: int("boardExamYear"),
+  collegePaper: varchar("collegePaper", { length: 180 }),
+  chapterTags: json("chapterTags"),
   explanation: text("explanation"),
+  solutionImageUrl: varchar("solutionImageUrl", { length: 1000 }),
+  negativeMarkWeight: decimal("negativeMarkWeight", { precision: 4, scale: 2 }).default("0.00").notNull(),
   difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull(),
   status: mysqlEnum("status", ["draft", "ai_validated", "human_review", "approved", "published", "needs_review", "superseded", "archived"]).default("draft").notNull(),
   currentVersion: int("currentVersion").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("question_catalog_idx").on(table.academicYearId, table.subjectId, table.chapterId, table.topicId), index("question_status_idx").on(table.status)]);
+
+export const questionStems = mysqlTable("question_stems", {
+  id: int("id").autoincrement().primaryKey(),
+  title: varchar("title", { length: 240 }),
+  contextParagraph: text("contextParagraph").notNull(),
+  subjectId: int("subjectId").notNull().references(() => subjects.id),
+  chapterId: int("chapterId").references(() => chapters.id),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("stem_subject_idx").on(table.subjectId, table.chapterId)]);
 
 export const questionOptions = mysqlTable("question_options", {
   id: int("id").autoincrement().primaryKey(),
@@ -223,7 +241,10 @@ export const attemptAnswers = mysqlTable("attempt_answers", {
   attemptId: int("attemptId").notNull().references(() => examAttempts.id),
   questionId: int("questionId").notNull(),
   selectedOptionId: int("selectedOptionId"),
+  selectedOptionIds: json("selectedOptionIds"),
   markedForReview: boolean("markedForReview").default(false).notNull(),
+  isCorrect: boolean("isCorrect"),
+  awardedMarks: decimal("awardedMarks", { precision: 7, scale: 2 }),
   answeredAt: timestamp("answeredAt"),
 }, table => [uniqueIndex("attempt_question_unique").on(table.attemptId, table.questionId)]);
 
@@ -242,9 +263,55 @@ export const mistakes = mysqlTable("mistakes", {
   questionId: int("questionId").notNull().references(() => questions.id),
   sourceAttemptId: int("sourceAttemptId").references(() => examAttempts.id),
   personalNote: text("personalNote"),
+  lastReviewedAt: timestamp("lastReviewedAt"),
+  reviewCount: int("reviewCount").default(0).notNull(),
   status: mysqlEnum("status", ["open", "reviewing", "mastered"]).default("open").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("mistake_user_status_idx").on(table.userId, table.status)]);
+
+export const chapterCheatSheets = mysqlTable("chapter_cheat_sheets", {
+  id: int("id").autoincrement().primaryKey(),
+  chapterId: int("chapterId").notNull().references(() => chapters.id),
+  title: varchar("title", { length: 220 }).notNull(),
+  markdownContent: text("markdownContent").notNull(),
+  sourceVersionId: int("sourceVersionId").references(() => sourceVersions.id),
+  status: mysqlEnum("status", ["draft", "published", "archived"]).default("draft").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("cheat_sheet_chapter_status_idx").on(table.chapterId, table.status)]);
+
+export const questionComments = mysqlTable("question_comments", {
+  id: int("id").autoincrement().primaryKey(),
+  questionId: int("questionId").notNull().references(() => questions.id),
+  userId: int("userId").notNull().references(() => users.id),
+  parentCommentId: int("parentCommentId"),
+  content: text("content").notNull(),
+  status: mysqlEnum("status", ["visible", "flagged", "removed"]).default("visible").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("question_comment_idx").on(table.questionId, table.status, table.createdAt), index("question_comment_parent_idx").on(table.parentCommentId)]);
+
+export const leaderboardScores = mysqlTable("leaderboard_scores", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  periodType: mysqlEnum("periodType", ["global", "weekly"]).notNull(),
+  periodKey: varchar("periodKey", { length: 30 }).notNull(),
+  netMarks: decimal("netMarks", { precision: 9, scale: 2 }).default("0.00").notNull(),
+  attemptsCount: int("attemptsCount").default(0).notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("leaderboard_user_period_unique").on(table.userId, table.periodType, table.periodKey), index("leaderboard_period_score_idx").on(table.periodType, table.periodKey, table.netMarks)]);
+
+export const questionImportBatches = mysqlTable("question_import_batches", {
+  id: int("id").autoincrement().primaryKey(),
+  importedByUserId: int("importedByUserId").notNull().references(() => users.id),
+  fileName: varchar("fileName", { length: 260 }).notNull(),
+  fileType: mysqlEnum("fileType", ["json", "csv"]).notNull(),
+  totalRows: int("totalRows").default(0).notNull(),
+  acceptedRows: int("acceptedRows").default(0).notNull(),
+  rejectedRows: int("rejectedRows").default(0).notNull(),
+  validationReport: json("validationReport"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
 
 export const bookmarks = mysqlTable("bookmarks", {
   id: int("id").autoincrement().primaryKey(),

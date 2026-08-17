@@ -26,8 +26,32 @@
 - [x] Implement supported real-profile improvements and clarify the available sign-in pathway without introducing an insecure custom OAuth flow.
 - [x] Test and visually verify the completion enhancements.
 - [ ] Complete Google sign-in callback integration after a valid Google OAuth web-client credential pair is provided.
-- [ ] Create the checkpoint for the verified custom-notification and source-governance enhancement set.
+- [x] Create the checkpoint for the verified custom-notification and source-governance enhancement set.
 - [x] Add explicit protected-access and service-error states to the governance workspace.
 - [x] Replace manual governance IDs with live source, academic, and hierarchy selectors.
 - [x] Create and verify a published official admission-notice record from the registered University of Dhaka source.
 - [x] Verify the published University of Dhaka record through the live public-notices feed and document the result.
+- [x] Audit the current project, dependencies, runtime-critical modules, and safe candidates for cleanup.
+- [x] Rename the platform to MCQ GURU and use Zian as the default student display name.
+- [x] Add math/chemical-equation rendering and Hind Siliguri Bengali typography support.
+- [x] Extend the database and APIs for subject tags, board/college sources, question types, negative marks, stem passages, comments, cheat sheets, mistake logs, and leaderboard scores.
+- [x] Implement an advanced timed exam runner with negative marking, timeout submission, analysis, and solution breakdowns.
+- [x] Implement performance analytics, weakest-chapter insight, leaderboard, revision cheat sheets, and the Mistake Vault.
+- [x] Implement question discussion threads and a role-protected CSV/JSON question importer.
+- [x] Add offline-capable PWA configuration for cached question practice.
+- [x] Remove only verified-unused boilerplate and requested redundant files without compromising framework operation.
+- [x] Generate a Word source-code compendium for the complete project and verify the document output.
+- [x] Test and visually verify the MCQ GURU upgrade.
+- [ ] Create the checkpoint and deliver the MCQ GURU upgrade with the source-code compendium.
+- [x] Replace all remaining legacy Shikha/Rafi labels with MCQ GURU and Zian, then re-audit visible text.
+- [x] Expose board/college filters and stem-based question retrieval through production MCQ APIs.
+- [x] Connect the timed exam runner to persisted attempts with server-authoritative timeout submission and result breakdowns.
+- [x] Document the required todo.md retention exception while re-verifying all safe cleanup targets.
+- [x] Re-run the visible-label audit after the latest branding changes and resolve any remaining legacy references.
+- [x] Finalize expired attempts from persisted server timestamps independently of the connected client, then verify the result flow.
+- [x] Re-verify the cleanup exception document and all requested removal targets.
+- [x] Code-split non-home application routes to reduce initial-load JavaScript for student practice.
+- [x] Verify expired-attempt finalization and persisted solution-breakdown retrieval end to end.
+- [x] Add and run an integration test covering saved selections, expiry-triggered finalization, score/mistake persistence, and result breakdown retrieval.
+- [x] Run a true data-layer integration verification of saved selections, expiry finalization, persisted mistakes/scores, leaderboard updates, and result breakdown retrieval.
+- [x] Extend the database expiry integration test with a wrong answer and persisted Mistake Vault assertion.

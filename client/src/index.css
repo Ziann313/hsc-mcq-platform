@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: "Inter", "Noto Sans Bengali", sans-serif;
-  --font-display: "Noto Sans Bengali", "Inter", sans-serif;
+  --font-sans: "Inter", "Hind Siliguri", "Noto Sans Bengali", sans-serif;
+  --font-display: "Hind Siliguri", "Noto Sans Bengali", "Inter", sans-serif;
 }
 
 :root {
@@ -26,9 +26,9 @@
 
 * { border-color: var(--border); }
 html { background: #f4f7f7; }
-body { margin: 0; min-width: 320px; background: #f4f7f7; font-family: "Inter", "Noto Sans Bengali", sans-serif; }
+body { margin: 0; min-width: 320px; background: #f4f7f7; font-family: "Inter", "Hind Siliguri", "Noto Sans Bengali", sans-serif; }
 button, input, textarea { font: inherit; }
-.font-display { font-family: "Noto Sans Bengali", "Inter", sans-serif; }
+.font-display { font-family: "Hind Siliguri", "Noto Sans Bengali", "Inter", sans-serif; }
 button { -webkit-tap-highlight-color: transparent; }
 button:active { transform: scale(.98); }
 @media (prefers-reduced-motion: no-preference) { button { transition: color 160ms cubic-bezier(.23,1,.32,1), background-color 160ms cubic-bezier(.23,1,.32,1), border-color 160ms cubic-bezier(.23,1,.32,1), transform 160ms cubic-bezier(.23,1,.32,1), box-shadow 160ms cubic-bezier(.23,1,.32,1); } }
