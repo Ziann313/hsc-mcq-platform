@@ -49,4 +49,20 @@ describe("learning.reviewQuestion", () => {
       options: [{ text: "A", isCorrect: true }, { text: "B", isCorrect: false }],
     })).rejects.toMatchObject({ code: "FORBIDDEN" });
   });
+
+  it("blocks non-admin users from viewing or publishing the approved-question release queue", async () => {
+    const caller = appRouter.createCaller(contextFor("user"));
+    await expect(caller.learning.approvedQuestionPublicationQueue()).rejects.toMatchObject({ code: "FORBIDDEN" });
+    await expect(caller.learning.publishApprovedQuestion({ questionId: 1 })).rejects.toMatchObject({ code: "FORBIDDEN" });
+  });
+
+  it("lets an authenticated student retrieve a real own-account progress summary", async () => {
+    const caller = appRouter.createCaller(contextFor("user"));
+    await expect(caller.learning.studentProgressSummary()).resolves.toMatchObject({
+      completedAttempts: expect.any(Number),
+      answeredQuestions: expect.any(Number),
+      correctAnswers: expect.any(Number),
+      studyStreakDays: expect.any(Number),
+    });
+  });
 });

@@ -1,6 +1,6 @@
 import { and, desc, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, auditLogs, questions, subjects, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears } from "../drizzle/schema";
+import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -237,6 +237,11 @@ export async function reviewQuestion(input: {
     .set({ status: input.status })
     .where(eq(questions.id, input.questionId));
   if (result[0].affectedRows === 0) return false;
+  if (input.status === "approved") {
+    await db.update(questionVersions)
+      .set({ reviewStatus: "approved" })
+      .where(and(eq(questionVersions.questionId, input.questionId), eq(questionVersions.version, 1)));
+  }
   await db.insert(auditLogs).values({
     actorUserId: input.actorUserId,
     action: `question.${input.status}`,
@@ -245,6 +250,98 @@ export async function reviewQuestion(input: {
     metadata: { note: input.note ?? null },
   });
   return true;
+}
+
+export async function getApprovedQuestionPublicationQueue() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select({
+    id: questions.id,
+    prompt: questions.prompt,
+    difficulty: questions.difficulty,
+    subject: subjects.nameEn,
+    version: questions.currentVersion,
+    sourceVersionStatus: sourceVersions.status,
+    sourceTitle: sources.title,
+    pageReference: questionSources.pageReference,
+  }).from(questions)
+    .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .innerJoin(sources, eq(sourceVersions.sourceId, sources.id))
+    .where(eq(questions.status, "approved"))
+    .orderBy(desc(questions.updatedAt))
+    .limit(30);
+}
+
+export async function publishApprovedQuestion(input: { questionId: number; actorUserId: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const question = await db.select({ id: questions.id, status: questions.status, currentVersion: questions.currentVersion })
+    .from(questions).where(eq(questions.id, input.questionId)).limit(1);
+  if (!question[0]) return { outcome: "not_found" as const };
+  if (question[0].status !== "approved") return { outcome: "not_approved" as const };
+  const evidence = await db.select({ sourceVersionStatus: sourceVersions.status, pageReference: questionSources.pageReference })
+    .from(questionSources)
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(eq(questionSources.questionId, input.questionId));
+  if (!evidence.length || evidence.some(item => item.sourceVersionStatus !== "active" || !item.pageReference.trim())) return { outcome: "source_not_active" as const };
+  const options = await db.select({ isCorrect: questionOptions.isCorrect })
+    .from(questionOptions).where(eq(questionOptions.questionId, input.questionId));
+  if (options.length < 2 || options.filter(option => option.isCorrect).length !== 1) return { outcome: "invalid_options" as const };
+  await db.update(questions).set({ status: "published" }).where(eq(questions.id, input.questionId));
+  await db.insert(auditLogs).values({
+    actorUserId: input.actorUserId,
+    action: "question.published",
+    entityType: "question",
+    entityId: String(input.questionId),
+    metadata: { currentVersion: question[0].currentVersion, sourceReferences: evidence.map(item => item.pageReference) },
+  });
+  return { outcome: "published" as const };
+}
+
+export async function getPublishedContentAvailability() {
+  const db = await getDb();
+  if (!db) return { publishedQuestionCount: 0, subjects: [] as Array<{ subjectId: number; name: string; questionCount: number }> };
+  const published = await db.select({ subjectId: subjects.id, name: subjects.nameEn })
+    .from(questions)
+    .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .where(eq(questions.status, "published"));
+  const subjectCounts = new Map<number, { subjectId: number; name: string; questionCount: number }>();
+  for (const row of published) {
+    const current = subjectCounts.get(row.subjectId) ?? { subjectId: row.subjectId, name: row.name, questionCount: 0 };
+    current.questionCount += 1;
+    subjectCounts.set(row.subjectId, current);
+  }
+  return { publishedQuestionCount: published.length, subjects: Array.from(subjectCounts.values()).sort((a, b) => b.questionCount - a.questionCount) };
+}
+
+export async function getStudentProgressSummary(userId: number) {
+  const db = await getDb();
+  if (!db) return { completedAttempts: 0, answeredQuestions: 0, correctAnswers: 0, accuracy: null as number | null, averageNetMarks: null as number | null, studyStreakDays: 0 };
+  const attempts = await db.select({ status: examAttempts.status, score: examAttempts.score, submittedAt: examAttempts.submittedAt })
+    .from(examAttempts).where(eq(examAttempts.userId, userId));
+  const completed = attempts.filter(attempt => attempt.status === "submitted" || attempt.status === "expired");
+  const answers = await db.select({ isCorrect: attemptAnswers.isCorrect, answeredAt: attemptAnswers.answeredAt })
+    .from(attemptAnswers)
+    .innerJoin(examAttempts, eq(attemptAnswers.attemptId, examAttempts.id))
+    .where(eq(examAttempts.userId, userId));
+  const answeredQuestions = answers.filter(answer => Boolean(answer.answeredAt)).length;
+  const correctAnswers = answers.filter(answer => answer.isCorrect === true).length;
+  const accuracy = answeredQuestions ? Math.round((correctAnswers / answeredQuestions) * 100) : null;
+  const scored = completed.map(attempt => Number(attempt.score ?? 0)).filter(score => Number.isFinite(score));
+  const averageNetMarks = scored.length ? Math.round((scored.reduce((sum, score) => sum + score, 0) / scored.length) * 100) / 100 : null;
+  const activityDays = Array.from(new Set([...completed.map(attempt => attempt.submittedAt), ...answers.map(answer => answer.answeredAt)].filter((date): date is Date => Boolean(date)).map(date => Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate()))))
+    .sort((a, b) => b - a);
+  let studyStreakDays = 0;
+  if (activityDays.length) {
+    studyStreakDays = 1;
+    for (let index = 1; index < activityDays.length; index += 1) {
+      if (activityDays[index - 1]! - activityDays[index]! !== 86_400_000) break;
+      studyStreakDays += 1;
+    }
+  }
+  return { completedAttempts: completed.length, answeredQuestions, correctAnswers, accuracy, averageNetMarks, studyStreakDays };
 }
 
 export async function getQuestionReviewQueue() {

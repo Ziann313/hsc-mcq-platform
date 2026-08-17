@@ -17,9 +17,9 @@ describe("application route integrity", () => {
 
   it("keeps the Home-backed student surfaces explicitly registered", () => {
     expect(homeRoutePaths).toEqual(expect.arrayContaining([
-      "/", "/practice", "/exams", "/tutor", "/progress", "/study-plan", "/mistakes", "/bookmarks",
+      "/", "/exams", "/tutor", "/progress", "/study-plan", "/mistakes", "/bookmarks",
     ]));
-    expect(dedicatedRoutePaths).toEqual(expect.arrayContaining(["/settings", "/profile", "/live-exam"]));
+    expect(dedicatedRoutePaths).toEqual(expect.arrayContaining(["/practice", "/settings", "/profile", "/live-exam"]));
   });
 
   it("maps historic navigation targets to valid modern destinations", () => {

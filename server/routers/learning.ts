@@ -10,13 +10,17 @@ import {
   getActiveSourceEvidence,
   getAdmissionPatternVersions,
   getApprovedSources,
+  getApprovedQuestionPublicationQueue,
   getNotificationPreferences,
   getNotificationsForUser,
+  getPublishedContentAvailability,
   getQuestionIntakeOptions,
   getPublishedAdmissionNotices,
   getQuestionReviewQueue,
   getStudentProfile,
+  getStudentProgressSummary,
   markNotificationRead,
+  publishApprovedQuestion,
   registerOfficialSource,
   reviewQuestion,
   saveStudentProfile,
@@ -231,6 +235,21 @@ export const learningRouter = router({
   }),
 
   questionReviewQueue: adminProcedure.query(async () => getQuestionReviewQueue()),
+
+  approvedQuestionPublicationQueue: adminProcedure.query(async () => getApprovedQuestionPublicationQueue()),
+
+  publishApprovedQuestion: adminProcedure.input(z.object({ questionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const result = await publishApprovedQuestion({ ...input, actorUserId: ctx.user.id });
+    if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "Question not found" });
+    if (result.outcome === "not_approved") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Only approved questions can be published" });
+    if (result.outcome === "source_not_active") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Publication requires an active source version and page reference" });
+    if (result.outcome === "invalid_options") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Publication requires at least two options and exactly one correct answer" });
+    return { published: true } as const;
+  }),
+
+  publishedContentAvailability: publicProcedure.query(async () => getPublishedContentAvailability()),
+
+  studentProgressSummary: protectedProcedure.query(async ({ ctx }) => getStudentProgressSummary(ctx.user.id)),
 
   approvedSources: adminProcedure.query(async () => getApprovedSources()),
 

@@ -75,6 +75,13 @@
 - [x] Create or connect a private GitHub repository and push the verified MCQ GURU source.
 - [x] Verify the GitHub remote and deliver the repository link.
 - [x] Change the MCQ GURU GitHub repository visibility from private to public and verify public access.
+- [x] Inspect content publication, practice-session, and progress-analytics contracts for the content-ready release.
+- [x] Create a governed pilot-content availability workflow without fabricating or copying unlicensed textbook material.
+- [x] Connect practice and progress screens to real published-content and persisted attempt data.
+- [x] Add automated coverage and desktop/mobile verification for the content-ready student experience.
+- [x] Wire the `/practice` route to the persisted published-question practice flow and reverify the student experience.
+- [x] Wire the `/practice` route to the persisted published-question practice flow and reverify the student experience.
+- [x] Save and deliver the content-ready practice release.
 - [x] Replace all remaining legacy Shikha/Rafi labels with MCQ GURU and Zian, then re-audit visible text.
 - [x] Expose board/college filters and stem-based question retrieval through production MCQ APIs.
 - [x] Connect the timed exam runner to persisted attempts with server-authoritative timeout submission and result breakdowns.

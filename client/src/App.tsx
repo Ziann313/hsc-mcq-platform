@@ -40,6 +40,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/profile">{() => <AccountPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/questions/new">{() => <QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/admission-patterns">{() => <AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
+    <Route path="/practice">{() => <ExamLabPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/mcq-lab">{() => <ExamLabPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/live-exam">{() => <LiveExamPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/leaderboard">{() => <LeaderboardPage language={language} onLanguageChange={onLanguageChange} />}</Route>
