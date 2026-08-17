@@ -74,6 +74,7 @@
 - [x] Inspect the local Git repository and authenticated GitHub account for source publication.
 - [x] Create or connect a private GitHub repository and push the verified MCQ GURU source.
 - [x] Verify the GitHub remote and deliver the repository link.
+- [x] Change the MCQ GURU GitHub repository visibility from private to public and verify public access.
 - [x] Replace all remaining legacy Shikha/Rafi labels with MCQ GURU and Zian, then re-audit visible text.
 - [x] Expose board/college filters and stem-based question retrieval through production MCQ APIs.
 - [x] Connect the timed exam runner to persisted attempts with server-authoritative timeout submission and result breakdowns.
