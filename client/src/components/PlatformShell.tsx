@@ -61,8 +61,12 @@ export const adminNavigationItems: NavigationItem[] = [
   { path: "/admission-patterns", label: "Admission patterns", bn: "ভর্তি প্যাটার্ন", icon: FileText },
 ];
 
+export function canAccessGovernance(role?: string) {
+  return ["admin", "reviewer", "content_admin", "super_admin"].includes(role ?? "");
+}
+
 export function visibleNavigationItems(role?: string) {
-  return ["admin", "reviewer", "content_admin", "super_admin"].includes(role ?? "")
+  return canAccessGovernance(role)
     ? [...studentNavigationItems, ...adminNavigationItems]
     : studentNavigationItems;
 }

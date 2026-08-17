@@ -2,10 +2,11 @@ import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
 import { lazy, Suspense, useState } from "react";
-import { Route, Switch } from "wouter";
+import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
+import { homeRoutePaths, legacyRouteRedirects } from "./routePaths";
 
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ImageSolver = lazy(() => import("./pages/ImageSolver"));
@@ -20,7 +21,8 @@ const AdmissionPatternsPage = lazy(() => import("./pages/AdmissionPatternsPage")
 const ExamLabPage = lazy(() => import("./pages/ExamLabPage"));
 const LiveExamPage = lazy(() => import("./pages/LiveExamPage"));
 const LeaderboardPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.LeaderboardPage })));
-const RevisionPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.RevisionPage })));
+const CheatSheetsPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.CheatSheetsPage })));
+const MistakeVaultPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.MistakeVaultPage })));
 const CommunityPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.CommunityPage })));
 const ImporterPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.ImporterPage })));
 
@@ -41,11 +43,12 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/mcq-lab">{() => <ExamLabPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/live-exam">{() => <LiveExamPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/leaderboard">{() => <LeaderboardPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/cheat-sheets">{() => <RevisionPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/mistake-vault">{() => <RevisionPage language={language} onLanguageChange={onLanguageChange} />}</Route>
+    <Route path="/cheat-sheets">{() => <CheatSheetsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
+    <Route path="/mistake-vault">{() => <MistakeVaultPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/community">{() => <CommunityPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/import">{() => <ImporterPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/">{() => <Home language={language} onLanguageChange={onLanguageChange} />}</Route>
+    {homeRoutePaths.map(path => <Route key={path} path={path}>{() => <Home language={language} onLanguageChange={onLanguageChange} />}</Route>)}
+    {Object.entries(legacyRouteRedirects).map(([from, to]) => <Route key={from} path={from}><Redirect to={to} /></Route>)}
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />
   </Switch></Suspense>;

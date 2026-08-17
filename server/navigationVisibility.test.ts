@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { visibleNavigationItems } from "../client/src/components/PlatformShell";
+import { canAccessGovernance, visibleNavigationItems } from "../client/src/components/PlatformShell";
 
 describe("visibleNavigationItems", () => {
   it("keeps governance tools out of student and unauthenticated navigation", () => {
@@ -32,5 +32,11 @@ describe("visibleNavigationItems", () => {
     const liveExam = visibleNavigationItems("user").find(item => item.path === "/live-exam");
 
     expect(liveExam).toMatchObject({ label: "Live exam", bn: "লাইভ এক্সাম" });
+  });
+
+  it("uses the same role policy for direct governance URLs and hidden navigation", () => {
+    expect(canAccessGovernance("student")).toBe(false);
+    expect(canAccessGovernance("reviewer")).toBe(true);
+    expect(canAccessGovernance("admin")).toBe(true);
   });
 });

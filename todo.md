@@ -65,6 +65,12 @@
 - [x] Replace the settings placeholder with an authenticated account and notification-preference interface.
 - [x] Add automated coverage and desktop/mobile verification for the preference workflows.
 - [x] Save and deliver the authenticated settings and notification-preference checkpoint.
+- [x] Reproduce the reported `/practice` 404 and inventory all declared, navigated, and legacy application routes.
+- [x] Audit mobile rendering, authentication boundaries, data-state errors, and protected workflows for additional confirmed defects.
+- [x] Repair confirmed route, navigation, mobile, and runtime defects and add focused regression tests.
+- [x] Recheck the historic mcqDb transform log against current source, type checking, and production build; confirm no active parse error remains.
+- [ ] Run complete automated, desktop, mobile, and production verification for the bug-fix release.
+- [ ] Save and deliver the verified comprehensive bug-fix checkpoint.
 - [x] Replace all remaining legacy Shikha/Rafi labels with MCQ GURU and Zian, then re-audit visible text.
 - [x] Expose board/college filters and stem-based question retrieval through production MCQ APIs.
 - [x] Connect the timed exam runner to persisted attempts with server-authoritative timeout submission and result breakdowns.

@@ -170,6 +170,9 @@ const plugins = [
       icons: [],
     },
     workbox: {
+      clientsClaim: true,
+      skipWaiting: true,
+      cleanupOutdatedCaches: true,
       navigateFallback: "/index.html",
       globPatterns: ["**/*.{js,css,html,ico,svg,png,woff2}"],
       maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
