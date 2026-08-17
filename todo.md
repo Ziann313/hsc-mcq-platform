@@ -28,7 +28,7 @@
 - [x] Safely defer Google sign-in callback integration until a valid Google OAuth web-client credential pair is provided, without exposing a broken sign-in option.
 - [x] Refine the account interface around the working built-in secure sign-in flow and make Google OAuth an explicitly deferred optional integration.
 - [x] Verify the authentication fallback experience and prepare the finalized MCQ GURU delivery checkpoint.
-- [ ] Save the post-authentication-refinement checkpoint and deliver the finalized MCQ GURU upgrade.
+- [x] Save the post-authentication-refinement checkpoint and deliver the finalized MCQ GURU upgrade.
 - [x] Create the checkpoint for the verified custom-notification and source-governance enhancement set.
 - [x] Add explicit protected-access and service-error states to the governance workspace.
 - [x] Replace manual governance IDs with live source, academic, and hierarchy selectors.
@@ -45,7 +45,16 @@
 - [x] Remove only verified-unused boilerplate and requested redundant files without compromising framework operation.
 - [x] Generate a Word source-code compendium for the complete project and verify the document output.
 - [x] Test and visually verify the MCQ GURU upgrade.
-- [ ] Create the checkpoint and deliver the MCQ GURU upgrade with the source-code compendium.
+- [x] Create the checkpoint and deliver the MCQ GURU upgrade with the source-code compendium.
+- [x] Deliver the refreshed MCQ GURU Word source-code compendium with the final checkpoint.
+- [x] Audit all MCQ GURU routes, data states, student flows, and administrative workflows for missing or incomplete features.
+- [x] Audit mobile behavior, authentication states, PWA behavior, data availability, and production-readiness dependencies.
+- [x] Deliver a prioritized evidence-based gap analysis with the recommended implementation order.
+- [x] Audit the remaining question-bank, bulk-import, image-solver, bookmarks, settings, admission-pattern, and question-intake routes for route-specific gaps.
+- [x] Finalize and deliver the comprehensive prioritized MCQ GURU gap-analysis report after completing route coverage.
+- [x] Audit the actual registered bulk-import and question-intake routes, confirm question-bank routing, and document route-specific findings.
+- [x] Reconcile the final gap-analysis report with the completed registered-route audit before delivery.
+- [x] Verify the final report contains the registered-route, settings, and image-solver findings, then deliver the completed audit.
 - [x] Replace all remaining legacy Shikha/Rafi labels with MCQ GURU and Zian, then re-audit visible text.
 - [x] Expose board/college filters and stem-based question retrieval through production MCQ APIs.
 - [x] Connect the timed exam runner to persisted attempts with server-authoritative timeout submission and result breakdowns.
