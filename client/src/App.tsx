@@ -44,7 +44,6 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/community">{() => <CommunityPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/import">{() => <ImporterPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/">{() => <Home language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/:rest*">{() => <Home language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />
   </Switch></Suspense>;

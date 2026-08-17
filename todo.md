@@ -55,6 +55,11 @@
 - [x] Audit the actual registered bulk-import and question-intake routes, confirm question-bank routing, and document route-specific findings.
 - [x] Reconcile the final gap-analysis report with the completed registered-route audit before delivery.
 - [x] Verify the final report contains the registered-route, settings, and image-solver findings, then deliver the completed audit.
+- [x] Map the current route definitions, PlatformShell navigation, and guest/authenticated rendering paths for the release-blocker remediation pass.
+- [x] Replace misleading guest dashboard metrics and learning recommendations with truthful sign-in and no-content states.
+- [x] Correct sidebar route mappings and separate student navigation from reviewer/admin workflows.
+- [x] Add automated route/navigation coverage and verify desktop/mobile rendering for the remediation pass.
+- [x] Save and deliver the release-blocker remediation checkpoint.
 - [x] Replace all remaining legacy Shikha/Rafi labels with MCQ GURU and Zian, then re-audit visible text.
 - [x] Expose board/college filters and stem-based question retrieval through production MCQ APIs.
 - [x] Connect the timed exam runner to persisted attempts with server-authoritative timeout submission and result breakdowns.
