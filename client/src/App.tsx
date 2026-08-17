@@ -11,6 +11,7 @@ const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ImageSolver = lazy(() => import("./pages/ImageSolver"));
 const AdminWorkspace = lazy(() => import("./pages/AdminWorkspace"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
+const SettingsPage = lazy(() => import("./pages/SettingsPage"));
 const OfficialNoticesPage = lazy(() => import("./pages/OfficialNoticesPage"));
 const AccountPage = lazy(() => import("./pages/AccountPage"));
 const GovernanceWorkspace = lazy(() => import("./pages/GovernanceWorkspace"));
@@ -32,6 +33,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/admin">{() => <AdminWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/governance">{() => <GovernanceWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/notifications">{() => <NotificationsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
+    <Route path="/settings">{() => <SettingsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/notices">{() => <OfficialNoticesPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/profile">{() => <AccountPage language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/questions/new">{() => <QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>

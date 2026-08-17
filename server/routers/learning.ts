@@ -10,6 +10,7 @@ import {
   getActiveSourceEvidence,
   getAdmissionPatternVersions,
   getApprovedSources,
+  getNotificationPreferences,
   getNotificationsForUser,
   getQuestionIntakeOptions,
   getPublishedAdmissionNotices,
@@ -19,6 +20,7 @@ import {
   registerOfficialSource,
   reviewQuestion,
   saveStudentProfile,
+  saveNotificationPreferences,
   updateStudentPreferences,
 } from "../db";
 import { invokeLLM } from "../_core/llm";
@@ -66,6 +68,16 @@ export const learningRouter = router({
     if (!changed) throw new TRPCError({ code: "NOT_FOUND", message: "Complete onboarding before updating preferences" });
     return { success: true } as const;
   }),
+
+  notificationPreferences: protectedProcedure.query(async ({ ctx }) => getNotificationPreferences(ctx.user.id)),
+
+  updateNotificationPreferences: protectedProcedure.input(z.object({
+    studyEnabled: z.boolean().optional(),
+    admissionEnabled: z.boolean().optional(),
+    contentEnabled: z.boolean().optional(),
+  }).refine(input => Object.values(input).some(value => value !== undefined), {
+    message: "Select at least one notification preference to update",
+  })).mutation(async ({ ctx, input }) => saveNotificationPreferences(ctx.user.id, input)),
 
   notifications: protectedProcedure.query(async ({ ctx }) => getNotificationsForUser(ctx.user.id)),
 
@@ -262,7 +274,7 @@ export const learningRouter = router({
     const ownerNotified = input.priority === "critical"
       ? await notifyOwner({ title: `Critical student notification: ${input.title}`, content: input.body })
       : false;
-    return { notificationId, ownerNotified };
+    return { notificationId, delivered: notificationId !== null, ownerNotified };
   }),
 
   createReviewQuestion: adminProcedure.input(z.object({

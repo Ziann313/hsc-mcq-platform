@@ -40,6 +40,16 @@ export const studentProfiles = mysqlTable("student_profiles", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const studentNotificationPreferences = mysqlTable("student_notification_preferences", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique().references(() => users.id),
+  studyEnabled: boolean("studyEnabled").default(true).notNull(),
+  admissionEnabled: boolean("admissionEnabled").default(true).notNull(),
+  contentEnabled: boolean("contentEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const academicYears = mysqlTable("academic_years", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 20 }).notNull().unique(),

@@ -1,6 +1,6 @@
 import { and, desc, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, studentProfiles, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, auditLogs, questions, subjects, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears } from "../drizzle/schema";
+import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, auditLogs, questions, subjects, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -94,6 +94,47 @@ export async function getStudentProfile(userId: number) {
   if (!db) return undefined;
   const rows = await db.select().from(studentProfiles).where(eq(studentProfiles.userId, userId)).limit(1);
   return rows[0];
+}
+
+type NotificationPreferenceState = {
+  studyEnabled: boolean;
+  admissionEnabled: boolean;
+  contentEnabled: boolean;
+};
+
+const defaultNotificationPreferences: NotificationPreferenceState = {
+  studyEnabled: true,
+  admissionEnabled: true,
+  contentEnabled: true,
+};
+
+type NotificationPreferenceInput = Partial<NotificationPreferenceState>;
+type NotificationType = "study" | "admission" | "content" | "account" | "system";
+type NotificationPriority = "normal" | "high" | "critical";
+
+export async function getNotificationPreferences(userId: number) {
+  const db = await getDb();
+  if (!db) return defaultNotificationPreferences;
+  const rows = await db.select().from(studentNotificationPreferences).where(eq(studentNotificationPreferences.userId, userId)).limit(1);
+  return rows[0] ?? defaultNotificationPreferences;
+}
+
+export async function saveNotificationPreferences(userId: number, input: NotificationPreferenceInput) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const next = { ...defaultNotificationPreferences, ...input };
+  await db.insert(studentNotificationPreferences).values({ userId, ...next }).onDuplicateKeyUpdate({ set: next });
+  return getNotificationPreferences(userId);
+}
+
+async function shouldDeliverNotification(userId: number, type: NotificationType, priority: NotificationPriority) {
+  if (priority === "critical" || type === "account" || type === "system") return true;
+  const preferences = await getNotificationPreferences(userId);
+  return type === "study"
+    ? preferences.studyEnabled
+    : type === "admission"
+      ? preferences.admissionEnabled
+      : preferences.contentEnabled;
 }
 
 export async function saveStudentProfile(userId: number, input: {
@@ -244,14 +285,15 @@ export async function markNotificationRead(userId: number, notificationId: numbe
 export async function createNotification(input: {
   userId: number;
   actorUserId?: number;
-  type: "study" | "admission" | "content" | "account" | "system";
-  priority: "normal" | "high" | "critical";
+  type: NotificationType;
+  priority: NotificationPriority;
   title: string;
   body: string;
   actionUrl?: string;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  if (!await shouldDeliverNotification(input.userId, input.type, input.priority)) return null;
   const result = await db.insert(notifications).values({
     userId: input.userId,
     type: input.type,

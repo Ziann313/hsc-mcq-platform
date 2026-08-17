@@ -39,7 +39,7 @@ export default function GovernanceWorkspace({ language, onLanguageChange }: { la
     onError: error => toast.error(error.message),
   });
   const sendNotification = trpc.learning.sendCustomNotification.useMutation({
-    onSuccess: ({ ownerNotified }) => toast.success(ownerNotified ? copy("Critical alert sent and owner notified", "ক্রিটিক্যাল অ্যালার্ট পাঠানো ও ওনারকে জানানো হয়েছে") : copy("Custom notification delivered", "কাস্টম নোটিফিকেশন পাঠানো হয়েছে")),
+    onSuccess: ({ ownerNotified, delivered }) => toast.success(ownerNotified ? copy("Critical alert sent and owner notified", "ক্রিটিক্যাল অ্যালার্ট পাঠানো ও ওনারকে জানানো হয়েছে") : delivered ? copy("Custom notification delivered", "কাস্টম নোটিফিকেশন পাঠানো হয়েছে") : copy("Notification respected the student’s category preference", "শিক্ষার্থীর ক্যাটাগরি পছন্দ অনুযায়ী নোটিফিকেশন পাঠানো হয়নি")),
     onError: error => toast.error(error.message),
   });
 

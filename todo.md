@@ -60,6 +60,11 @@
 - [x] Correct sidebar route mappings and separate student navigation from reviewer/admin workflows.
 - [x] Add automated route/navigation coverage and verify desktop/mobile rendering for the remediation pass.
 - [x] Save and deliver the release-blocker remediation checkpoint.
+- [x] Inspect profile, notification, and preference data contracts for the authenticated settings release slice.
+- [x] Add secure persisted student notification preferences with protected API validation.
+- [x] Replace the settings placeholder with an authenticated account and notification-preference interface.
+- [x] Add automated coverage and desktop/mobile verification for the preference workflows.
+- [x] Save and deliver the authenticated settings and notification-preference checkpoint.
 - [x] Replace all remaining legacy Shikha/Rafi labels with MCQ GURU and Zian, then re-audit visible text.
 - [x] Expose board/college filters and stem-based question retrieval through production MCQ APIs.
 - [x] Connect the timed exam runner to persisted attempts with server-authoritative timeout submission and result breakdowns.
