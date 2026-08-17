@@ -71,6 +71,9 @@
 - [x] Recheck the historic mcqDb transform log against current source, type checking, and production build; confirm no active parse error remains.
 - [x] Run complete automated, desktop, mobile, and production verification for the bug-fix release.
 - [x] Save and deliver the verified comprehensive bug-fix checkpoint.
+- [ ] Inspect the local Git repository and authenticated GitHub account for source publication.
+- [ ] Create or connect a private GitHub repository and push the verified MCQ GURU source.
+- [ ] Verify the GitHub remote and deliver the repository link.
 - [x] Replace all remaining legacy Shikha/Rafi labels with MCQ GURU and Zian, then re-audit visible text.
 - [x] Expose board/college filters and stem-based question retrieval through production MCQ APIs.
 - [x] Connect the timed exam runner to persisted attempts with server-authoritative timeout submission and result breakdowns.
