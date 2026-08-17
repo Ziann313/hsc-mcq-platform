@@ -1,8 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+const googleOAuthEnabled = process.env.GOOGLE_OAUTH_ENABLED === "true";
+
 describe("Google OAuth configuration", () => {
-  // Re-enable after the credential replacement card is completed. The last validation returned invalid_client.
-  it.skip("is recognized by Google without completing an authorization flow", async () => {
+  it.skipIf(!googleOAuthEnabled)("is recognized by Google without completing an authorization flow", async () => {
     const clientId = process.env.GOOGLE_OAUTH_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_OAUTH_CLIENT_SECRET;
     expect(clientId, "GOOGLE_OAUTH_CLIENT_ID must be configured").toBeTruthy();

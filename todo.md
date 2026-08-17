@@ -25,7 +25,10 @@
 - [x] Add official admission-notice records, source links, and versioned admission-pattern management.
 - [x] Implement supported real-profile improvements and clarify the available sign-in pathway without introducing an insecure custom OAuth flow.
 - [x] Test and visually verify the completion enhancements.
-- [ ] Complete Google sign-in callback integration after a valid Google OAuth web-client credential pair is provided.
+- [x] Safely defer Google sign-in callback integration until a valid Google OAuth web-client credential pair is provided, without exposing a broken sign-in option.
+- [x] Refine the account interface around the working built-in secure sign-in flow and make Google OAuth an explicitly deferred optional integration.
+- [x] Verify the authentication fallback experience and prepare the finalized MCQ GURU delivery checkpoint.
+- [ ] Save the post-authentication-refinement checkpoint and deliver the finalized MCQ GURU upgrade.
 - [x] Create the checkpoint for the verified custom-notification and source-governance enhancement set.
 - [x] Add explicit protected-access and service-error states to the governance workspace.
 - [x] Replace manual governance IDs with live source, academic, and hierarchy selectors.
