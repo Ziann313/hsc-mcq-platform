@@ -1,5 +1,5 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { attemptAnswers, examAttempts, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, subjects, chapters, questionStems, users } from "../drizzle/schema";
+import { attemptAnswers, dailyChallengeSchedules, examAttempts, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, subjects, chapters, questionStems, users } from "../drizzle/schema";
 import { getDb } from "./db";
 import { getAttemptResult, submitFrozenAttempt } from "./mcqDb";
 import { resolveLiveRoomState, shouldAutoSubmitForIntegrityWarnings } from "../shared/liveExam";
@@ -41,7 +41,7 @@ async function getSourceValidatedQuestions(questionIds: number[]) {
   });
 }
 
-export async function createLiveExamRoom(input: { createdByUserId: number; title: string; description?: string; mode: LiveMode; startsAt: Date; durationMinutes: number; questionIds: number[]; marksPerCorrect: number; negativeMarkPerWrong: number; maxParticipants?: number; autoSubmitAfterWarnings: number; }) {
+export async function createLiveExamRoom(input: { createdByUserId: number; title: string; description?: string; mode: LiveMode; startsAt: Date; durationMinutes: number; questionIds: number[]; marksPerCorrect: number; negativeMarkPerWrong: number; maxParticipants?: number; autoSubmitAfterWarnings: number; dailyChallengeScheduleId?: number; challengeDate?: string; }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   if (input.startsAt.getTime() < Date.now() - 60_000) throw new Error("Scheduled start time cannot be in the past");
@@ -49,7 +49,7 @@ export async function createLiveExamRoom(input: { createdByUserId: number; title
   const endsAt = new Date(input.startsAt.getTime() + input.durationMinutes * 60_000);
   const result = await db.insert(liveExamRooms).values({
     createdByUserId: input.createdByUserId, title: input.title, description: input.description || null, mode: input.mode,
-    status: resolveLiveRoomState({ configuredState: "scheduled", startsAt: input.startsAt, endsAt }), startsAt: input.startsAt, endsAt,
+    status: resolveLiveRoomState({ configuredState: "scheduled", startsAt: input.startsAt, endsAt }), startsAt: input.startsAt, endsAt, dailyChallengeScheduleId: input.dailyChallengeScheduleId ?? null, challengeDate: input.challengeDate ?? null,
     durationMinutes: input.durationMinutes, questionIds: Array.from(new Set(input.questionIds)), marksPerCorrect: String(input.marksPerCorrect), negativeMarkPerWrong: String(input.negativeMarkPerWrong),
     maxParticipants: input.maxParticipants ?? null, autoSubmitAfterWarnings: input.autoSubmitAfterWarnings,
   });
@@ -125,7 +125,16 @@ export async function getLiveExamResult(roomId: number, userId: number) {
   const result = await getAttemptResult(userId, attemptId);
   if (!result) return undefined;
   const leaderboard = await getLiveLeaderboard(roomId, userId);
-  return { room, participant, result, leaderboard, myRank: leaderboard.find(entry => entry.isMe)?.rank ?? null };
+  const subjectTotals = result.answers.reduce<Record<string, { total: number; correct: number }>>((summary, answer) => {
+    const subject = answer.subject || "General";
+    const entry = summary[subject] ?? { total: 0, correct: 0 };
+    entry.total += 1;
+    if (answer.isCorrect) entry.correct += 1;
+    summary[subject] = entry;
+    return summary;
+  }, {});
+  const subjectAccuracy = Object.entries(subjectTotals).map(([subject, counts]) => ({ subject, ...counts, accuracy: Math.round((counts.correct / counts.total) * 100) })).sort((a, b) => a.accuracy - b.accuracy || a.subject.localeCompare(b.subject));
+  return { room, participant, result, leaderboard, myRank: leaderboard.find(entry => entry.isMe)?.rank ?? null, subjectAccuracy };
 }
 
 export async function getLiveExamLaunchReadiness() {
@@ -143,6 +152,53 @@ export async function getLiveExamLaunchReadiness() {
     activeRoomCount: Number(scheduled?.count ?? 0),
     readyForFirstRoom: Number(sourceValidated?.count ?? 0) > 0,
   };
+}
+
+export async function listDailyChallengeSchedules() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(dailyChallengeSchedules).orderBy(desc(dailyChallengeSchedules.createdAt)).limit(30);
+}
+
+export async function createDailyChallengeSchedule(input: { createdByUserId: number; title: string; description?: string; questionIds: number[]; durationMinutes: number; marksPerCorrect: number; negativeMarkPerWrong: number; autoSubmitAfterWarnings: number; cronExpression: string; }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await getSourceValidatedQuestions(input.questionIds);
+  const created = await db.insert(dailyChallengeSchedules).values({ createdByUserId: input.createdByUserId, title: input.title, description: input.description || null, questionIds: input.questionIds, durationMinutes: input.durationMinutes, marksPerCorrect: String(input.marksPerCorrect), negativeMarkPerWrong: String(input.negativeMarkPerWrong), autoSubmitAfterWarnings: input.autoSubmitAfterWarnings, cronExpression: input.cronExpression });
+  return Number(created[0].insertId);
+}
+
+export async function attachDailyChallengeTask(scheduleId: number, taskUid: string) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  await db.update(dailyChallengeSchedules).set({ scheduleCronTaskUid: taskUid }).where(eq(dailyChallengeSchedules.id, scheduleId));
+}
+
+export async function setDailyChallengeScheduleEnabled(scheduleId: number, isEnabled: boolean) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [schedule] = await db.select().from(dailyChallengeSchedules).where(eq(dailyChallengeSchedules.id, scheduleId)).limit(1);
+  if (!schedule) throw new Error("Daily challenge schedule not found");
+  await db.update(dailyChallengeSchedules).set({ isEnabled }).where(eq(dailyChallengeSchedules.id, scheduleId));
+  return schedule;
+}
+
+function challengeDateInDhaka(now = new Date()) {
+  const parts = new Intl.DateTimeFormat("en-CA", { timeZone: "Asia/Dhaka", year: "numeric", month: "2-digit", day: "2-digit" }).formatToParts(now);
+  const values = Object.fromEntries(parts.map(part => [part.type, part.value]));
+  return `${values.year}-${values.month}-${values.day}`;
+}
+
+export async function runScheduledDailyChallenge(taskUid: string, now = new Date()) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [schedule] = await db.select().from(dailyChallengeSchedules).where(eq(dailyChallengeSchedules.scheduleCronTaskUid, taskUid)).limit(1);
+  if (!schedule || !schedule.isEnabled) return { ok: true, skipped: "orphan_or_paused" as const };
+  const challengeDate = challengeDateInDhaka(now);
+  const [existing] = await db.select({ id: liveExamRooms.id }).from(liveExamRooms).where(and(eq(liveExamRooms.dailyChallengeScheduleId, schedule.id), eq(liveExamRooms.challengeDate, challengeDate))).limit(1);
+  if (existing) return { ok: true, skipped: "already_created" as const, roomId: existing.id };
+  const room = await createLiveExamRoom({ createdByUserId: schedule.createdByUserId, title: schedule.title, description: schedule.description ?? undefined, mode: "daily_challenge", startsAt: now, durationMinutes: schedule.durationMinutes, questionIds: Array.isArray(schedule.questionIds) ? schedule.questionIds.map(Number) : [], marksPerCorrect: Number(schedule.marksPerCorrect), negativeMarkPerWrong: Number(schedule.negativeMarkPerWrong), autoSubmitAfterWarnings: schedule.autoSubmitAfterWarnings, dailyChallengeScheduleId: schedule.id, challengeDate });
+  return { ok: true, roomId: room.roomId, challengeDate };
 }
 
 export async function joinLiveExamRoom(roomId: number, userId: number) {

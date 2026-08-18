@@ -1,4 +1,4 @@
-import { boolean, decimal, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
+import { boolean, decimal, foreignKey, index, int, json, mysqlEnum, mysqlTable, text, timestamp, uniqueIndex, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -229,12 +229,32 @@ export const exams = mysqlTable("exams", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const dailyChallengeSchedules = mysqlTable("daily_challenge_schedules", {
+  id: int("id").autoincrement().primaryKey(),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  title: varchar("title", { length: 180 }).notNull(),
+  description: text("description"),
+  questionIds: json("questionIds").notNull(),
+  durationMinutes: int("durationMinutes").notNull(),
+  marksPerCorrect: decimal("marksPerCorrect", { precision: 5, scale: 2 }).default("1.00").notNull(),
+  negativeMarkPerWrong: decimal("negativeMarkPerWrong", { precision: 5, scale: 2 }).default("0.00").notNull(),
+  autoSubmitAfterWarnings: int("autoSubmitAfterWarnings").default(3).notNull(),
+  cronExpression: varchar("cronExpression", { length: 60 }).notNull(),
+  timeZone: varchar("timeZone", { length: 60 }).default("Asia/Dhaka").notNull(),
+  scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }),
+  isEnabled: boolean("isEnabled").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("daily_challenge_task_uid_unique").on(table.scheduleCronTaskUid), index("daily_challenge_enabled_idx").on(table.isEnabled)]);
+
 export const liveExamRooms = mysqlTable("live_exam_rooms", {
   id: int("id").autoincrement().primaryKey(),
   createdByUserId: int("createdByUserId").notNull().references(() => users.id),
   title: varchar("title", { length: 180 }).notNull(),
   description: text("description"),
   mode: mysqlEnum("mode", ["scheduled", "daily_challenge"]).default("scheduled").notNull(),
+  dailyChallengeScheduleId: int("dailyChallengeScheduleId"),
+  challengeDate: varchar("challengeDate", { length: 10 }),
   status: mysqlEnum("status", ["draft", "scheduled", "live", "closed", "archived"]).default("draft").notNull(),
   startsAt: timestamp("startsAt").notNull(),
   endsAt: timestamp("endsAt").notNull(),
@@ -246,7 +266,7 @@ export const liveExamRooms = mysqlTable("live_exam_rooms", {
   autoSubmitAfterWarnings: int("autoSubmitAfterWarnings").default(3).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("live_room_status_time_idx").on(table.status, table.startsAt, table.endsAt), index("live_room_creator_idx").on(table.createdByUserId)]);
+}, table => [index("live_room_status_time_idx").on(table.status, table.startsAt, table.endsAt), index("live_room_creator_idx").on(table.createdByUserId), uniqueIndex("live_room_daily_challenge_date_unique").on(table.dailyChallengeScheduleId, table.challengeDate), foreignKey({ columns: [table.dailyChallengeScheduleId], foreignColumns: [dailyChallengeSchedules.id], name: "live_room_daily_schedule_fk" })]);
 
 export const liveExamParticipants = mysqlTable("live_exam_participants", {
   id: int("id").autoincrement().primaryKey(),

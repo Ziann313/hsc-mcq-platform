@@ -118,3 +118,7 @@
 - [x] Add protected live-exam result review and launch-readiness APIs without creating fabricated learning content.
 - [x] Build a bilingual student post-exam review view and administrator launch-readiness guidance for the first public room.
 - [x] Add focused regression tests, responsive verification, and publish the live-exam outcome enhancement.
+- [x] Audit persisted answer data and scheduled-work constraints for incorrect-answer filtering, subject accuracy, and recurring daily challenges.
+- [x] Add result analytics and durable daily-challenge scheduling contracts with an idempotent scheduled callback.
+- [x] Build bilingual incorrect-answer filters, subject-wise accuracy cards, and daily-challenge scheduling controls.
+- [x] Add regression coverage, responsive verification, and publish the outcome-and-engagement enhancement.

@@ -1,7 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import { academicYears, attemptAnswers, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, sources, subjects, users } from "../drizzle/schema";
-import { closeLiveExamRoom, createLiveExamRoom, getLiveExamLaunchReadiness, getLiveExamResult, getLiveLeaderboard, joinLiveExamRoom } from "./liveExamDb";
+import { academicYears, attemptAnswers, dailyChallengeSchedules, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, sources, subjects, users } from "../drizzle/schema";
+import { attachDailyChallengeTask, closeLiveExamRoom, createDailyChallengeSchedule, createLiveExamRoom, getLiveExamLaunchReadiness, getLiveExamResult, getLiveLeaderboard, joinLiveExamRoom, runScheduledDailyChallenge } from "./liveExamDb";
 import { getDb } from "./db";
 import { saveAttemptSelection } from "./mcqDb";
 
@@ -21,12 +21,14 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     expect(year && subject).toBeTruthy();
     if (!year || !subject) return;
 
-    let adminId = 0; let studentId = 0; let roomId = 0; let attemptId = 0; let questionId = 0; let sourceId = 0; let sourceVersionId = 0;
+    let adminId = 0; let studentId = 0; let roomId = 0; let attemptId = 0; let questionId = 0; let sourceId = 0; let sourceVersionId = 0; let scheduleId = 0;
     cleanup = async () => {
       if (roomId) await db.delete(liveExamIntegrityEvents).where(eq(liveExamIntegrityEvents.liveExamRoomId, roomId));
       if (roomId) await db.delete(liveExamParticipants).where(eq(liveExamParticipants.liveExamRoomId, roomId));
       if (attemptId) { await db.delete(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId)); await db.delete(examAttempts).where(eq(examAttempts.id, attemptId)); }
+      if (scheduleId) await db.delete(liveExamRooms).where(eq(liveExamRooms.dailyChallengeScheduleId, scheduleId));
       if (roomId) await db.delete(liveExamRooms).where(eq(liveExamRooms.id, roomId));
+      if (scheduleId) await db.delete(dailyChallengeSchedules).where(eq(dailyChallengeSchedules.id, scheduleId));
       if (questionId) { await db.delete(questionSources).where(eq(questionSources.questionId, questionId)); await db.delete(questionOptions).where(eq(questionOptions.questionId, questionId)); await db.delete(questions).where(eq(questions.id, questionId)); }
       if (sourceVersionId) await db.delete(sourceVersions).where(eq(sourceVersions.id, sourceVersionId));
       if (sourceId) await db.delete(sources).where(eq(sources.id, sourceId));
@@ -50,7 +52,7 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     expect(correct?.id).toBeTruthy();
     if (!correct) return;
 
-    const room = await createLiveExamRoom({ createdByUserId: adminId, title: "Live integration room", mode: "daily_challenge", startsAt: new Date(), durationMinutes: 5, questionIds: [questionId], marksPerCorrect: 1, negativeMarkPerWrong: 0.25, autoSubmitAfterWarnings: 3 });
+    const room = await createLiveExamRoom({ createdByUserId: adminId, title: "Live integration room", mode: "daily_challenge", startsAt: new Date(Date.now() - 1_000), durationMinutes: 5, questionIds: [questionId], marksPerCorrect: 1, negativeMarkPerWrong: 0.25, autoSubmitAfterWarnings: 3 });
     roomId = room.roomId;
     const joined = await joinLiveExamRoom(roomId, studentId);
     attemptId = joined.attemptId;
@@ -66,8 +68,15 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     const review = await getLiveExamResult(roomId, studentId);
     expect(review).toMatchObject({ myRank: 1, participant: expect.objectContaining({ status: "submitted" }) });
     expect(review?.result.answers).toEqual([expect.objectContaining({ questionId, isCorrect: true, awardedMarks: "1.00" })]);
+    expect(review?.subjectAccuracy).toEqual([expect.objectContaining({ total: 1, correct: 1, accuracy: 100 })]);
     const readiness = await getLiveExamLaunchReadiness();
     expect(readiness).toMatchObject({ readyForFirstRoom: true });
     expect(readiness.sourceValidatedQuestionCount).toBeGreaterThanOrEqual(1);
+    scheduleId = await createDailyChallengeSchedule({ createdByUserId: adminId, title: "Daily integration challenge", questionIds: [questionId], durationMinutes: 10, marksPerCorrect: 1, negativeMarkPerWrong: 0.25, autoSubmitAfterWarnings: 3, cronExpression: "0 0 12 * * *" });
+    await attachDailyChallengeTask(scheduleId, `daily-test-${stamp}`);
+    const generated = await runScheduledDailyChallenge(`daily-test-${stamp}`, new Date());
+    expect(generated).toMatchObject({ ok: true, challengeDate: expect.any(String) });
+    const duplicate = await runScheduledDailyChallenge(`daily-test-${stamp}`, new Date());
+    expect(duplicate).toMatchObject({ ok: true, skipped: "already_created", roomId: generated.roomId });
   });
 });
