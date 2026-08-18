@@ -1,9 +1,9 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import { academicYears, attemptAnswers, dailyChallengeNotificationDeliveries, dailyChallengeSchedules, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, notifications, questionOptions, questionSources, questions, sourceVersions, sources, studentNotificationPreferences, subjects, users } from "../drizzle/schema";
+import { academicYears, attemptAnswers, books, chapters, dailyChallengeNotificationDeliveries, dailyChallengeSchedules, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, notifications, questionOptions, questionSources, questions, sourceVersions, sources, studentNotificationPreferences, subjects, users } from "../drizzle/schema";
 import { attachDailyChallengeTask, closeLiveExamRoom, createDailyChallengeSchedule, createLiveExamRoom, getLiveExamLaunchReadiness, getLiveExamResult, getLiveLeaderboard, joinLiveExamRoom, runScheduledDailyChallenge } from "./liveExamDb";
 import { getDb, getExamReadinessSummary, saveNotificationPreferences } from "./db";
-import { saveAttemptSelection } from "./mcqDb";
+import { getPublishedChapterAvailability, saveAttemptSelection, startFilteredAttempt } from "./mcqDb";
 
 const enabled = Boolean(process.env.DATABASE_URL);
 let cleanup: (() => Promise<void>) | undefined;
@@ -21,11 +21,12 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     expect(year && subject).toBeTruthy();
     if (!year || !subject) return;
 
-    let adminId = 0; let studentId = 0; let roomId = 0; let attemptId = 0; let questionId = 0; let sourceId = 0; let sourceVersionId = 0; let scheduleId = 0;
+    let adminId = 0; let studentId = 0; let roomId = 0; let attemptId = 0; let targetedAttemptId = 0; let questionId = 0; let sourceId = 0; let sourceVersionId = 0; let scheduleId = 0; let bookId = 0; let chapterId = 0;
     cleanup = async () => {
       if (roomId) await db.delete(liveExamIntegrityEvents).where(eq(liveExamIntegrityEvents.liveExamRoomId, roomId));
       if (roomId) await db.delete(liveExamParticipants).where(eq(liveExamParticipants.liveExamRoomId, roomId));
       if (attemptId) { await db.delete(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId)); await db.delete(examAttempts).where(eq(examAttempts.id, attemptId)); }
+      if (targetedAttemptId) await db.delete(examAttempts).where(eq(examAttempts.id, targetedAttemptId));
       if (studentId) await db.delete(dailyChallengeNotificationDeliveries).where(eq(dailyChallengeNotificationDeliveries.userId, studentId));
       if (studentId) await db.delete(notifications).where(eq(notifications.userId, studentId));
       if (scheduleId) await db.delete(dailyChallengeNotificationDeliveries).where(eq(dailyChallengeNotificationDeliveries.dailyChallengeScheduleId, scheduleId));
@@ -33,6 +34,8 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
       if (roomId) await db.delete(liveExamRooms).where(eq(liveExamRooms.id, roomId));
       if (scheduleId) await db.delete(dailyChallengeSchedules).where(eq(dailyChallengeSchedules.id, scheduleId));
       if (questionId) { await db.delete(questionSources).where(eq(questionSources.questionId, questionId)); await db.delete(questionOptions).where(eq(questionOptions.questionId, questionId)); await db.delete(questions).where(eq(questions.id, questionId)); }
+      if (chapterId) await db.delete(chapters).where(eq(chapters.id, chapterId));
+      if (bookId) await db.delete(books).where(eq(books.id, bookId));
       if (sourceVersionId) await db.delete(sourceVersions).where(eq(sourceVersions.id, sourceVersionId));
       if (sourceId) await db.delete(sources).where(eq(sources.id, sourceId));
       if (adminId || studentId) await db.delete(leaderboardScores).where(inArray(leaderboardScores.userId, [adminId, studentId].filter(Boolean)));
@@ -48,13 +51,21 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     sourceId = Number(sourceResult[0].insertId);
     const versionResult = await db.insert(sourceVersions).values({ sourceId, versionLabel: "test", contentHash: `live-${stamp}`, status: "active" });
     sourceVersionId = Number(versionResult[0].insertId);
-    const questionResult = await db.insert(questions).values({ academicYearId: year.id, subjectId: subject.id, prompt: "Live integration question", difficulty: "easy", status: "published", negativeMarkWeight: "0.25" });
+    const bookResult = await db.insert(books).values({ subjectId: subject.id, titleEn: `Integration book ${stamp}`, titleBn: `ইন্টিগ্রেশন বই ${stamp}`, edition: "test" });
+    bookId = Number(bookResult[0].insertId);
+    const chapterResult = await db.insert(chapters).values({ bookId, chapterNo: "1", titleEn: `Integration chapter ${stamp}`, titleBn: `ইন্টিগ্রেশন অধ্যায় ${stamp}` });
+    chapterId = Number(chapterResult[0].insertId);
+    const questionResult = await db.insert(questions).values({ academicYearId: year.id, subjectId: subject.id, bookId, chapterId, prompt: "Live integration question", difficulty: "easy", status: "published", negativeMarkWeight: "0.25" });
     questionId = Number(questionResult[0].insertId);
     await db.insert(questionSources).values({ questionId, sourceVersionId, pageReference: "1" });
+    expect(await getPublishedChapterAvailability(subject.id)).toEqual(expect.arrayContaining([expect.objectContaining({ subjectId: subject.id, chapterId, questionCount: 1 })]));
     await db.insert(questionOptions).values([{ questionId, optionKey: "A", text: "Correct", isCorrect: true }, { questionId, optionKey: "B", text: "Incorrect", isCorrect: false }]);
     const [correct] = await db.select({ id: questionOptions.id }).from(questionOptions).where(eq(questionOptions.questionId, questionId)).limit(1);
     expect(correct?.id).toBeTruthy();
     if (!correct) return;
+    const chapterAttempt = await startFilteredAttempt({ userId: studentId, filters: { subjectId: subject.id, chapterId, limit: 10 }, durationMinutes: 15, marksPerCorrect: 1 });
+    expect(chapterAttempt?.questions).toEqual([expect.objectContaining({ id: questionId })]);
+    targetedAttemptId = chapterAttempt?.attemptId ?? 0;
 
     const room = await createLiveExamRoom({ createdByUserId: adminId, title: "Live integration room", mode: "daily_challenge", startsAt: new Date(Date.now() - 1_000), durationMinutes: 5, questionIds: [questionId], marksPerCorrect: 1, negativeMarkPerWrong: 0.25, autoSubmitAfterWarnings: 3 });
     roomId = room.roomId;

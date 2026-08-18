@@ -2,7 +2,7 @@ import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { scoreMcqExam } from "../../shared/mcq";
 import { createReviewQuestion } from "../db";
-import { addQuestionComment, getAttemptResult, getLeaderboard, getMistakeVault, getPublishedCheatSheets, getPublishedQuestions, getQuestionComments, recordImportBatch, saveAttemptSelection, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
+import { addQuestionComment, getAttemptResult, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestions, getQuestionComments, recordImportBatch, saveAttemptSelection, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 const importedQuestion = z.object({
@@ -17,6 +17,7 @@ const questionFilterInput = z.object({
 
 export const mcqRouter = router({
   publishedQuestions: publicProcedure.input(questionFilterInput).query(({ input }) => getPublishedQuestions(input)),
+  publishedChapterAvailability: publicProcedure.input(z.object({ subjectId: z.number().int().positive().optional() }).optional()).query(({ input }) => getPublishedChapterAvailability(input?.subjectId)),
   startFilteredAttempt: protectedProcedure.input(z.object({ filters: questionFilterInput, durationMinutes: z.number().int().min(1).max(240), marksPerCorrect: z.number().min(0.25).max(10) })).mutation(async ({ ctx, input }) => {
     const attempt = await startFilteredAttempt({ userId: ctx.user.id, ...input });
     if (!attempt) throw new TRPCError({ code: "NOT_FOUND", message: "No approved published questions match this filter" });

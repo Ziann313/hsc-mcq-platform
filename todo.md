@@ -130,3 +130,7 @@
 - [x] Add exam readiness and targeted-learning data contracts that turn authentic results into actionable next steps.
 - [x] Build stronger student exam preparation, result-review, and weak-area learning flows without fabricating educational content.
 - [x] Add core-flow regression tests, mobile and desktop verification, and publish the exam-and-learning improvement release.
+- [x] Audit published chapter availability and existing exam-filter behavior for granular practice setup.
+- [x] Add a source-governed published chapter availability API for exam preparation.
+- [x] Build chapter-level selection that persists into the frozen exam runner and clearly handles unavailable content.
+- [x] Add granular-filter regression coverage, responsive verification, and publish the chapter-level exam release.

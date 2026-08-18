@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
-import { attemptAnswers, books, chapterCheatSheets, chapters, examAttempts, leaderboardScores, mistakes, questionComments, questionOptions, questions, questionStems, subjects, users } from "../drizzle/schema";
+import { attemptAnswers, books, chapterCheatSheets, chapters, examAttempts, leaderboardScores, mistakes, questionComments, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, users } from "../drizzle/schema";
 import { scoreMcqExam, type McqSelection } from "../shared/mcq";
 import { shouldFinalizeExpiredAttempt } from "../shared/attemptExpiry";
 import { buildExpiredAttemptFinalization, type FrozenAttemptQuestion } from "../shared/expiredAttemptFlow";
@@ -170,6 +170,28 @@ export async function getMistakeVault(userId: number) {
 }
 
 type QuestionFilter = { subjectId?: number; chapterId?: number; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; limit: number };
+
+export async function getPublishedChapterAvailability(subjectId?: number) {
+  const db = await getDb();
+  if (!db) return [] as Array<{ subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number }>;
+  const conditions = [eq(questions.status, "published"), eq(sourceVersions.status, "active")];
+  if (subjectId) conditions.push(eq(questions.subjectId, subjectId));
+  const rows = await db.select({ questionId: questions.id, subjectId: subjects.id, subject: subjects.nameEn, chapterId: chapters.id, chapter: chapters.titleEn })
+    .from(questions)
+    .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .innerJoin(chapters, eq(questions.chapterId, chapters.id))
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(...conditions));
+  const grouped = new Map<string, { subjectId: number; subject: string; chapterId: number; chapter: string; questionIds: number[] }>();
+  for (const row of rows) {
+    const key = `${row.subjectId}:${row.chapterId}`;
+    const current = grouped.get(key) ?? { subjectId: row.subjectId, subject: row.subject, chapterId: row.chapterId, chapter: row.chapter, questionIds: [] };
+    if (!current.questionIds.includes(row.questionId)) current.questionIds.push(row.questionId);
+    grouped.set(key, current);
+  }
+  return Array.from(grouped.values()).map(({ questionIds, ...chapter }) => ({ ...chapter, questionCount: questionIds.length })).sort((a, b) => a.subject.localeCompare(b.subject) || a.chapter.localeCompare(b.chapter));
+}
 
 export async function getPublishedQuestions(filters: QuestionFilter) {
   const db = await getDb();
