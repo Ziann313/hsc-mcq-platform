@@ -37,9 +37,8 @@ export type NavigationItem = {
 
 export const studentNavigationItems: NavigationItem[] = [
   { path: "/", label: "Home", bn: "হোম", icon: Home },
-  { path: "/practice", label: "Practice", bn: "প্র্যাকটিস", icon: BookOpen },
-  { path: "/exams", label: "Exams", bn: "পরীক্ষা", icon: ClipboardCheck },
-  { path: "/mcq-lab", label: "Exam Lab", bn: "এক্সাম ল্যাব", icon: Target },
+  { path: "/practice", label: "Daily study", bn: "দৈনিক পড়া", icon: BookOpen },
+  { path: "/exams", label: "Mock exams", bn: "মক এক্সাম", icon: ClipboardCheck },
   { path: "/live-exams", label: "Live exams", bn: "লাইভ এক্সাম", icon: Flame },
   { path: "/leaderboard", label: "Leaderboard", bn: "লিডারবোর্ড", icon: BarChart3 },
   { path: "/cheat-sheets", label: "Cheat sheets", bn: "চিট শিট", icon: FileText },

@@ -1,7 +1,7 @@
 import { and, desc, eq, like } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes } from "../drizzle/schema";
+import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, academicGroups, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -375,6 +375,48 @@ export async function getExamReadinessSummary(userId: number) {
   const focus = weakChapters[0] ?? (subjectAccuracy[0] ? { subject: subjectAccuracy[0].subject, chapter: "General", chapterId: null, accuracy: subjectAccuracy[0].accuracy } : null);
   const recommendedFocus = focus && subjectAccuracy.find(item => item.subject === focus.subject) ? { subjectId: subjectAccuracy.find(item => item.subject === focus.subject)!.subjectId, subject: focus.subject, chapterId: focus.chapterId, chapter: focus.chapter, accuracy: focus.accuracy } : null;
   return { totalAnswered: usable.length, overallAccuracy: Math.round((usable.filter(answer => answer.isCorrect).length / usable.length) * 100), subjectAccuracy, weakChapters, openMistakeCount: Number(mistakeCount?.count ?? 0), recommendedFocus };
+}
+
+export async function getDailyStudyGuide(userId: number) {
+  const db = await getDb();
+  const empty = { groups: [] as Array<{ groupId: number | null; group: string; subjects: Array<{ subjectId: number; subject: string; chapters: Array<{ chapterId: number; chapter: string; questionCount: number; answered: number; correct: number; accuracy: number | null; lastPracticedAt: Date | null; openMistakes: number; estimatedMinutes: number }> }> }>, recommendedChapters: [] as Array<{ subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number; answered: number; correct: number; accuracy: number | null; lastPracticedAt: Date | null; openMistakes: number; estimatedMinutes: number }> };
+  if (!db) return empty;
+  const published = await db.select({ questionId: questions.id, groupId: academicGroups.id, group: academicGroups.nameEn, subjectId: subjects.id, subject: subjects.nameEn, chapterId: chapters.id, chapter: chapters.titleEn })
+    .from(questions)
+    .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .leftJoin(academicGroups, eq(subjects.groupId, academicGroups.id))
+    .innerJoin(chapters, eq(questions.chapterId, chapters.id))
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(eq(questions.status, "published"), eq(sourceVersions.status, "active")));
+  const chapterByQuestionId = new Map<number, { groupId: number | null; group: string; subjectId: number; subject: string; chapterId: number; chapter: string }>();
+  for (const item of published) if (!chapterByQuestionId.has(item.questionId)) chapterByQuestionId.set(item.questionId, { groupId: item.groupId, group: item.group ?? "General", subjectId: item.subjectId, subject: item.subject, chapterId: item.chapterId, chapter: item.chapter });
+  const cards = new Map<number, { groupId: number | null; group: string; subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number; answered: number; correct: number; lastPracticedAt: Date | null; openMistakes: number }>();
+  for (const item of Array.from(chapterByQuestionId.values())) {
+    const card = cards.get(item.chapterId) ?? { ...item, questionCount: 0, answered: 0, correct: 0, lastPracticedAt: null, openMistakes: 0 };
+    card.questionCount += 1; cards.set(item.chapterId, card);
+  }
+  if (!cards.size) return empty;
+  const answers = await db.select({ questionId: attemptAnswers.questionId, isCorrect: attemptAnswers.isCorrect, answeredAt: attemptAnswers.answeredAt }).from(attemptAnswers).innerJoin(examAttempts, eq(attemptAnswers.attemptId, examAttempts.id)).where(eq(examAttempts.userId, userId));
+  for (const answer of answers) {
+    if (!answer.answeredAt) continue;
+    const meta = chapterByQuestionId.get(answer.questionId); const card = meta ? cards.get(meta.chapterId) : undefined;
+    if (!card) continue;
+    card.answered += 1; if (answer.isCorrect) card.correct += 1;
+    if (!card.lastPracticedAt || answer.answeredAt > card.lastPracticedAt) card.lastPracticedAt = answer.answeredAt;
+  }
+  const openMistakes = await db.select({ questionId: mistakes.questionId }).from(mistakes).where(and(eq(mistakes.userId, userId), eq(mistakes.status, "open")));
+  for (const item of openMistakes) { const meta = chapterByQuestionId.get(item.questionId); const card = meta ? cards.get(meta.chapterId) : undefined; if (card) card.openMistakes += 1; }
+  const chapterCards = Array.from(cards.values()).map(card => ({ ...card, accuracy: card.answered ? Math.round((card.correct / card.answered) * 100) : null, estimatedMinutes: Math.max(5, Math.ceil(card.questionCount * 1.2)) }));
+  const groupMap = new Map<string, { groupId: number | null; group: string; subjects: Map<number, { subjectId: number; subject: string; chapters: typeof chapterCards }> }>();
+  for (const card of chapterCards) {
+    const groupKey = String(card.groupId ?? "general"); const group = groupMap.get(groupKey) ?? { groupId: card.groupId, group: card.group, subjects: new Map() };
+    const subject = group.subjects.get(card.subjectId) ?? { subjectId: card.subjectId, subject: card.subject, chapters: [] };
+    subject.chapters.push(card); group.subjects.set(card.subjectId, subject); groupMap.set(groupKey, group);
+  }
+  const groups = Array.from(groupMap.values()).map(group => ({ groupId: group.groupId, group: group.group, subjects: Array.from(group.subjects.values()).map(subject => ({ ...subject, chapters: subject.chapters.sort((a, b) => (a.accuracy ?? -1) - (b.accuracy ?? -1) || b.openMistakes - a.openMistakes || a.chapter.localeCompare(b.chapter)) })).sort((a, b) => a.subject.localeCompare(b.subject)) })).sort((a, b) => a.group.localeCompare(b.group));
+  const recommendedChapters = [...chapterCards].sort((a, b) => Number(Boolean(a.answered)) - Number(Boolean(b.answered)) || (a.accuracy ?? -1) - (b.accuracy ?? -1) || b.openMistakes - a.openMistakes || a.questionCount - b.questionCount).slice(0, 3);
+  return { groups, recommendedChapters };
 }
 
 export async function getQuestionReviewQueue() {

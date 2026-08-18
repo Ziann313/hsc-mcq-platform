@@ -134,3 +134,8 @@
 - [x] Add a source-governed published chapter availability API for exam preparation.
 - [x] Build chapter-level selection that persists into the frozen exam runner and clearly handles unavailable content.
 - [x] Add granular-filter regression coverage, responsive verification, and publish the chapter-level exam release.
+- [x] Audit dashboard, subject/chapter navigation, practice, exam, PlatformShell, feedback, and mobile extension points for the focused study-and-exam release.
+- [x] Add real-data study guidance for chapter progress, last practice, weak points, estimated time, and genuine next recommendations.
+- [x] Make Group → Subject → Chapter → Start Practice the fastest connected student flow, while strengthening post-practice feedback and exam-hall clarity.
+- [x] Add bilingual action/error toasts, reduced-motion-safe transitions, skeletons, and mobile refinements across affected flows.
+- [x] Add regression coverage, verify 360–430px and desktop layouts, and publish the focused study-and-exam release.

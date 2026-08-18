@@ -9,6 +9,7 @@ import {
   createReviewQuestion,
   getActiveSourceEvidence,
   getAdmissionPatternVersions,
+  getDailyStudyGuide,
   getApprovedSources,
   getApprovedQuestionPublicationQueue,
   getExamReadinessSummary,
@@ -253,6 +254,7 @@ export const learningRouter = router({
 
   studentProgressSummary: protectedProcedure.query(async ({ ctx }) => getStudentProgressSummary(ctx.user.id)),
   examReadinessSummary: protectedProcedure.query(async ({ ctx }) => getExamReadinessSummary(ctx.user.id)),
+  dailyStudyGuide: protectedProcedure.query(async ({ ctx }) => getDailyStudyGuide(ctx.user.id)),
 
   approvedSources: adminProcedure.query(async () => getApprovedSources()),
 

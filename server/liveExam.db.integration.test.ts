@@ -2,7 +2,7 @@ import { eq, inArray } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { academicYears, attemptAnswers, books, chapters, dailyChallengeNotificationDeliveries, dailyChallengeSchedules, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, notifications, questionOptions, questionSources, questions, sourceVersions, sources, studentNotificationPreferences, subjects, users } from "../drizzle/schema";
 import { attachDailyChallengeTask, closeLiveExamRoom, createDailyChallengeSchedule, createLiveExamRoom, getLiveExamLaunchReadiness, getLiveExamResult, getLiveLeaderboard, joinLiveExamRoom, runScheduledDailyChallenge } from "./liveExamDb";
-import { getDb, getExamReadinessSummary, saveNotificationPreferences } from "./db";
+import { getDailyStudyGuide, getDb, getExamReadinessSummary, saveNotificationPreferences } from "./db";
 import { getPublishedChapterAvailability, saveAttemptSelection, startFilteredAttempt } from "./mcqDb";
 
 const enabled = Boolean(process.env.DATABASE_URL);
@@ -86,6 +86,8 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     expect(review?.subjectAccuracy).toEqual([expect.objectContaining({ total: 1, correct: 1, accuracy: 100 })]);
     const readiness = await getExamReadinessSummary(studentId);
     expect(readiness).toMatchObject({ totalAnswered: 1, overallAccuracy: 100, subjectAccuracy: [expect.objectContaining({ total: 1, correct: 1, accuracy: 100 })] });
+    const dailyGuide = await getDailyStudyGuide(studentId);
+    expect(dailyGuide.recommendedChapters).toEqual(expect.arrayContaining([expect.objectContaining({ subjectId: subject.id, chapterId, questionCount: 1, answered: 1, correct: 1, accuracy: 100, estimatedMinutes: 5 })]));
     const launchReadiness = await getLiveExamLaunchReadiness();
     expect(launchReadiness).toMatchObject({ readyForFirstRoom: true });
     expect(launchReadiness.sourceValidatedQuestionCount).toBeGreaterThanOrEqual(1);
