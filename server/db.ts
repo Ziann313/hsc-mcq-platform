@@ -433,9 +433,11 @@ export async function getExamReadinessSummary(userId: number) {
 
 export async function getDailyStudyGuide(userId: number) {
   const db = await getDb();
-  const empty = { groups: [] as Array<{ groupId: number | null; group: string; subjects: Array<{ subjectId: number; subject: string; chapters: Array<{ chapterId: number; chapter: string; questionCount: number; answered: number; correct: number; accuracy: number | null; lastPracticedAt: Date | null; openMistakes: number; estimatedMinutes: number }> }> }>, recommendedChapters: [] as Array<{ subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number; answered: number; correct: number; accuracy: number | null; lastPracticedAt: Date | null; openMistakes: number; estimatedMinutes: number }> };
+  const empty = { groups: [] as Array<{ groupId: number | null; group: string; subjects: Array<{ subjectId: number; subject: string; chapters: Array<{ chapterId: number; chapter: string; questionCount: number; answered: number; correct: number; accuracy: number | null; lastPracticedAt: Date | null; openMistakes: number; estimatedMinutes: number }> }> }>, recommendedChapters: [] as Array<{ subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number; answered: number; correct: number; accuracy: number | null; lastPracticedAt: Date | null; openMistakes: number; estimatedMinutes: number }>, recommendedGroupId: null as number | null, recommendedGroup: null as string | null };
   if (!db) return empty;
-  const published = await db.select({ questionId: questions.id, groupId: academicGroups.id, group: academicGroups.nameEn, subjectId: subjects.id, subject: subjects.nameEn, chapterId: chapters.id, chapter: chapters.titleEn })
+  const profile = await db.select({ group: studentProfiles.group }).from(studentProfiles).where(eq(studentProfiles.userId, userId)).limit(1);
+  const preferredGroupSlug = profile[0]?.group === "business" ? "business-studies" : profile[0]?.group;
+  const published = await db.select({ questionId: questions.id, groupId: academicGroups.id, group: academicGroups.nameEn, groupSlug: academicGroups.slug, subjectId: subjects.id, subject: subjects.nameEn, chapterId: chapters.id, chapter: chapters.titleEn })
     .from(questions)
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
     .leftJoin(academicGroups, eq(subjects.groupId, academicGroups.id))
@@ -443,9 +445,9 @@ export async function getDailyStudyGuide(userId: number) {
     .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
     .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
     .where(and(eq(questions.status, "published"), eq(sourceVersions.status, "active")));
-  const chapterByQuestionId = new Map<number, { groupId: number | null; group: string; subjectId: number; subject: string; chapterId: number; chapter: string }>();
-  for (const item of published) if (!chapterByQuestionId.has(item.questionId)) chapterByQuestionId.set(item.questionId, { groupId: item.groupId, group: item.group ?? "General", subjectId: item.subjectId, subject: item.subject, chapterId: item.chapterId, chapter: item.chapter });
-  const cards = new Map<number, { groupId: number | null; group: string; subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number; answered: number; correct: number; lastPracticedAt: Date | null; openMistakes: number }>();
+  const chapterByQuestionId = new Map<number, { groupId: number | null; group: string; groupSlug: string | null; subjectId: number; subject: string; chapterId: number; chapter: string }>();
+  for (const item of published) if (!chapterByQuestionId.has(item.questionId)) chapterByQuestionId.set(item.questionId, { groupId: item.groupId, group: item.group ?? "General", groupSlug: item.groupSlug, subjectId: item.subjectId, subject: item.subject, chapterId: item.chapterId, chapter: item.chapter });
+  const cards = new Map<number, { groupId: number | null; group: string; groupSlug: string | null; subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number; answered: number; correct: number; lastPracticedAt: Date | null; openMistakes: number }>();
   for (const item of Array.from(chapterByQuestionId.values())) {
     const card = cards.get(item.chapterId) ?? { ...item, questionCount: 0, answered: 0, correct: 0, lastPracticedAt: null, openMistakes: 0 };
     card.questionCount += 1; cards.set(item.chapterId, card);
@@ -469,8 +471,11 @@ export async function getDailyStudyGuide(userId: number) {
     subject.chapters.push(card); group.subjects.set(card.subjectId, subject); groupMap.set(groupKey, group);
   }
   const groups = Array.from(groupMap.values()).map(group => ({ groupId: group.groupId, group: group.group, subjects: Array.from(group.subjects.values()).map(subject => ({ ...subject, chapters: subject.chapters.sort((a, b) => (a.accuracy ?? -1) - (b.accuracy ?? -1) || b.openMistakes - a.openMistakes || a.chapter.localeCompare(b.chapter)) })).sort((a, b) => a.subject.localeCompare(b.subject)) })).sort((a, b) => a.group.localeCompare(b.group));
-  const recommendedChapters = [...chapterCards].sort((a, b) => Number(Boolean(a.answered)) - Number(Boolean(b.answered)) || (a.accuracy ?? -1) - (b.accuracy ?? -1) || b.openMistakes - a.openMistakes || a.questionCount - b.questionCount).slice(0, 3);
-  return { groups, recommendedChapters };
+  const groupSpecificChapters = preferredGroupSlug ? chapterCards.filter(chapter => chapter.groupSlug === preferredGroupSlug) : [];
+  const recommendedPool = groupSpecificChapters.length ? groupSpecificChapters : chapterCards;
+  const recommendedChapters = [...recommendedPool].sort((a, b) => Number(Boolean(a.answered)) - Number(Boolean(b.answered)) || (a.accuracy ?? -1) - (b.accuracy ?? -1) || b.openMistakes - a.openMistakes || a.questionCount - b.questionCount).slice(0, 3);
+  const recommendationGroup = preferredGroupSlug ? groups.find(group => groupSpecificChapters[0]?.groupId === group.groupId) : undefined;
+  return { groups, recommendedChapters, recommendedGroupId: recommendationGroup?.groupId ?? null, recommendedGroup: recommendationGroup?.group ?? null };
 }
 
 export async function getQuestionReviewQueue() {

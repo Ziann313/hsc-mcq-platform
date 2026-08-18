@@ -112,3 +112,11 @@ The student-facing Admission Preparation area reuses the existing source-governe
 ## Published release — Humanities and Business Studies
 
 The first group-specific expansion adds four original Bangla Civics and Good Governance 1st Paper questions on citizenship, rule of law, participation, and accountability, plus four original Bangla Accounting 1st Paper questions on the accounting equation, current assets, owner investment, and liabilities. Each question is chapter-linked, source-linked to active NCTB curriculum evidence, has four options, exactly one verified answer, an explanation, and protected submitted-for-review, approved, and published audit events. These releases make both Humanities and Business Studies truthfully available in Bangla student practice; English versions remain unavailable until their curriculum coverage can be independently verified.
+
+## English-version verification — Humanities and Business Studies
+
+The official NCTB 2025–26 XI–XII textbook listing was rechecked on 18 August 2026. It lists *Sahityapath*, *Sahopath*, *English for Today*, ICT, and **ICT English Version**, but does not identify English editions for Civics, Sociology, Accounting, or Business Organization and Management. The official restructured HSC curriculum page also does not provide English-version scope for those group subjects. Therefore the newly released Humanities and Business Studies batches remain **Bangla-only**. No English question has been published or enabled on the basis of unverified third-party listings.
+
+## Published release — Sociology and Business Organization
+
+The next group-specific release adds four original Bangla Sociology 1st Paper questions on family, socialization, education, and marriage, plus four original Bangla Business Organization and Management 1st Paper questions on business purpose, sole proprietorship, risk, and partnership. Each record has a chapter linkage, active NCTB curriculum evidence, four options, exactly one verified answer, an explanation, and protected submitted-for-review, approved, and published audit events. Today’s Study now prioritizes published chapters from a learner’s configured Humanities or Business Studies group; it retains the full group selector while avoiding unrelated cross-group recommendations.

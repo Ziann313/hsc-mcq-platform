@@ -172,3 +172,7 @@
 - [x] Audit Humanities and Business Studies subject, textbook, chapter, and source readiness for reviewed batch publication.
 - [x] Publish original source-linked Humanities and Business Studies chapter batches with complete options, answers, explanations, and protected review audit trails.
 - [x] Verify Humanities and Business Studies practice availability in the student exam setup on mobile and desktop, with regression coverage.
+- [x] Verify lawful English-version curriculum evidence for released Humanities and Business Studies subjects before enabling English question options; retain Bangla-only availability where official English evidence is absent.
+- [x] Publish original source-linked Bangla Sociology and Business Organization chapter batches with complete review audit trails.
+- [x] Add group-specific source-governed recommended chapters to Today’s Study for Humanities and Business Studies students.
+- [x] Verify bilingual availability boundaries, group recommendations, and responsive student flows with regression coverage.
