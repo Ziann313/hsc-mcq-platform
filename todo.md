@@ -139,3 +139,14 @@
 - [x] Make Group → Subject → Chapter → Start Practice the fastest connected student flow, while strengthening post-practice feedback and exam-hall clarity.
 - [x] Add bilingual action/error toasts, reduced-motion-safe transitions, skeletons, and mobile refinements across affected flows.
 - [x] Add regression coverage, verify 360–430px and desktop layouts, and publish the focused study-and-exam release.
+- [ ] Identify lawful official public source materials and define a limited first-subject question-bank launch scope.
+- [ ] Collect and cross-check public source evidence, question text, answer keys, and explanation requirements before any content publication.
+- [ ] Prepare source-linked, review-ready question records without publishing unverified content.
+- [ ] Verify the content-review workflow, publish only approved records, and test student practice with real content.
+- [x] Define lawful public-source policy and HSC Bangla/English version coverage criteria for a multi-subject source registry.
+- [ ] Discover and verify authorized public source links across core HSC subjects without downloading or rehosting unlicensed books.
+- [ ] Create provenance records and source-aligned review batches that retain edition, language, attribution, and answer-validation status.
+- [x] Add language-aware provenance fields for source, textbook, and question records so Bangla and English versions cannot be conflated.
+- [x] Add core HSC common, science, humanities, and business-studies subject taxonomy for source-governed content intake.
+- [ ] Publish only verified content records and confirm multi-subject practice availability for students.
+- [x] Create and validate a small original HSC ICT fundamentals pilot with active NCTB curriculum evidence, four options, one answer key, and an explanation per question.

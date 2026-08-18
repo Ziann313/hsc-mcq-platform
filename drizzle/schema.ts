@@ -82,6 +82,7 @@ export const books = mysqlTable("books", {
   titleEn: varchar("titleEn", { length: 220 }).notNull(),
   titleBn: varchar("titleBn", { length: 260 }).notNull(),
   paper: mysqlEnum("paper", ["first", "second", "combined"]).default("combined").notNull(),
+  languageVersion: mysqlEnum("languageVersion", ["bn", "en", "bilingual"]).default("bn").notNull(),
   edition: varchar("edition", { length: 80 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [index("book_subject_idx").on(table.subjectId)]);
@@ -114,6 +115,8 @@ export const sources = mysqlTable("sources", {
   title: varchar("title", { length: 300 }).notNull(),
   sourceUrl: varchar("sourceUrl", { length: 1000 }).notNull(),
   sourceType: mysqlEnum("sourceType", ["nctb", "official_syllabus", "official_admission", "licensed"]).notNull(),
+  languageVersion: mysqlEnum("languageVersion", ["bn", "en", "bilingual", "not_applicable"]).default("not_applicable").notNull(),
+  accessClassification: mysqlEnum("accessClassification", ["official_public", "licensed_public", "permission_required", "unverified"]).default("official_public").notNull(),
   licenseNotes: text("licenseNotes"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -152,6 +155,7 @@ export const questions = mysqlTable("questions", {
   conceptId: int("conceptId").references(() => concepts.id),
   stemId: int("stemId"),
   prompt: text("prompt").notNull(),
+  contentLanguage: mysqlEnum("contentLanguage", ["bn", "en", "bilingual"]).default("en").notNull(),
   questionType: mysqlEnum("questionType", ["single_mcq", "multi_statement", "stem_subquestion"]).default("single_mcq").notNull(),
   boardStandard: mysqlEnum("boardStandard", ["board_standard", "varsity_admission_standard"]).default("board_standard").notNull(),
   boardName: varchar("boardName", { length: 100 }),
