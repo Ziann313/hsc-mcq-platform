@@ -55,16 +55,18 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     bookId = Number(bookResult[0].insertId);
     const chapterResult = await db.insert(chapters).values({ bookId, chapterNo: "1", titleEn: `Integration chapter ${stamp}`, titleBn: `ইন্টিগ্রেশন অধ্যায় ${stamp}` });
     chapterId = Number(chapterResult[0].insertId);
-    const questionResult = await db.insert(questions).values({ academicYearId: year.id, subjectId: subject.id, bookId, chapterId, prompt: "Live integration question", difficulty: "easy", status: "published", negativeMarkWeight: "0.25" });
+    const questionResult = await db.insert(questions).values({ academicYearId: year.id, subjectId: subject.id, bookId, chapterId, prompt: "Live integration question", contentLanguage: "en", difficulty: "easy", status: "published", negativeMarkWeight: "0.25" });
     questionId = Number(questionResult[0].insertId);
     await db.insert(questionSources).values({ questionId, sourceVersionId, pageReference: "1" });
-    expect(await getPublishedChapterAvailability(subject.id)).toEqual(expect.arrayContaining([expect.objectContaining({ subjectId: subject.id, chapterId, questionCount: 1 })]));
+    expect(await getPublishedChapterAvailability(subject.id, "en")).toEqual(expect.arrayContaining([expect.objectContaining({ subjectId: subject.id, chapterId, questionCount: 1 })]));
+    expect(await getPublishedChapterAvailability(subject.id, "bn")).not.toEqual(expect.arrayContaining([expect.objectContaining({ chapterId })]));
     await db.insert(questionOptions).values([{ questionId, optionKey: "A", text: "Correct", isCorrect: true }, { questionId, optionKey: "B", text: "Incorrect", isCorrect: false }]);
     const [correct] = await db.select({ id: questionOptions.id }).from(questionOptions).where(eq(questionOptions.questionId, questionId)).limit(1);
     expect(correct?.id).toBeTruthy();
     if (!correct) return;
-    const chapterAttempt = await startFilteredAttempt({ userId: studentId, filters: { subjectId: subject.id, chapterId, limit: 10 }, durationMinutes: 15, marksPerCorrect: 1 });
+    const chapterAttempt = await startFilteredAttempt({ userId: studentId, filters: { subjectId: subject.id, chapterId, contentLanguage: "en", limit: 10 }, durationMinutes: 15, marksPerCorrect: 1 });
     expect(chapterAttempt?.questions).toEqual([expect.objectContaining({ id: questionId })]);
+    expect(await startFilteredAttempt({ userId: studentId, filters: { subjectId: subject.id, chapterId, contentLanguage: "bn", limit: 10 }, durationMinutes: 15, marksPerCorrect: 1 })).toBeUndefined();
     targetedAttemptId = chapterAttempt?.attemptId ?? 0;
 
     const room = await createLiveExamRoom({ createdByUserId: adminId, title: "Live integration room", mode: "daily_challenge", startsAt: new Date(Date.now() - 1_000), durationMinutes: 5, questionIds: [questionId], marksPerCorrect: 1, negativeMarkPerWrong: 0.25, autoSubmitAfterWarnings: 3 });
@@ -87,7 +89,8 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     const readiness = await getExamReadinessSummary(studentId);
     expect(readiness).toMatchObject({ totalAnswered: 1, overallAccuracy: 100, subjectAccuracy: [expect.objectContaining({ total: 1, correct: 1, accuracy: 100 })] });
     const dailyGuide = await getDailyStudyGuide(studentId);
-    expect(dailyGuide.recommendedChapters).toEqual(expect.arrayContaining([expect.objectContaining({ subjectId: subject.id, chapterId, questionCount: 1, answered: 1, correct: 1, accuracy: 100, estimatedMinutes: 5 })]));
+    const guideChapters = dailyGuide.groups.flatMap(group => group.subjects.flatMap(guideSubject => guideSubject.chapters));
+    expect(guideChapters).toEqual(expect.arrayContaining([expect.objectContaining({ subjectId: subject.id, chapterId, questionCount: 1, answered: 1, correct: 1, accuracy: 100, estimatedMinutes: 5 })]));
     const launchReadiness = await getLiveExamLaunchReadiness();
     expect(launchReadiness).toMatchObject({ readyForFirstRoom: true });
     expect(launchReadiness.sourceValidatedQuestionCount).toBeGreaterThanOrEqual(1);

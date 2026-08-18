@@ -250,7 +250,7 @@ export const learningRouter = router({
     return { published: true } as const;
   }),
 
-  publishedContentAvailability: publicProcedure.query(async () => getPublishedContentAvailability()),
+  publishedContentAvailability: publicProcedure.input(z.object({ contentLanguage: z.enum(["bn", "en"]).optional() }).optional()).query(async ({ input }) => getPublishedContentAvailability(input?.contentLanguage)),
 
   studentProgressSummary: protectedProcedure.query(async ({ ctx }) => getStudentProgressSummary(ctx.user.id)),
   examReadinessSummary: protectedProcedure.query(async ({ ctx }) => getExamReadinessSummary(ctx.user.id)),

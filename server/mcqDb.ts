@@ -169,13 +169,14 @@ export async function getMistakeVault(userId: number) {
     .limit(100);
 }
 
-type QuestionFilter = { subjectId?: number; chapterId?: number; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; limit: number };
+type QuestionFilter = { subjectId?: number; chapterId?: number; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; limit: number };
 
-export async function getPublishedChapterAvailability(subjectId?: number) {
+export async function getPublishedChapterAvailability(subjectId?: number, contentLanguage?: "bn" | "en") {
   const db = await getDb();
   if (!db) return [] as Array<{ subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number }>;
   const conditions = [eq(questions.status, "published"), eq(sourceVersions.status, "active")];
   if (subjectId) conditions.push(eq(questions.subjectId, subjectId));
+  if (contentLanguage) conditions.push(eq(questions.contentLanguage, contentLanguage));
   const rows = await db.select({ questionId: questions.id, subjectId: subjects.id, subject: subjects.nameEn, chapterId: chapters.id, chapter: chapters.titleEn })
     .from(questions)
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
@@ -204,6 +205,7 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
   if (filters.collegePaper) conditions.push(like(questions.collegePaper, `%${filters.collegePaper}%`));
   if (filters.boardStandard) conditions.push(eq(questions.boardStandard, filters.boardStandard));
   if (filters.questionType) conditions.push(eq(questions.questionType, filters.questionType));
+  if (filters.contentLanguage) conditions.push(eq(questions.contentLanguage, filters.contentLanguage));
   const rows = await db.select({
     id: questions.id, prompt: questions.prompt, questionType: questions.questionType, boardStandard: questions.boardStandard,
     boardName: questions.boardName, boardExamYear: questions.boardExamYear, collegePaper: questions.collegePaper,
@@ -214,12 +216,15 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
     .leftJoin(chapters, eq(questions.chapterId, chapters.id))
     .leftJoin(questionStems, eq(questions.stemId, questionStems.id))
-    .where(and(...conditions))
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(...conditions, eq(sourceVersions.status, "active")))
     .orderBy(desc(questions.updatedAt))
     .limit(filters.limit);
-  if (!rows.length) return [];
-  const optionRows = await db.select().from(questionOptions).where(inArray(questionOptions.questionId, rows.map(row => row.id)));
-  return rows.map(row => ({ ...row, options: optionRows.filter(option => option.questionId === row.id).map(option => ({ id: option.id, optionKey: option.optionKey, text: option.text, isCorrect: option.isCorrect })) }));
+  const distinctRows = Array.from(new Map(rows.map(row => [row.id, row])).values());
+  if (!distinctRows.length) return [];
+  const optionRows = await db.select().from(questionOptions).where(inArray(questionOptions.questionId, distinctRows.map(row => row.id)));
+  return distinctRows.map(row => ({ ...row, options: optionRows.filter(option => option.questionId === row.id).map(option => ({ id: option.id, optionKey: option.optionKey, text: option.text, isCorrect: option.isCorrect })) }));
 }
 
 export async function startFilteredAttempt(input: { userId: number; filters: QuestionFilter; durationMinutes: number; marksPerCorrect: number }) {
