@@ -1,6 +1,7 @@
 import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
-import { attemptAnswers, books, chapterCheatSheets, chapters, examAttempts, leaderboardScores, mistakes, questionComments, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, users } from "../drizzle/schema";
+import { attemptAnswers, attemptIntegrityEvents, books, chapterCheatSheets, chapters, examAttempts, leaderboardScores, mistakes, questionComments, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, users } from "../drizzle/schema";
 import { scoreMcqExam, type McqSelection } from "../shared/mcq";
+import { isReviewDue, nextReviewAt } from "../shared/spacedReview";
 import { shouldFinalizeExpiredAttempt } from "../shared/attemptExpiry";
 import { buildExpiredAttemptFinalization, type FrozenAttemptQuestion } from "../shared/expiredAttemptFlow";
 import { getDb } from "./db";
@@ -115,10 +116,19 @@ export async function submitFrozenAttempt(input: { userId: number; attemptId: nu
   if (!attempt) return undefined;
   const frozen = attempt.questionSetSnapshot as unknown as FrozenAttemptQuestion[];
   if (!Array.isArray(frozen) || frozen.length === 0 || !frozen.every(item => typeof item.questionId === "number" && typeof item.correctOptionId === "number")) return undefined;
+  const frozenQuestionIds = new Set(frozen.map(question => question.questionId));
+  if (input.selections.some(selection => !frozenQuestionIds.has(selection.questionId) || new Set(selection.selectedOptionIds).size !== selection.selectedOptionIds.length)) return undefined;
+  const optionRows = await db.select({ id: questionOptions.id, questionId: questionOptions.questionId }).from(questionOptions).where(inArray(questionOptions.questionId, Array.from(frozenQuestionIds)));
+  const optionIdsByQuestion = new Map<number, Set<number>>();
+  optionRows.forEach(option => optionIdsByQuestion.set(option.questionId, (optionIdsByQuestion.get(option.questionId) ?? new Set()).add(option.id)));
+  if (input.selections.some(selection => selection.selectedOptionIds.some(optionId => !optionIdsByQuestion.get(selection.questionId)?.has(optionId)))) return undefined;
   const finalized = buildExpiredAttemptFinalization(frozen, input.selections);
   const result = finalized.result;
   const submittedAt = new Date();
   await db.update(examAttempts).set({ status: submittedAt > attempt.expiresAt ? "expired" : "submitted", submittedAt, score: String(result.netMarks) }).where(eq(examAttempts.id, input.attemptId));
+  const existingMistakes = await db.select({ id: mistakes.id, questionId: mistakes.questionId, reviewCount: mistakes.reviewCount }).from(mistakes).where(and(eq(mistakes.userId, input.userId), inArray(mistakes.questionId, frozen.map(question => question.questionId))));
+  const existingByQuestion = new Map<number, Array<{ id: number; reviewCount: number }>>();
+  existingMistakes.forEach(mistake => existingByQuestion.set(mistake.questionId, [...(existingByQuestion.get(mistake.questionId) ?? []), { id: mistake.id, reviewCount: mistake.reviewCount }]));
   for (const answer of finalized.answers) {
     await db.insert(attemptAnswers).values({
       attemptId: input.attemptId,
@@ -129,8 +139,13 @@ export async function submitFrozenAttempt(input: { userId: number; attemptId: nu
       awardedMarks: String(answer.awardedMarks),
       answeredAt: answer.selectedOptionIds.length ? submittedAt : null,
     }).onDuplicateKeyUpdate({ set: { selectedOptionId: answer.selectedOptionId, selectedOptionIds: answer.selectedOptionIds, isCorrect: answer.isCorrect, awardedMarks: String(answer.awardedMarks), answeredAt: answer.selectedOptionIds.length ? submittedAt : null } });
+    const existingForQuestion = existingByQuestion.get(answer.questionId) ?? [];
     if (finalized.mistakeQuestionIds.includes(answer.questionId)) {
-      await db.insert(mistakes).values({ userId: input.userId, questionId: answer.questionId, sourceAttemptId: input.attemptId }).onDuplicateKeyUpdate({ set: { status: "open" } });
+      if (existingForQuestion.length) await db.update(mistakes).set({ status: "open", reviewCount: 0, lastReviewedAt: null }).where(and(eq(mistakes.userId, input.userId), eq(mistakes.questionId, answer.questionId)));
+      else await db.insert(mistakes).values({ userId: input.userId, questionId: answer.questionId, sourceAttemptId: input.attemptId });
+    } else if (answer.isCorrect && existingForQuestion.length) {
+      const nextReviewCount = Math.max(...existingForQuestion.map(mistake => mistake.reviewCount)) + 1;
+      await db.update(mistakes).set({ reviewCount: nextReviewCount, lastReviewedAt: submittedAt, status: nextReviewCount >= 5 ? "mastered" : "open" }).where(and(eq(mistakes.userId, input.userId), eq(mistakes.questionId, answer.questionId)));
     }
   }
   await updateLeaderboard(input.userId, result.netMarks);
@@ -140,11 +155,16 @@ export async function submitFrozenAttempt(input: { userId: number; attemptId: nu
 export async function saveAttemptSelection(input: { userId: number; attemptId: number; questionId: number; selectedOptionIds: number[] }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const rows = await db.select({ id: examAttempts.id, expiresAt: examAttempts.expiresAt, status: examAttempts.status }).from(examAttempts)
+  const rows = await db.select({ id: examAttempts.id, expiresAt: examAttempts.expiresAt, status: examAttempts.status, questionSetSnapshot: examAttempts.questionSetSnapshot }).from(examAttempts)
     .where(and(eq(examAttempts.id, input.attemptId), eq(examAttempts.userId, input.userId))).limit(1);
   const attempt = rows[0];
   if (!attempt || attempt.status !== "in_progress") return false;
   if (Date.now() >= attempt.expiresAt.getTime()) return false;
+  const frozen = attempt.questionSetSnapshot as unknown as FrozenAttemptQuestion[];
+  if (!Array.isArray(frozen) || !frozen.some(question => question.questionId === input.questionId) || new Set(input.selectedOptionIds).size !== input.selectedOptionIds.length) return false;
+  const optionRows = await db.select({ id: questionOptions.id }).from(questionOptions).where(eq(questionOptions.questionId, input.questionId));
+  const validOptionIds = new Set(optionRows.map(option => option.id));
+  if (input.selectedOptionIds.some(optionId => !validOptionIds.has(optionId))) return false;
   await db.insert(attemptAnswers).values({
     attemptId: input.attemptId,
     questionId: input.questionId,
@@ -157,19 +177,33 @@ export async function saveAttemptSelection(input: { userId: number; attemptId: n
   return true;
 }
 
+export async function recordAttemptIntegrityEvent(input: { userId: number; attemptId: number; eventType: "tab_blur" | "visibility_hidden" | "fullscreen_exit"; metadata?: Record<string, unknown> }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [attempt] = await db.select({ id: examAttempts.id }).from(examAttempts).where(and(eq(examAttempts.id, input.attemptId), eq(examAttempts.userId, input.userId), eq(examAttempts.status, "in_progress"))).limit(1);
+  if (!attempt) return false;
+  await db.insert(attemptIntegrityEvents).values({ attemptId: input.attemptId, userId: input.userId, eventType: input.eventType, metadata: input.metadata ?? null });
+  return true;
+}
+
 export async function getMistakeVault(userId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select({ id: mistakes.id, status: mistakes.status, reviewCount: mistakes.reviewCount, createdAt: mistakes.createdAt, prompt: questions.prompt, subject: subjects.nameEn, chapter: chapters.titleEn }).from(mistakes)
+  const rows = await db.select({ id: mistakes.id, questionId: mistakes.questionId, status: mistakes.status, reviewCount: mistakes.reviewCount, lastReviewedAt: mistakes.lastReviewedAt, createdAt: mistakes.createdAt, prompt: questions.prompt, subject: subjects.nameEn, chapter: chapters.titleEn }).from(mistakes)
     .innerJoin(questions, eq(mistakes.questionId, questions.id))
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
     .leftJoin(chapters, eq(questions.chapterId, chapters.id))
     .where(and(eq(mistakes.userId, userId), eq(mistakes.status, "open")))
     .orderBy(desc(mistakes.createdAt))
     .limit(100);
+  return rows.map(row => {
+    const base = (row.lastReviewedAt ?? row.createdAt).getTime();
+    const nextDueAt = nextReviewAt(new Date(base), row.reviewCount);
+    return { ...row, nextReviewAt: nextDueAt, isDue: isReviewDue(new Date(base), row.reviewCount) };
+  });
 }
 
-type QuestionFilter = { subjectId?: number; chapterId?: number; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; limit: number };
+type QuestionFilter = { subjectId?: number; chapterId?: number; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
 
 export async function getPublishedChapterAvailability(subjectId?: number, contentLanguage?: "bn" | "en") {
   const db = await getDb();
@@ -206,6 +240,7 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
   if (filters.boardStandard) conditions.push(eq(questions.boardStandard, filters.boardStandard));
   if (filters.questionType) conditions.push(eq(questions.questionType, filters.questionType));
   if (filters.contentLanguage) conditions.push(eq(questions.contentLanguage, filters.contentLanguage));
+  if (filters.questionIds?.length) conditions.push(inArray(questions.id, filters.questionIds));
   const rows = await db.select({
     id: questions.id, prompt: questions.prompt, questionType: questions.questionType, boardStandard: questions.boardStandard,
     boardName: questions.boardName, boardExamYear: questions.boardExamYear, collegePaper: questions.collegePaper,
@@ -227,17 +262,25 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
   return distinctRows.map(row => ({ ...row, options: optionRows.filter(option => option.questionId === row.id).map(option => ({ id: option.id, optionKey: option.optionKey, text: option.text, isCorrect: option.isCorrect })) }));
 }
 
-export async function startFilteredAttempt(input: { userId: number; filters: QuestionFilter; durationMinutes: number; marksPerCorrect: number }) {
+export async function startFilteredAttempt(input: { userId: number; filters: QuestionFilter; durationMinutes: number; mistakeRetest?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const questionsForAttempt = await getPublishedQuestions(input.filters);
+  let mistakeQuestionIds: number[] = [];
+  if (input.mistakeRetest) {
+    const queuedMistakes = await getMistakeVault(input.userId);
+    const due = queuedMistakes.filter(item => item.isDue);
+    mistakeQuestionIds = (due.length ? due : queuedMistakes).slice(0, input.filters.limit).map(item => item.questionId);
+    if (!mistakeQuestionIds.length) return undefined;
+  }
+  const questionsForAttempt = await getPublishedQuestions({ ...input.filters, ...(mistakeQuestionIds.length ? { questionIds: mistakeQuestionIds } : {}) });
   if (!questionsForAttempt.length) return undefined;
+  if (input.mistakeRetest) await db.update(mistakes).set({ status: "reviewing" }).where(and(eq(mistakes.userId, input.userId), inArray(mistakes.questionId, questionsForAttempt.map(question => question.id))));
   const frozen = questionsForAttempt.map(question => ({
     questionId: question.id,
     correctOptionId: question.options.find(option => option.isCorrect)?.id,
     subject: question.subject,
     chapter: question.chapter ?? "General",
-    marks: input.marksPerCorrect,
+    marks: 1,
     negativeMarkWeight: Number(question.negativeMarkWeight),
   }));
   if (frozen.some(question => !question.correctOptionId)) throw new Error("Published question is missing a correct option");
@@ -245,11 +288,11 @@ export async function startFilteredAttempt(input: { userId: number; filters: Que
   const expiresAt = new Date(startedAt.getTime() + input.durationMinutes * 60_000);
   const result = await db.insert(examAttempts).values({
     userId: input.userId,
-    titleSnapshot: "MCQ GURU filtered practice",
+    titleSnapshot: input.mistakeRetest ? "MCQ GURU spaced mistake re-test" : "MCQ GURU filtered practice",
     examVersionSnapshot: "mcq-guru-v1",
-    patternVersionSnapshot: "filter-snapshot-v1",
+    patternVersionSnapshot: input.mistakeRetest ? "mistake-retest-v1" : "filter-snapshot-v1",
     questionSetSnapshot: frozen,
-    markingSchemeSnapshot: { marksPerCorrect: input.marksPerCorrect, negativeMarkPolicy: "per_question" },
+    markingSchemeSnapshot: { marksPerCorrect: 1, negativeMarkPolicy: "per_question" },
     startedAt,
     expiresAt,
   });

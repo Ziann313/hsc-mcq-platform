@@ -1,8 +1,8 @@
 import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import { academicYears, attemptAnswers, examAttempts, leaderboardScores, mistakes, questionOptions, questions, subjects, users } from "../drizzle/schema";
+import { academicYears, attemptAnswers, attemptIntegrityEvents, examAttempts, leaderboardScores, mistakes, questionOptions, questions, subjects, users } from "../drizzle/schema";
 import { getDb } from "./db";
-import { getAttemptResult, saveAttemptSelection } from "./mcqDb";
+import { getAttemptResult, recordAttemptIntegrityEvent, saveAttemptSelection } from "./mcqDb";
 
 const enabled = Boolean(process.env.DATABASE_URL);
 let cleanup: (() => Promise<void>) | undefined;
@@ -27,7 +27,7 @@ describe.skipIf(!enabled)("expired attempt database integration", () => {
         await db.delete(leaderboardScores).where(eq(leaderboardScores.userId, userId));
         await db.delete(mistakes).where(eq(mistakes.userId, userId));
       }
-      if (attemptId) { await db.delete(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId)); await db.delete(examAttempts).where(eq(examAttempts.id, attemptId)); }
+      if (attemptId) { await db.delete(attemptIntegrityEvents).where(eq(attemptIntegrityEvents.attemptId, attemptId)); await db.delete(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId)); await db.delete(examAttempts).where(eq(examAttempts.id, attemptId)); }
       if (questionId) { await db.delete(questionOptions).where(eq(questionOptions.questionId, questionId)); await db.delete(questions).where(eq(questions.id, questionId)); }
       if (userId) await db.delete(users).where(eq(users.id, userId));
     };
@@ -45,6 +45,11 @@ describe.skipIf(!enabled)("expired attempt database integration", () => {
       markingSchemeSnapshot: { marksPerCorrect: 1, negativeMarkPerWrong: 0.25 }, startedAt: new Date(stamp - 120_000), expiresAt: new Date(stamp + 60_000),
     });
     attemptId = Number(attemptResult[0].insertId);
+    await expect(recordAttemptIntegrityEvent({ userId, attemptId, eventType: "visibility_hidden", metadata: { source: "test" } })).resolves.toBe(true);
+    const [integrityEvent] = await db.select().from(attemptIntegrityEvents).where(eq(attemptIntegrityEvents.attemptId, attemptId)).limit(1);
+    expect(integrityEvent).toMatchObject({ userId, eventType: "visibility_hidden" });
+    await expect(saveAttemptSelection({ userId, attemptId, questionId: questionId + 999_999, selectedOptionIds: [wrongOptionId] })).resolves.toBe(false);
+    await expect(saveAttemptSelection({ userId, attemptId, questionId, selectedOptionIds: [wrongOptionId + 999_999] })).resolves.toBe(false);
     await expect(saveAttemptSelection({ userId, attemptId, questionId, selectedOptionIds: [wrongOptionId] })).resolves.toBe(true);
     await db.update(examAttempts).set({ expiresAt: new Date(stamp - 1_000) }).where(eq(examAttempts.id, attemptId));
     const finalized = await getAttemptResult(userId, attemptId);

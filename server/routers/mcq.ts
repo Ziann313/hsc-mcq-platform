@@ -1,8 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { scoreMcqExam } from "../../shared/mcq";
 import { createReviewQuestion } from "../db";
-import { addQuestionComment, getAttemptResult, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestions, getQuestionComments, recordImportBatch, saveAttemptSelection, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
+import { addQuestionComment, getAttemptResult, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestions, getQuestionComments, recordAttemptIntegrityEvent, recordImportBatch, saveAttemptSelection, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 const importedQuestion = z.object({
@@ -16,20 +15,30 @@ const questionFilterInput = z.object({
 });
 
 export const mcqRouter = router({
-  publishedQuestions: publicProcedure.input(questionFilterInput).query(({ input }) => getPublishedQuestions(input)),
+  publishedQuestions: publicProcedure.input(questionFilterInput).query(async ({ input }) => {
+    const published = await getPublishedQuestions(input);
+    return published.map(question => ({
+      ...question,
+      options: question.options.map(({ isCorrect: _isCorrect, ...option }) => option),
+    }));
+  }),
   publishedChapterAvailability: publicProcedure.input(z.object({ subjectId: z.number().int().positive().optional(), contentLanguage: z.enum(["bn", "en"]).optional() }).optional()).query(({ input }) => getPublishedChapterAvailability(input?.subjectId, input?.contentLanguage)),
-  startFilteredAttempt: protectedProcedure.input(z.object({ filters: questionFilterInput, durationMinutes: z.number().int().min(1).max(240), marksPerCorrect: z.number().min(0.25).max(10) })).mutation(async ({ ctx, input }) => {
+  startFilteredAttempt: protectedProcedure.input(z.object({ filters: questionFilterInput, durationMinutes: z.number().int().min(1).max(240), mistakeRetest: z.boolean().optional() })).mutation(async ({ ctx, input }) => {
     const attempt = await startFilteredAttempt({ userId: ctx.user.id, ...input });
     if (!attempt) throw new TRPCError({ code: "NOT_FOUND", message: "No approved published questions match this filter" });
     return attempt;
   }),
-  scorePreview: protectedProcedure.input(z.object({ questions: z.array(z.object({ id: z.number().int().positive(), correctOptionIds: z.array(z.number().int().positive()).min(1), marks: z.number().positive(), negativeMarkWeight: z.number().min(0), subject: z.string(), chapter: z.string() })).min(1), selections: z.array(z.object({ questionId: z.number().int().positive(), selectedOptionIds: z.array(z.number().int().positive()) })) })).mutation(({ input }) => scoreMcqExam(input.questions, input.selections)),
-  saveAttemptSelection: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), questionId: z.number().int().positive(), selectedOptionIds: z.array(z.number().int().positive()).max(6) })).mutation(async ({ ctx, input }) => {
+  saveAttemptSelection: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), questionId: z.number().int().positive(), selectedOptionIds: z.array(z.number().int().positive()).max(6).refine(ids => new Set(ids).size === ids.length, "Duplicate options are not allowed") })).mutation(async ({ ctx, input }) => {
     const saved = await saveAttemptSelection({ ...input, userId: ctx.user.id });
     if (!saved) throw new TRPCError({ code: "CONFLICT", message: "This attempt is no longer accepting answers" });
     return { saved: true } as const;
   }),
-  submitFrozenAttempt: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), selections: z.array(z.object({ questionId: z.number().int().positive(), selectedOptionIds: z.array(z.number().int().positive()) })) })).mutation(async ({ ctx, input }) => {
+  reportAttemptIntegrity: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), eventType: z.enum(["tab_blur", "visibility_hidden", "fullscreen_exit"]), metadata: z.record(z.string(), z.unknown()).optional() })).mutation(async ({ ctx, input }) => {
+    const saved = await recordAttemptIntegrityEvent({ ...input, userId: ctx.user.id });
+    if (!saved) throw new TRPCError({ code: "CONFLICT", message: "This attempt is no longer accepting integrity events" });
+    return { saved: true } as const;
+  }),
+  submitFrozenAttempt: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), selections: z.array(z.object({ questionId: z.number().int().positive(), selectedOptionIds: z.array(z.number().int().positive()).max(6).refine(ids => new Set(ids).size === ids.length, "Duplicate options are not allowed") })) })).mutation(async ({ ctx, input }) => {
     const result = await submitFrozenAttempt({ ...input, userId: ctx.user.id });
     if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Active attempt not found" });
     return result;

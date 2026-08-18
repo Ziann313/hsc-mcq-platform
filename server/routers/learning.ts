@@ -1,10 +1,8 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { calculateAttemptSummary } from "../../shared/assessment";
 import {
   createAdmissionNotice,
   createAdmissionPatternVersion,
-  createExamAttempt,
   createNotification,
   createReviewQuestion,
   getActiveSourceEvidence,
@@ -43,16 +41,6 @@ const onboardingInput = z.object({
   targetExam: z.enum(["hsc", "medical", "engineering", "university", "multiple"]),
   institution: z.string().max(160).optional(),
   dailyStudyMinutes: z.number().int().min(15).max(720),
-});
-
-const gradeInput = z.object({
-  marksPerCorrect: z.number().min(0).max(10).default(1),
-  negativeMarkPerWrong: z.number().min(0).max(5).default(0),
-  answers: z.array(z.object({
-    questionId: z.number().int().positive(),
-    selectedOptionId: z.number().int().positive().nullable().optional(),
-    correctOptionId: z.number().int().positive(),
-  })).min(1),
 });
 
 export const learningRouter = router({
@@ -96,37 +84,6 @@ export const learningRouter = router({
   }),
 
   publishedAdmissionNotices: publicProcedure.query(async () => getPublishedAdmissionNotices()),
-
-  gradePreview: protectedProcedure.input(gradeInput).mutation(({ input }) => {
-    return calculateAttemptSummary(input.answers, input.marksPerCorrect, input.negativeMarkPerWrong);
-  }),
-
-  startExam: protectedProcedure.input(z.object({
-    title: z.string().min(3).max(180),
-    examVersion: z.string().min(1).max(60),
-    patternVersion: z.string().min(1).max(60),
-    durationMinutes: z.number().int().min(1).max(480),
-    marksPerCorrect: z.number().min(0).max(10),
-    negativeMarkPerWrong: z.number().min(0).max(5),
-    questionSet: z.array(z.object({
-      questionId: z.number().int().positive(),
-      prompt: z.string().min(1),
-      optionIds: z.array(z.number().int().positive()).min(2).max(6),
-      correctOptionId: z.number().int().positive(),
-      subject: z.string().optional(),
-      chapter: z.string().optional(),
-      topic: z.string().optional(),
-    })).min(1),
-  })).mutation(async ({ ctx, input }) => {
-    const expiresAt = new Date(Date.now() + input.durationMinutes * 60_000);
-    const attemptId = await createExamAttempt(ctx.user.id, {
-      ...input,
-      startedAt: new Date(),
-      expiresAt,
-    });
-    if (!attemptId) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Unable to create exam attempt" });
-    return { attemptId, expiresAt };
-  }),
 
   askTutor: protectedProcedure.input(z.object({
     question: z.string().min(4).max(1800),

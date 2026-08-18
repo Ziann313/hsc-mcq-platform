@@ -398,6 +398,15 @@ export const attemptAnswers = mysqlTable("attempt_answers", {
   answeredAt: timestamp("answeredAt"),
 }, table => [uniqueIndex("attempt_question_unique").on(table.attemptId, table.questionId)]);
 
+export const attemptIntegrityEvents = mysqlTable("attempt_integrity_events", {
+  id: int("id").autoincrement().primaryKey(),
+  attemptId: int("attemptId").notNull().references(() => examAttempts.id),
+  userId: int("userId").notNull().references(() => users.id),
+  eventType: mysqlEnum("eventType", ["tab_blur", "visibility_hidden", "fullscreen_exit"]).notNull(),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("attempt_integrity_attempt_idx").on(table.attemptId, table.createdAt), index("attempt_integrity_user_idx").on(table.userId, table.createdAt)]);
+
 export const practiceSessions = mysqlTable("practice_sessions", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),

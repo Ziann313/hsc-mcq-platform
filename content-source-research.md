@@ -120,3 +120,7 @@ The official NCTB 2025–26 XI–XII textbook listing was rechecked on 18 August
 ## Published release — Sociology and Business Organization
 
 The next group-specific release adds four original Bangla Sociology 1st Paper questions on family, socialization, education, and marriage, plus four original Bangla Business Organization and Management 1st Paper questions on business purpose, sole proprietorship, risk, and partnership. Each record has a chapter linkage, active NCTB curriculum evidence, four options, exactly one verified answer, an explanation, and protected submitted-for-review, approved, and published audit events. Today’s Study now prioritizes published chapters from a learner’s configured Humanities or Business Studies group; it retains the full group selector while avoiding unrelated cross-group recommendations.
+
+## Board-paper intake boundary
+
+The official Dhaka Education Board portal was checked on 18 August 2026. Its public homepage exposes HSC notices, results, examination contact information, and an HSC Corner, but the inspected page did **not** identify an authorized 2015–2025 question-paper archive or a licence permitting reproduction of board-question text. The portal is therefore an official notice and verification lead, not a source from which to copy past-paper content. MCQ GURU already preserves optional board and year metadata; those fields must be populated only after a board or rights holder provides an attributable reusable source and each question completes the protected review workflow.

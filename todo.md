@@ -179,3 +179,7 @@
 - [x] Add accessible loading animation or skeleton states for student pages while data is fetched.
 - [x] Add useful search or filter controls that help students find available learning content quickly.
 - [x] Add regression coverage and responsive verification for the loading and discovery experience.
+- [x] Audit the reported mock-data, client-trusted exam, question-serving, and student-flow claims against the current implementation.
+- [x] Confirm and strengthen server-authoritative question assembly, answer validation, and real attempt-to-insight data flow where needed.
+- [x] Assess governed board-question, written-practice, learning-resource, revision, integrity, and offline-readiness expansion paths without copying unlicensed content.
+- [x] Add regression coverage and deliver a verified remediation release for confirmed gaps.
