@@ -12,6 +12,7 @@ import {
   getDailyStudyGuide,
   getApprovedSources,
   getApprovedQuestionPublicationQueue,
+  getCurriculumCoverageSummary,
   getExamReadinessSummary,
   getNotificationPreferences,
   getNotificationsForUser,
@@ -251,6 +252,7 @@ export const learningRouter = router({
   }),
 
   publishedContentAvailability: publicProcedure.input(z.object({ contentLanguage: z.enum(["bn", "en"]).optional() }).optional()).query(async ({ input }) => getPublishedContentAvailability(input?.contentLanguage)),
+  curriculumCoverageSummary: publicProcedure.query(async () => getCurriculumCoverageSummary()),
 
   studentProgressSummary: protectedProcedure.query(async ({ ctx }) => getStudentProgressSummary(ctx.user.id)),
   examReadinessSummary: protectedProcedure.query(async ({ ctx }) => getExamReadinessSummary(ctx.user.id)),

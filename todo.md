@@ -161,3 +161,11 @@
 - [x] Fix mobile text, card, banner, and control overflow with wrapping and truncation used only where appropriate.
 - [x] Create and publish original source-linked HSC Physics, Chemistry, and Biology second-paper batches after answer and source validation.
 - [x] Run a focused regression, runtime-log, and mobile layout bug sweep for the responsive science-content update.
+- [x] Audit and reuse existing HSC, admission, group, exam, result, progress, and navigation capabilities required by the attached unified-platform specification.
+- [x] Give Science, Arts/Humanities, and Commerce/Business Studies equal entry visibility without duplicating HSC preparation flows.
+- [x] Organize a distinct Admission Preparation area for Medical, Engineering, and configurable University units using existing exam and result infrastructure.
+- [x] Extend the existing exam setup into configurable custom admission practice and a governed mock-simulation gate without creating a duplicate engine or inventing unavailable official rules.
+- [x] Publish original source-linked Bangla and English common-paper batches after answer, explanation, chapter, and source validation.
+- [x] Publish bilingual Higher Mathematics 2nd Paper questions with explanations, chapter linkage, and protected review publication.
+- [x] Add a real-data dashboard tracker for science chapter coverage, distinguishing published availability from a student’s own learning progress.
+- [x] Verify all unified HSC and admission flows, new content, and the dashboard tracker across mobile and desktop with regression coverage.

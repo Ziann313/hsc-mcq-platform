@@ -23,6 +23,7 @@ const AccountPage = lazy(() => import("./pages/AccountPage"));
 const GovernanceWorkspace = lazy(() => import("./pages/GovernanceWorkspace"));
 const QuestionIntakeWorkspace = lazy(() => import("./pages/QuestionIntakeWorkspace"));
 const AdmissionPatternsPage = lazy(() => import("./pages/AdmissionPatternsPage"));
+const AdmissionPreparationPage = lazy(() => import("./pages/AdmissionPreparationPage"));
 const ExamLabPage = lazy(() => import("./pages/ExamLabPage"));
 const ExamPreparationPage = lazy(() => import("./pages/ExamPreparationPage"));
 const LearningProgressPage = lazy(() => import("./pages/LearningProgressPage"));
@@ -77,6 +78,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/profile">{() => <StudentRoute><AccountPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/questions/new">{() => <StudentRoute><QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/admission-patterns">{() => <StudentRoute><AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/admission">{() => <StudentRoute><AdmissionPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/practice">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mcq-lab">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/exams">{() => <StudentRoute><ExamPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>

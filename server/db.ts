@@ -321,6 +321,58 @@ export async function getPublishedContentAvailability(contentLanguage?: "bn" | "
   return { publishedQuestionCount: published.length, subjects: Array.from(subjectCounts.values()).sort((a, b) => b.questionCount - a.questionCount) };
 }
 
+export async function getCurriculumCoverageSummary() {
+  const empty = { groups: [] as Array<{ slug: string; nameEn: string; nameBn: string; registeredSubjectCount: number; registeredChapterCount: number; publishedSubjectCount: number; publishedChapterCount: number; publishedQuestionCount: number }>, scienceChapters: [] as Array<{ subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number }> };
+  const db = await getDb();
+  if (!db) return empty;
+
+  const groups = await db.select({ id: academicGroups.id, slug: academicGroups.slug, nameEn: academicGroups.nameEn, nameBn: academicGroups.nameBn }).from(academicGroups);
+  const coreGroups = groups.filter(group => ["science", "humanities", "business-studies"].includes(group.slug));
+  const roster = await db.select({ groupId: academicGroups.id, subjectId: subjects.id, chapterId: chapters.id })
+    .from(subjects)
+    .leftJoin(academicGroups, eq(subjects.groupId, academicGroups.id))
+    .leftJoin(books, eq(books.subjectId, subjects.id))
+    .leftJoin(chapters, eq(chapters.bookId, books.id));
+  const released = await db.select({ questionId: questions.id, groupId: academicGroups.id, subjectId: subjects.id, subject: subjects.nameEn, chapterId: chapters.id, chapter: chapters.titleEn })
+    .from(questions)
+    .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .leftJoin(academicGroups, eq(subjects.groupId, academicGroups.id))
+    .innerJoin(chapters, eq(questions.chapterId, chapters.id))
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(sourceVersions.id, questionSources.sourceVersionId))
+    .where(and(eq(questions.status, "published"), eq(sourceVersions.status, "active")));
+
+  const counters = new Map(coreGroups.map(group => [group.id, { registeredSubjects: new Set<number>(), registeredChapters: new Set<number>(), publishedSubjects: new Set<number>(), publishedChapters: new Set<number>(), publishedQuestionIds: new Set<number>() }]));
+  for (const item of roster) {
+    if (!item.groupId) continue;
+    const counter = counters.get(item.groupId);
+    if (!counter) continue;
+    counter.registeredSubjects.add(item.subjectId);
+    if (item.chapterId) counter.registeredChapters.add(item.chapterId);
+  }
+  const chapterCounts = new Map<number, { subjectId: number; subject: string; chapterId: number; chapter: string; questionIds: Set<number> }>();
+  for (const item of released) {
+    if (!item.groupId) continue;
+    const counter = counters.get(item.groupId);
+    if (!counter) continue;
+    counter.publishedSubjects.add(item.subjectId);
+    counter.publishedChapters.add(item.chapterId);
+    counter.publishedQuestionIds.add(item.questionId);
+    if (coreGroups.find(group => group.id === item.groupId)?.slug === "science") {
+      const chapter = chapterCounts.get(item.chapterId) ?? { subjectId: item.subjectId, subject: item.subject, chapterId: item.chapterId, chapter: item.chapter, questionIds: new Set<number>() };
+      chapter.questionIds.add(item.questionId);
+      chapterCounts.set(item.chapterId, chapter);
+    }
+  }
+  return {
+    groups: coreGroups.map(group => {
+      const counter = counters.get(group.id)!;
+      return { slug: group.slug, nameEn: group.nameEn, nameBn: group.nameBn, registeredSubjectCount: counter.registeredSubjects.size, registeredChapterCount: counter.registeredChapters.size, publishedSubjectCount: counter.publishedSubjects.size, publishedChapterCount: counter.publishedChapters.size, publishedQuestionCount: counter.publishedQuestionIds.size };
+    }),
+    scienceChapters: Array.from(chapterCounts.values()).map(chapter => ({ subjectId: chapter.subjectId, subject: chapter.subject, chapterId: chapter.chapterId, chapter: chapter.chapter, questionCount: chapter.questionIds.size })).sort((a, b) => a.subject.localeCompare(b.subject) || a.chapter.localeCompare(b.chapter)),
+  };
+}
+
 export async function getStudentProgressSummary(userId: number) {
   const db = await getDb();
   if (!db) return { completedAttempts: 0, answeredQuestions: 0, correctAnswers: 0, accuracy: null as number | null, averageNetMarks: null as number | null, studyStreakDays: 0 };

@@ -100,3 +100,11 @@ Commercial and course records are deliberately classified as `commercial_discove
 ## Published release — Science second papers
 
 The original second-paper science baseline now contains **24 published questions**: four Bangla and four English questions for each of Physics 2nd Paper, Chemistry 2nd Paper, and Biology 2nd Paper. The Physics set covers Ohm’s law and elementary circuit reasoning; Chemistry covers organic functional groups and formula fundamentals; Biology covers heredity, DNA pairing, and cell-division fundamentals. Each record has four options, exactly one correct answer, an explanation, an active NCTB curriculum-evidence link, and all three protected audit events: submitted for review, approved, and published. No commercial catalogue link was used to create this material.
+
+## Published release — Common papers and Higher Mathematics 2nd Paper
+
+The common-paper release adds four original Bangla 2nd Paper grammar-and-usage questions and four original English 2nd Paper grammar-and-sentence questions. Higher Mathematics 2nd Paper adds eight original calculus fundamentals questions, split evenly between Bangla and English. All sixteen records use the active NCTB curriculum evidence version, have four options, exactly one correct answer, a chapter linkage, an explanation, and protected review-to-publication audit events. The published question bank now contains **69 source-governed questions**.
+
+## Admission preparation boundary
+
+The student-facing Admission Preparation area reuses the existing source-governed selector and server-frozen attempt runner for clearly labelled **custom admission practice**. Medical, Engineering, and University paths are distinct, with configurable A/B/C university unit labels. Full admission mock simulations remain unavailable until a verified active institutional pattern and matching reviewed content exist; the product does not invent official duration, question distribution, negative marking, or unit rules.

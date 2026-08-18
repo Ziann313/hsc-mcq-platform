@@ -20,6 +20,7 @@ export const dedicatedRoutePaths = [
   "/profile",
   "/questions/new",
   "/admission-patterns",
+  "/admission",
   "/mcq-lab",
   "/live-exam",
   "/live-exams",

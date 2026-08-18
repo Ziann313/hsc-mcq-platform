@@ -14,6 +14,7 @@ import {
   GraduationCap,
   Home,
   LockKeyhole,
+  Landmark,
   Menu,
   Settings,
   Target,
@@ -40,6 +41,7 @@ export const studentNavigationItems: NavigationItem[] = [
   { path: "/", label: "Home", bn: "হোম", icon: Home },
   { path: "/practice", label: "Daily study", bn: "দৈনিক পড়া", icon: BookOpen },
   { path: "/exams", label: "Mock exams", bn: "মক এক্সাম", icon: ClipboardCheck },
+  { path: "/admission", label: "Admission prep", bn: "ভর্তি প্রস্তুতি", icon: Landmark },
   { path: "/live-exams", label: "Live exams", bn: "লাইভ এক্সাম", icon: Flame },
   { path: "/leaderboard", label: "Leaderboard", bn: "লিডারবোর্ড", icon: BarChart3 },
   { path: "/cheat-sheets", label: "Cheat sheets", bn: "চিট শিট", icon: FileText },
@@ -75,7 +77,7 @@ export function visibleNavigationItems(role?: string) {
 const mobileItems = [
   studentNavigationItems[0],
   studentNavigationItems[1],
-  studentNavigationItems[4],
+  studentNavigationItems[3],
   studentNavigationItems[11],
   { path: "/profile", label: "Profile", bn: "প্রোফাইল", icon: UserRound },
 ];
