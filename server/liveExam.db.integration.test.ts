@@ -1,7 +1,7 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { academicYears, attemptAnswers, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, sources, subjects, users } from "../drizzle/schema";
-import { closeLiveExamRoom, createLiveExamRoom, getLiveLeaderboard, joinLiveExamRoom } from "./liveExamDb";
+import { closeLiveExamRoom, createLiveExamRoom, getLiveExamLaunchReadiness, getLiveExamResult, getLiveLeaderboard, joinLiveExamRoom } from "./liveExamDb";
 import { getDb } from "./db";
 import { saveAttemptSelection } from "./mcqDb";
 
@@ -63,5 +63,11 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     const leaderboard = await getLiveLeaderboard(roomId, studentId);
     expect(leaderboard).toEqual([expect.objectContaining({ userId: studentId, rank: 1, isMe: true })]);
     expect(Number(leaderboard[0].finalScore)).toBe(1);
+    const review = await getLiveExamResult(roomId, studentId);
+    expect(review).toMatchObject({ myRank: 1, participant: expect.objectContaining({ status: "submitted" }) });
+    expect(review?.result.answers).toEqual([expect.objectContaining({ questionId, isCorrect: true, awardedMarks: "1.00" })]);
+    const readiness = await getLiveExamLaunchReadiness();
+    expect(readiness).toMatchObject({ readyForFirstRoom: true });
+    expect(readiness.sourceValidatedQuestionCount).toBeGreaterThanOrEqual(1);
   });
 });

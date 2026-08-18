@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { attemptAnswers, examAttempts, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, subjects, chapters, questionStems, users } from "../drizzle/schema";
 import { getDb } from "./db";
-import { submitFrozenAttempt } from "./mcqDb";
+import { getAttemptResult, submitFrozenAttempt } from "./mcqDb";
 import { resolveLiveRoomState, shouldAutoSubmitForIntegrityWarnings } from "../shared/liveExam";
 
 type LiveMode = "scheduled" | "daily_challenge";
@@ -109,6 +109,40 @@ export async function getLiveExamRoom(roomId: number, userId: number) {
   const [current] = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.userId, userId))).limit(1);
   const ranking = await getLiveLeaderboard(roomId, userId);
   return { room, participantCount: Number(counter?.count ?? 0), participant: current ?? null, leaderboard: ranking };
+}
+
+export async function getLiveExamResult(roomId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const room = await syncRoomLifecycle(roomId);
+  if (!room) return undefined;
+  const [existing] = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.userId, userId))).limit(1);
+  if (!existing?.attemptId) return undefined;
+  const attemptId = existing.attemptId;
+  await finalizeIfExpired(existing.id, userId);
+  const [participant] = await db.select().from(liveExamParticipants).where(eq(liveExamParticipants.id, existing.id)).limit(1);
+  if (!participant || participant.status === "joined") return undefined;
+  const result = await getAttemptResult(userId, attemptId);
+  if (!result) return undefined;
+  const leaderboard = await getLiveLeaderboard(roomId, userId);
+  return { room, participant, result, leaderboard, myRank: leaderboard.find(entry => entry.isMe)?.rank ?? null };
+}
+
+export async function getLiveExamLaunchReadiness() {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [published] = await db.select({ count: sql<number>`count(*)` }).from(questions).where(eq(questions.status, "published"));
+  const [sourceValidated] = await db.select({ count: sql<number>`count(distinct ${questions.id})` }).from(questions)
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(eq(questions.status, "published"), eq(sourceVersions.status, "active")));
+  const [scheduled] = await db.select({ count: sql<number>`count(*)` }).from(liveExamRooms).where(inArray(liveExamRooms.status, ["scheduled", "live"]));
+  return {
+    publishedQuestionCount: Number(published?.count ?? 0),
+    sourceValidatedQuestionCount: Number(sourceValidated?.count ?? 0),
+    activeRoomCount: Number(scheduled?.count ?? 0),
+    readyForFirstRoom: Number(sourceValidated?.count ?? 0) > 0,
+  };
 }
 
 export async function joinLiveExamRoom(roomId: number, userId: number) {

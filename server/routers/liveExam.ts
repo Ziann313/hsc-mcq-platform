@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { closeLiveExamRoom, createLiveExamRoom, getLiveExamRoom, getLiveLeaderboard, joinLiveExamRoom, listLiveExamRooms, listManagedLiveExamRooms, reportLiveIntegrityEvent, submitLiveExamRoom } from "../liveExamDb";
+import { closeLiveExamRoom, createLiveExamRoom, getLiveExamLaunchReadiness, getLiveExamResult, getLiveExamRoom, getLiveLeaderboard, joinLiveExamRoom, listLiveExamRooms, listManagedLiveExamRooms, reportLiveIntegrityEvent, submitLiveExamRoom } from "../liveExamDb";
 import { adminProcedure, protectedProcedure, router } from "../_core/trpc";
 
 const roomInput = z.object({
@@ -11,6 +11,11 @@ const roomInput = z.object({
 export const liveExamRouter = router({
   list: protectedProcedure.query(({ ctx }) => listLiveExamRooms(ctx.user.id)),
   detail: protectedProcedure.input(z.object({ roomId: z.number().int().positive() })).query(({ ctx, input }) => getLiveExamRoom(input.roomId, ctx.user.id)),
+  result: protectedProcedure.input(z.object({ roomId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    const result = await getLiveExamResult(input.roomId, ctx.user.id);
+    if (!result) throw new Error("Submitted live-exam result not found");
+    return result;
+  }),
   leaderboard: protectedProcedure.input(z.object({ roomId: z.number().int().positive() })).query(({ ctx, input }) => getLiveLeaderboard(input.roomId, ctx.user.id)),
   join: protectedProcedure.input(z.object({ roomId: z.number().int().positive() })).mutation(({ ctx, input }) => joinLiveExamRoom(input.roomId, ctx.user.id)),
   submit: protectedProcedure.input(z.object({ roomId: z.number().int().positive(), selections: z.array(z.object({ questionId: z.number().int().positive(), selectedOptionIds: z.array(z.number().int().positive()).max(6) })) })).mutation(({ ctx, input }) => submitLiveExamRoom(input.roomId, ctx.user.id, input.selections)),
@@ -18,5 +23,6 @@ export const liveExamRouter = router({
   create: adminProcedure.input(roomInput).mutation(({ ctx, input }) => createLiveExamRoom({ ...input, createdByUserId: ctx.user.id })),
   createDailyChallenge: adminProcedure.input(roomInput.omit({ mode: true, startsAt: true })).mutation(({ ctx, input }) => createLiveExamRoom({ ...input, createdByUserId: ctx.user.id, mode: "daily_challenge", startsAt: new Date() })),
   adminList: adminProcedure.query(() => listManagedLiveExamRooms()),
+  launchReadiness: adminProcedure.query(() => getLiveExamLaunchReadiness()),
   close: adminProcedure.input(z.object({ roomId: z.number().int().positive() })).mutation(({ input }) => closeLiveExamRoom(input.roomId)),
 });
