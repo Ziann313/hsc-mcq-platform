@@ -11,6 +11,7 @@ import {
   getAdmissionPatternVersions,
   getApprovedSources,
   getApprovedQuestionPublicationQueue,
+  getExamReadinessSummary,
   getNotificationPreferences,
   getNotificationsForUser,
   getPublishedContentAvailability,
@@ -251,6 +252,7 @@ export const learningRouter = router({
   publishedContentAvailability: publicProcedure.query(async () => getPublishedContentAvailability()),
 
   studentProgressSummary: protectedProcedure.query(async ({ ctx }) => getStudentProgressSummary(ctx.user.id)),
+  examReadinessSummary: protectedProcedure.query(async ({ ctx }) => getExamReadinessSummary(ctx.user.id)),
 
   approvedSources: adminProcedure.query(async () => getApprovedSources()),
 

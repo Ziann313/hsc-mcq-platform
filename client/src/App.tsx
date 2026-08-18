@@ -23,6 +23,8 @@ const GovernanceWorkspace = lazy(() => import("./pages/GovernanceWorkspace"));
 const QuestionIntakeWorkspace = lazy(() => import("./pages/QuestionIntakeWorkspace"));
 const AdmissionPatternsPage = lazy(() => import("./pages/AdmissionPatternsPage"));
 const ExamLabPage = lazy(() => import("./pages/ExamLabPage"));
+const ExamPreparationPage = lazy(() => import("./pages/ExamPreparationPage"));
+const LearningProgressPage = lazy(() => import("./pages/LearningProgressPage"));
 const LiveExamPage = lazy(() => import("./pages/LiveExamPage"));
 const LiveExamsPage = lazy(() => import("./pages/LiveExamsPage"));
 const LeaderboardPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.LeaderboardPage })));
@@ -76,6 +78,8 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/admission-patterns">{() => <StudentRoute><AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/practice">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mcq-lab">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/exams">{() => <StudentRoute><ExamPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/progress">{() => <StudentRoute><LearningProgressPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/live-exam">{() => <StudentRoute><LiveExamPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/live-exams/:roomId">{() => <StudentRoute><LiveExamsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/live-exams">{() => <StudentRoute><LiveExamsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>

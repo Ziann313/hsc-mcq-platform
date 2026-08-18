@@ -1,6 +1,7 @@
 import { and, desc, eq, like } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries } from "../drizzle/schema";
+import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -344,6 +345,36 @@ export async function getStudentProgressSummary(userId: number) {
     }
   }
   return { completedAttempts: completed.length, answeredQuestions, correctAnswers, accuracy, averageNetMarks, studyStreakDays };
+}
+
+export async function getExamReadinessSummary(userId: number) {
+  const db = await getDb();
+  const empty = { totalAnswered: 0, overallAccuracy: null as number | null, subjectAccuracy: [] as Array<{ subjectId: number; subject: string; total: number; correct: number; accuracy: number }>, weakChapters: [] as Array<{ chapterId: number | null; chapter: string; subject: string; total: number; correct: number; accuracy: number }>, openMistakeCount: 0, recommendedFocus: null as null | { subjectId: number; subject: string; chapterId: number | null; chapter: string; accuracy: number } };
+  if (!db) return empty;
+  const answered = await db.select({ subjectId: subjects.id, subject: subjects.nameEn, chapterId: chapters.id, chapter: chapters.titleEn, isCorrect: attemptAnswers.isCorrect, answeredAt: attemptAnswers.answeredAt })
+    .from(attemptAnswers)
+    .innerJoin(examAttempts, eq(attemptAnswers.attemptId, examAttempts.id))
+    .innerJoin(questions, eq(attemptAnswers.questionId, questions.id))
+    .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .leftJoin(chapters, eq(questions.chapterId, chapters.id))
+    .where(eq(examAttempts.userId, userId));
+  const usable = answered.filter(answer => Boolean(answer.answeredAt));
+  const [mistakeCount] = await db.select({ count: sql<number>`count(*)` }).from(mistakes).where(and(eq(mistakes.userId, userId), eq(mistakes.status, "open")));
+  if (!usable.length) return { ...empty, openMistakeCount: Number(mistakeCount?.count ?? 0) };
+  const subjectsById = new Map<number, { subjectId: number; subject: string; total: number; correct: number }>();
+  const chaptersByKey = new Map<string, { chapterId: number | null; chapter: string; subject: string; total: number; correct: number }>();
+  for (const answer of usable) {
+    const subject = subjectsById.get(answer.subjectId) ?? { subjectId: answer.subjectId, subject: answer.subject, total: 0, correct: 0 };
+    subject.total += 1; if (answer.isCorrect) subject.correct += 1; subjectsById.set(answer.subjectId, subject);
+    const chapterKey = `${answer.subjectId}:${answer.chapterId ?? "general"}`;
+    const chapter = chaptersByKey.get(chapterKey) ?? { chapterId: answer.chapterId, chapter: answer.chapter ?? "General", subject: answer.subject, total: 0, correct: 0 };
+    chapter.total += 1; if (answer.isCorrect) chapter.correct += 1; chaptersByKey.set(chapterKey, chapter);
+  }
+  const subjectAccuracy = Array.from(subjectsById.values()).map(item => ({ ...item, accuracy: Math.round((item.correct / item.total) * 100) })).sort((a, b) => a.accuracy - b.accuracy || b.total - a.total);
+  const weakChapters = Array.from(chaptersByKey.values()).map(item => ({ ...item, accuracy: Math.round((item.correct / item.total) * 100) })).sort((a, b) => a.accuracy - b.accuracy || b.total - a.total).slice(0, 3);
+  const focus = weakChapters[0] ?? (subjectAccuracy[0] ? { subject: subjectAccuracy[0].subject, chapter: "General", chapterId: null, accuracy: subjectAccuracy[0].accuracy } : null);
+  const recommendedFocus = focus && subjectAccuracy.find(item => item.subject === focus.subject) ? { subjectId: subjectAccuracy.find(item => item.subject === focus.subject)!.subjectId, subject: focus.subject, chapterId: focus.chapterId, chapter: focus.chapter, accuracy: focus.accuracy } : null;
+  return { totalAnswered: usable.length, overallAccuracy: Math.round((usable.filter(answer => answer.isCorrect).length / usable.length) * 100), subjectAccuracy, weakChapters, openMistakeCount: Number(mistakeCount?.count ?? 0), recommendedFocus };
 }
 
 export async function getQuestionReviewQueue() {

@@ -15,11 +15,11 @@ describe("application route integrity", () => {
     }
   });
 
-  it("keeps the Home-backed student surfaces explicitly registered", () => {
+  it("keeps remaining Home-backed surfaces and dedicated core learning routes explicitly registered", () => {
     expect(homeRoutePaths).toEqual(expect.arrayContaining([
-      "/", "/exams", "/tutor", "/progress", "/study-plan", "/mistakes", "/bookmarks",
+      "/", "/tutor", "/study-plan", "/mistakes", "/bookmarks",
     ]));
-    expect(dedicatedRoutePaths).toEqual(expect.arrayContaining(["/practice", "/settings", "/profile", "/live-exam", "/live-exams"]));
+    expect(dedicatedRoutePaths).toEqual(expect.arrayContaining(["/practice", "/exams", "/progress", "/settings", "/profile", "/live-exam", "/live-exams"]));
   });
 
   it("maps historic navigation targets to valid modern destinations", () => {

@@ -1,8 +1,6 @@
 export const homeRoutePaths = [
   "/",
-  "/exams",
   "/tutor",
-  "/progress",
   "/study-plan",
   "/mistakes",
   "/bookmarks",
@@ -10,6 +8,8 @@ export const homeRoutePaths = [
 
 export const dedicatedRoutePaths = [
   "/practice",
+  "/exams",
+  "/progress",
   "/onboarding",
   "/image-solver",
   "/admin",

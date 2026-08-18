@@ -126,3 +126,7 @@
 - [x] Implement preference-aware daily-challenge notification delivery with idempotent scheduled-run safeguards.
 - [x] Add bilingual student controls and administrator visibility for daily-challenge alerts.
 - [x] Add regression coverage, responsive verification, and publish the daily-challenge notification release.
+- [x] Audit the exam engine, preparation journey, review feedback, and student progression signals to identify the highest-impact core learning improvements.
+- [x] Add exam readiness and targeted-learning data contracts that turn authentic results into actionable next steps.
+- [x] Build stronger student exam preparation, result-review, and weak-area learning flows without fabricating educational content.
+- [x] Add core-flow regression tests, mobile and desktop verification, and publish the exam-and-learning improvement release.
