@@ -103,3 +103,14 @@
 - [x] Add and run an integration test covering saved selections, expiry-triggered finalization, score/mistake persistence, and result breakdown retrieval.
 - [x] Run a true data-layer integration verification of saved selections, expiry finalization, persisted mistakes/scores, leaderboard updates, and result breakdown retrieval.
 - [x] Extend the database expiry integration test with a wrong answer and persisted Mistake Vault assertion.
+- [x] Audit existing exam models, routing, mobile layouts, toasts, loading states, and related administration screens for the live-exam release.
+- [x] Add live-room, participant, leaderboard, and integrity-event data structures with additive migration and source-linked question safeguards.
+- [x] Build protected live-exam APIs for scheduling, joining, polling, server-authoritative submission, rankings, and anti-cheat event logging.
+- [x] Build student Live Exams and administrator live-room management experiences with bilingual feedback, large mobile controls, and recovery states.
+- [x] Restore persisted answer selections when a participant resumes a live room, including answer-palette hydration.
+- [x] Add administrator room-management status visibility and a protected close-and-finalize control for scheduled and live rooms.
+- [x] Apply focused mobile layout, toast, skeleton, and reduced-motion transition improvements to the affected flows.
+- [ ] Add critical tests and run desktop/mobile/production verification for the live-exam release.
+- [x] Add database-backed regression coverage for live-exam join/resume, leaderboard submission, and administrator close/finalization.
+- [ ] Verify the authenticated Live Exams lobby and runner at desktop and mobile sizes, then confirm the deployed production route after publishing.
+- [ ] Save and deliver the verified MCQ GURU live-exam mobile release.

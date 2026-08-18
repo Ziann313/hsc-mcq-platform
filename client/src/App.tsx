@@ -24,6 +24,7 @@ const QuestionIntakeWorkspace = lazy(() => import("./pages/QuestionIntakeWorkspa
 const AdmissionPatternsPage = lazy(() => import("./pages/AdmissionPatternsPage"));
 const ExamLabPage = lazy(() => import("./pages/ExamLabPage"));
 const LiveExamPage = lazy(() => import("./pages/LiveExamPage"));
+const LiveExamsPage = lazy(() => import("./pages/LiveExamsPage"));
 const LeaderboardPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.LeaderboardPage })));
 const CheatSheetsPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.CheatSheetsPage })));
 const MistakeVaultPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.MistakeVaultPage })));
@@ -76,6 +77,8 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/practice">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mcq-lab">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/live-exam">{() => <StudentRoute><LiveExamPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/live-exams/:roomId">{() => <StudentRoute><LiveExamsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/live-exams">{() => <StudentRoute><LiveExamsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/leaderboard">{() => <StudentRoute><LeaderboardPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/cheat-sheets">{() => <StudentRoute><CheatSheetsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mistake-vault">{() => <StudentRoute><MistakeVaultPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>

@@ -19,7 +19,7 @@ describe("application route integrity", () => {
     expect(homeRoutePaths).toEqual(expect.arrayContaining([
       "/", "/exams", "/tutor", "/progress", "/study-plan", "/mistakes", "/bookmarks",
     ]));
-    expect(dedicatedRoutePaths).toEqual(expect.arrayContaining(["/practice", "/settings", "/profile", "/live-exam"]));
+    expect(dedicatedRoutePaths).toEqual(expect.arrayContaining(["/practice", "/settings", "/profile", "/live-exam", "/live-exams"]));
   });
 
   it("maps historic navigation targets to valid modern destinations", () => {

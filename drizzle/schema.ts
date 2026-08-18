@@ -229,6 +229,47 @@ export const exams = mysqlTable("exams", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+export const liveExamRooms = mysqlTable("live_exam_rooms", {
+  id: int("id").autoincrement().primaryKey(),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  title: varchar("title", { length: 180 }).notNull(),
+  description: text("description"),
+  mode: mysqlEnum("mode", ["scheduled", "daily_challenge"]).default("scheduled").notNull(),
+  status: mysqlEnum("status", ["draft", "scheduled", "live", "closed", "archived"]).default("draft").notNull(),
+  startsAt: timestamp("startsAt").notNull(),
+  endsAt: timestamp("endsAt").notNull(),
+  durationMinutes: int("durationMinutes").notNull(),
+  questionIds: json("questionIds").notNull(),
+  marksPerCorrect: decimal("marksPerCorrect", { precision: 5, scale: 2 }).default("1.00").notNull(),
+  negativeMarkPerWrong: decimal("negativeMarkPerWrong", { precision: 5, scale: 2 }).default("0.00").notNull(),
+  maxParticipants: int("maxParticipants"),
+  autoSubmitAfterWarnings: int("autoSubmitAfterWarnings").default(3).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("live_room_status_time_idx").on(table.status, table.startsAt, table.endsAt), index("live_room_creator_idx").on(table.createdByUserId)]);
+
+export const liveExamParticipants = mysqlTable("live_exam_participants", {
+  id: int("id").autoincrement().primaryKey(),
+  liveExamRoomId: int("liveExamRoomId").notNull().references(() => liveExamRooms.id),
+  userId: int("userId").notNull().references(() => users.id),
+  attemptId: int("attemptId").references(() => examAttempts.id),
+  joinedAt: timestamp("joinedAt").defaultNow().notNull(),
+  submittedAt: timestamp("submittedAt"),
+  finalScore: decimal("finalScore", { precision: 8, scale: 2 }),
+  timeTakenSeconds: int("timeTakenSeconds"),
+  warningCount: int("warningCount").default(0).notNull(),
+  status: mysqlEnum("status", ["joined", "submitted", "expired", "disqualified"]).default("joined").notNull(),
+}, table => [uniqueIndex("live_participant_room_user_unique").on(table.liveExamRoomId, table.userId), index("live_participant_room_score_idx").on(table.liveExamRoomId, table.finalScore, table.submittedAt)]);
+
+export const liveExamIntegrityEvents = mysqlTable("live_exam_integrity_events", {
+  id: int("id").autoincrement().primaryKey(),
+  liveExamRoomId: int("liveExamRoomId").notNull().references(() => liveExamRooms.id),
+  participantId: int("participantId").notNull().references(() => liveExamParticipants.id),
+  eventType: mysqlEnum("eventType", ["tab_blur", "visibility_hidden", "disconnect", "manual_flag"]).notNull(),
+  metadata: json("metadata"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("live_integrity_participant_idx").on(table.participantId, table.createdAt), index("live_integrity_room_idx").on(table.liveExamRoomId, table.createdAt)]);
+
 export const examAttempts = mysqlTable("exam_attempts", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),

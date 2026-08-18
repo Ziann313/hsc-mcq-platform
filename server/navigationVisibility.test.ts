@@ -28,10 +28,10 @@ describe("visibleNavigationItems", () => {
     }
   });
 
-  it("does not label the live-exam runner as a question bank", () => {
-    const liveExam = visibleNavigationItems("user").find(item => item.path === "/live-exam");
+  it("does not label the live-exam destination as a question bank", () => {
+    const liveExam = visibleNavigationItems("user").find(item => item.path === "/live-exams");
 
-    expect(liveExam).toMatchObject({ label: "Live exam", bn: "লাইভ এক্সাম" });
+    expect(liveExam).toMatchObject({ label: "Live exams", bn: "লাইভ এক্সাম" });
   });
 
   it("uses the same role policy for direct governance URLs and hidden navigation", () => {

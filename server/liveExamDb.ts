@@ -1,0 +1,195 @@
+import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
+import { attemptAnswers, examAttempts, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, subjects, chapters, questionStems, users } from "../drizzle/schema";
+import { getDb } from "./db";
+import { submitFrozenAttempt } from "./mcqDb";
+import { resolveLiveRoomState, shouldAutoSubmitForIntegrityWarnings } from "../shared/liveExam";
+
+type LiveMode = "scheduled" | "daily_challenge";
+type IntegrityEvent = "tab_blur" | "visibility_hidden" | "disconnect" | "manual_flag";
+
+async function syncRoomLifecycle(roomId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [room] = await db.select().from(liveExamRooms).where(eq(liveExamRooms.id, roomId)).limit(1);
+  if (!room) return undefined;
+  const next = resolveLiveRoomState({ configuredState: room.status, startsAt: room.startsAt, endsAt: room.endsAt });
+  if (next !== room.status) await db.update(liveExamRooms).set({ status: next }).where(eq(liveExamRooms.id, roomId));
+  return { ...room, status: next };
+}
+
+async function getSourceValidatedQuestions(questionIds: number[]) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const ids = Array.from(new Set(questionIds));
+  if (!ids.length) throw new Error("Choose at least one published question");
+  const rows = await db.select({
+    id: questions.id, prompt: questions.prompt, questionType: questions.questionType, negativeMarkWeight: questions.negativeMarkWeight,
+    subject: subjects.nameEn, chapter: chapters.titleEn, stemContext: questionStems.contextParagraph,
+  }).from(questions).innerJoin(subjects, eq(questions.subjectId, subjects.id)).leftJoin(chapters, eq(questions.chapterId, chapters.id)).leftJoin(questionStems, eq(questions.stemId, questionStems.id))
+    .where(and(inArray(questions.id, ids), eq(questions.status, "published")));
+  if (rows.length !== ids.length) throw new Error("Every live-exam question must already be published");
+  const sourced = await db.select({ questionId: questionSources.questionId }).from(questionSources).innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(inArray(questionSources.questionId, ids), eq(sourceVersions.status, "active")));
+  if (new Set(sourced.map(row => row.questionId)).size !== ids.length) throw new Error("Every live-exam question must have active source evidence");
+  const options = await db.select().from(questionOptions).where(inArray(questionOptions.questionId, ids));
+  const ordered = ids.map(id => rows.find(row => row.id === id)).filter(Boolean) as typeof rows;
+  return ordered.map(question => {
+    const optionsForQuestion = options.filter(option => option.questionId === question.id);
+    const correct = optionsForQuestion.find(option => option.isCorrect);
+    if (!correct || optionsForQuestion.length < 2) throw new Error("A live-exam question must have two options and one correct answer");
+    return { ...question, options: optionsForQuestion, correctOptionId: correct.id };
+  });
+}
+
+export async function createLiveExamRoom(input: { createdByUserId: number; title: string; description?: string; mode: LiveMode; startsAt: Date; durationMinutes: number; questionIds: number[]; marksPerCorrect: number; negativeMarkPerWrong: number; maxParticipants?: number; autoSubmitAfterWarnings: number; }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  if (input.startsAt.getTime() < Date.now() - 60_000) throw new Error("Scheduled start time cannot be in the past");
+  await getSourceValidatedQuestions(input.questionIds);
+  const endsAt = new Date(input.startsAt.getTime() + input.durationMinutes * 60_000);
+  const result = await db.insert(liveExamRooms).values({
+    createdByUserId: input.createdByUserId, title: input.title, description: input.description || null, mode: input.mode,
+    status: resolveLiveRoomState({ configuredState: "scheduled", startsAt: input.startsAt, endsAt }), startsAt: input.startsAt, endsAt,
+    durationMinutes: input.durationMinutes, questionIds: Array.from(new Set(input.questionIds)), marksPerCorrect: String(input.marksPerCorrect), negativeMarkPerWrong: String(input.negativeMarkPerWrong),
+    maxParticipants: input.maxParticipants ?? null, autoSubmitAfterWarnings: input.autoSubmitAfterWarnings,
+  });
+  return { roomId: Number(result[0].insertId), startsAt: input.startsAt, endsAt };
+}
+
+async function finalizeIfExpired(participantId: number, userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const [participant] = await db.select({ participant: liveExamParticipants, attempt: examAttempts }).from(liveExamParticipants).innerJoin(examAttempts, eq(liveExamParticipants.attemptId, examAttempts.id))
+    .where(and(eq(liveExamParticipants.id, participantId), eq(liveExamParticipants.userId, userId))).limit(1);
+  if (!participant || participant.participant.status !== "joined" || new Date() < participant.attempt.expiresAt) return participant?.participant;
+  const stored = await db.select({ questionId: attemptAnswers.questionId, selectedOptionIds: attemptAnswers.selectedOptionIds }).from(attemptAnswers).where(eq(attemptAnswers.attemptId, participant.attempt.id));
+  const result = await submitFrozenAttempt({ userId, attemptId: participant.attempt.id, selections: stored.map(answer => ({ questionId: answer.questionId, selectedOptionIds: Array.isArray(answer.selectedOptionIds) ? answer.selectedOptionIds as number[] : [] })) });
+  const submittedAt = new Date();
+  await db.update(liveExamParticipants).set({ status: "expired", submittedAt, finalScore: result ? String(result.netMarks) : null, timeTakenSeconds: Math.max(0, Math.round((submittedAt.getTime() - participant.participant.joinedAt.getTime()) / 1000)) }).where(eq(liveExamParticipants.id, participantId));
+  return undefined;
+}
+
+export async function listLiveExamRooms(userId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rooms = await db.select().from(liveExamRooms).where(inArray(liveExamRooms.status, ["scheduled", "live", "closed"])).orderBy(asc(liveExamRooms.startsAt)).limit(40);
+  const output = [];
+  for (const room of rooms) {
+    const synced = await syncRoomLifecycle(room.id);
+    if (!synced) continue;
+    const [counter] = await db.select({ count: sql<number>`count(*)` }).from(liveExamParticipants).where(eq(liveExamParticipants.liveExamRoomId, room.id));
+    const [mine] = userId ? await db.select({ status: liveExamParticipants.status, attemptId: liveExamParticipants.attemptId }).from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, room.id), eq(liveExamParticipants.userId, userId))).limit(1) : [];
+    output.push({ ...synced, participantCount: Number(counter?.count ?? 0), myStatus: mine?.status ?? null, myAttemptId: mine?.attemptId ?? null });
+  }
+  return output;
+}
+
+export async function listManagedLiveExamRooms() {
+  const db = await getDb();
+  if (!db) return [];
+  const rooms = await db.select().from(liveExamRooms).orderBy(desc(liveExamRooms.createdAt)).limit(100);
+  const output = [];
+  for (const room of rooms) {
+    const synced = await syncRoomLifecycle(room.id);
+    if (!synced) continue;
+    const [counter] = await db.select({ count: sql<number>`count(*)` }).from(liveExamParticipants).where(eq(liveExamParticipants.liveExamRoomId, room.id));
+    output.push({ ...synced, participantCount: Number(counter?.count ?? 0) });
+  }
+  return output;
+}
+
+export async function getLiveExamRoom(roomId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const room = await syncRoomLifecycle(roomId);
+  if (!room) return undefined;
+  const [counter] = await db.select({ count: sql<number>`count(*)` }).from(liveExamParticipants).where(eq(liveExamParticipants.liveExamRoomId, roomId));
+  const [participant] = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.userId, userId))).limit(1);
+  if (participant) await finalizeIfExpired(participant.id, userId);
+  const [current] = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.userId, userId))).limit(1);
+  const ranking = await getLiveLeaderboard(roomId, userId);
+  return { room, participantCount: Number(counter?.count ?? 0), participant: current ?? null, leaderboard: ranking };
+}
+
+export async function joinLiveExamRoom(roomId: number, userId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const room = await syncRoomLifecycle(roomId);
+  if (!room) throw new Error("Live exam room not found");
+  if (room.status !== "live") throw new Error(room.status === "scheduled" ? "This live exam has not started yet" : "This live exam is closed");
+  const [existing] = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.userId, userId))).limit(1);
+  if (existing?.attemptId) return getLiveAttempt(room, existing);
+  const [counter] = await db.select({ count: sql<number>`count(*)` }).from(liveExamParticipants).where(eq(liveExamParticipants.liveExamRoomId, roomId));
+  if (room.maxParticipants && Number(counter?.count ?? 0) >= room.maxParticipants) throw new Error("This live exam room is full");
+  const questionIds = Array.isArray(room.questionIds) ? room.questionIds.map(Number) : [];
+  const questionSet = await getSourceValidatedQuestions(questionIds);
+  const frozen = questionSet.map(question => ({ questionId: question.id, correctOptionId: question.correctOptionId, subject: question.subject, chapter: question.chapter ?? "General", marks: Number(room.marksPerCorrect), negativeMarkWeight: Number(room.negativeMarkPerWrong) }));
+  const created = await db.insert(examAttempts).values({ userId, titleSnapshot: room.title, examVersionSnapshot: `live-room-${room.id}`, patternVersionSnapshot: room.mode, questionSetSnapshot: frozen, markingSchemeSnapshot: { marksPerCorrect: Number(room.marksPerCorrect), negativeMarkPerWrong: Number(room.negativeMarkPerWrong), liveExamRoomId: room.id }, startedAt: room.startsAt, expiresAt: room.endsAt });
+  const attemptId = Number(created[0].insertId);
+  const participantResult = await db.insert(liveExamParticipants).values({ liveExamRoomId: roomId, userId, attemptId });
+  const participant = { id: Number(participantResult[0].insertId), liveExamRoomId: roomId, userId, attemptId, joinedAt: new Date(), submittedAt: null, finalScore: null, timeTakenSeconds: null, warningCount: 0, status: "joined" as const };
+  return { participant, attemptId, expiresAt: room.endsAt, selections: [], questions: questionSet.map(({ correctOptionId: _correctOptionId, options, ...question }) => ({ ...question, options: options.map(({ isCorrect: _isCorrect, ...option }) => option) })) };
+}
+
+async function getLiveAttempt(room: typeof liveExamRooms.$inferSelect, participant: typeof liveExamParticipants.$inferSelect) {
+  const questionSet = await getSourceValidatedQuestions((Array.isArray(room.questionIds) ? room.questionIds : []).map(Number));
+  const db = await getDb();
+  const saved = db && participant.attemptId ? await db.select({ questionId: attemptAnswers.questionId, selectedOptionIds: attemptAnswers.selectedOptionIds }).from(attemptAnswers).where(eq(attemptAnswers.attemptId, participant.attemptId)) : [];
+  const selections = saved.map(answer => ({ questionId: answer.questionId, selectedOptionIds: Array.isArray(answer.selectedOptionIds) ? answer.selectedOptionIds as number[] : [] }));
+  return { participant, attemptId: participant.attemptId!, expiresAt: room.endsAt, selections, questions: questionSet.map(({ correctOptionId: _correctOptionId, options, ...question }) => ({ ...question, options: options.map(({ isCorrect: _isCorrect, ...option }) => option) })) };
+}
+
+export async function closeLiveExamRoom(roomId: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const room = await syncRoomLifecycle(roomId);
+  if (!room) throw new Error("Live exam room not found");
+  if (room.status === "closed" || room.status === "archived") return { closed: false, finalizedCount: 0 };
+  const participants = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.status, "joined")));
+  let finalizedCount = 0;
+  for (const participant of participants) {
+    if (!participant.attemptId) continue;
+    const stored = await db.select({ questionId: attemptAnswers.questionId, selectedOptionIds: attemptAnswers.selectedOptionIds }).from(attemptAnswers).where(eq(attemptAnswers.attemptId, participant.attemptId));
+    const result = await submitFrozenAttempt({ userId: participant.userId, attemptId: participant.attemptId, selections: stored.map(answer => ({ questionId: answer.questionId, selectedOptionIds: Array.isArray(answer.selectedOptionIds) ? answer.selectedOptionIds as number[] : [] })) });
+    const submittedAt = new Date();
+    await db.update(liveExamParticipants).set({ status: "submitted", submittedAt, finalScore: result ? String(result.netMarks) : null, timeTakenSeconds: Math.max(0, Math.round((submittedAt.getTime() - participant.joinedAt.getTime()) / 1000)) }).where(eq(liveExamParticipants.id, participant.id));
+    finalizedCount += 1;
+  }
+  await db.update(liveExamRooms).set({ status: "closed" }).where(eq(liveExamRooms.id, roomId));
+  return { closed: true, finalizedCount };
+}
+
+export async function submitLiveExamRoom(roomId: number, userId: number, selections: Array<{ questionId: number; selectedOptionIds: number[] }>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [participant] = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.userId, userId))).limit(1);
+  if (!participant?.attemptId || participant.status !== "joined") throw new Error("No active live-exam participation found");
+  const result = await submitFrozenAttempt({ userId, attemptId: participant.attemptId, selections });
+  if (!result) throw new Error("This live exam is no longer accepting answers");
+  const submittedAt = new Date();
+  const [attempt] = await db.select({ status: examAttempts.status }).from(examAttempts).where(eq(examAttempts.id, participant.attemptId)).limit(1);
+  await db.update(liveExamParticipants).set({ status: attempt?.status === "expired" ? "expired" : "submitted", submittedAt, finalScore: String(result.netMarks), timeTakenSeconds: Math.max(0, Math.round((submittedAt.getTime() - participant.joinedAt.getTime()) / 1000)) }).where(eq(liveExamParticipants.id, participant.id));
+  return { ...result, attemptId: participant.attemptId };
+}
+
+export async function getLiveLeaderboard(roomId: number, userId?: number) {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({ participantId: liveExamParticipants.id, userId: liveExamParticipants.userId, name: users.name, finalScore: liveExamParticipants.finalScore, timeTakenSeconds: liveExamParticipants.timeTakenSeconds, status: liveExamParticipants.status, submittedAt: liveExamParticipants.submittedAt }).from(liveExamParticipants).innerJoin(users, eq(liveExamParticipants.userId, users.id)).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), inArray(liveExamParticipants.status, ["submitted", "expired"]))).orderBy(desc(liveExamParticipants.finalScore), asc(liveExamParticipants.timeTakenSeconds), asc(liveExamParticipants.submittedAt)).limit(100);
+  return rows.map((row, index) => ({ ...row, rank: index + 1, isMe: row.userId === userId }));
+}
+
+export async function reportLiveIntegrityEvent(roomId: number, userId: number, eventType: IntegrityEvent, metadata?: Record<string, unknown>) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const room = await syncRoomLifecycle(roomId);
+  const [participant] = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.userId, userId))).limit(1);
+  if (!room || !participant || participant.status !== "joined") return { warningCount: participant?.warningCount ?? 0, autoSubmitted: false };
+  const warningCount = participant.warningCount + 1;
+  await db.insert(liveExamIntegrityEvents).values({ liveExamRoomId: roomId, participantId: participant.id, eventType, metadata: metadata ?? null });
+  await db.update(liveExamParticipants).set({ warningCount }).where(eq(liveExamParticipants.id, participant.id));
+  if (!shouldAutoSubmitForIntegrityWarnings(warningCount, room.autoSubmitAfterWarnings)) return { warningCount, autoSubmitted: false };
+  const stored = participant.attemptId ? await db.select({ questionId: attemptAnswers.questionId, selectedOptionIds: attemptAnswers.selectedOptionIds }).from(attemptAnswers).where(eq(attemptAnswers.attemptId, participant.attemptId)) : [];
+  await submitLiveExamRoom(roomId, userId, stored.map(answer => ({ questionId: answer.questionId, selectedOptionIds: Array.isArray(answer.selectedOptionIds) ? answer.selectedOptionIds as number[] : [] })));
+  return { warningCount, autoSubmitted: true };
+}
