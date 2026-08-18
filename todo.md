@@ -169,3 +169,6 @@
 - [x] Publish bilingual Higher Mathematics 2nd Paper questions with explanations, chapter linkage, and protected review publication.
 - [x] Add a real-data dashboard tracker for science chapter coverage, distinguishing published availability from a student’s own learning progress.
 - [x] Verify all unified HSC and admission flows, new content, and the dashboard tracker across mobile and desktop with regression coverage.
+- [x] Audit Humanities and Business Studies subject, textbook, chapter, and source readiness for reviewed batch publication.
+- [x] Publish original source-linked Humanities and Business Studies chapter batches with complete options, answers, explanations, and protected review audit trails.
+- [x] Verify Humanities and Business Studies practice availability in the student exam setup on mobile and desktop, with regression coverage.

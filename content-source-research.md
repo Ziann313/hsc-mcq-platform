@@ -108,3 +108,7 @@ The common-paper release adds four original Bangla 2nd Paper grammar-and-usage q
 ## Admission preparation boundary
 
 The student-facing Admission Preparation area reuses the existing source-governed selector and server-frozen attempt runner for clearly labelled **custom admission practice**. Medical, Engineering, and University paths are distinct, with configurable A/B/C university unit labels. Full admission mock simulations remain unavailable until a verified active institutional pattern and matching reviewed content exist; the product does not invent official duration, question distribution, negative marking, or unit rules.
+
+## Published release — Humanities and Business Studies
+
+The first group-specific expansion adds four original Bangla Civics and Good Governance 1st Paper questions on citizenship, rule of law, participation, and accountability, plus four original Bangla Accounting 1st Paper questions on the accounting equation, current assets, owner investment, and liabilities. Each question is chapter-linked, source-linked to active NCTB curriculum evidence, has four options, exactly one verified answer, an explanation, and protected submitted-for-review, approved, and published audit events. These releases make both Humanities and Business Studies truthfully available in Bangla student practice; English versions remain unavailable until their curriculum coverage can be independently verified.
