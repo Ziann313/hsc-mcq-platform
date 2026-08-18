@@ -7,6 +7,8 @@ import {
   createReviewQuestion,
   getActiveSourceEvidence,
   getAdmissionPatternVersions,
+  getActiveAdmissionTracks,
+  getAdmissionReadiness,
   getDailyStudyGuide,
   getApprovedSources,
   getApprovedQuestionPublicationQueue,
@@ -84,6 +86,10 @@ export const learningRouter = router({
   }),
 
   publishedAdmissionNotices: publicProcedure.query(async () => getPublishedAdmissionNotices()),
+
+  activeAdmissionTracks: publicProcedure.query(async () => getActiveAdmissionTracks()),
+
+  admissionReadiness: protectedProcedure.query(async ({ ctx }) => getAdmissionReadiness(ctx.user.id)),
 
   askTutor: protectedProcedure.input(z.object({
     question: z.string().min(4).max(1800),
@@ -281,6 +287,7 @@ export const learningRouter = router({
   questionIntakeOptions: adminProcedure.query(async () => getQuestionIntakeOptions()),
 
   createAdmissionPatternVersion: adminProcedure.input(z.object({
+    examType: z.enum(["medical", "engineering", "university"]),
     institution: z.string().min(2).max(180),
     title: z.string().min(3).max(180),
     unit: z.string().max(120).optional(),
@@ -291,6 +298,10 @@ export const learningRouter = router({
     durationMinutes: z.number().int().positive().max(600).optional(),
     marksPerCorrect: z.number().min(0).max(10).optional(),
     negativeMarkPerWrong: z.number().min(0).max(5).optional(),
+    session: z.string().min(3).max(80).optional(),
+    examDateIso: z.string().datetime().optional(),
+    eligibilitySummary: z.string().max(3000).optional(),
+    cutoffScore: z.number().min(0).max(1000).optional(),
     status: z.enum(["draft", "under_review", "active"]),
   })).mutation(async ({ ctx, input }) => createAdmissionPatternVersion({ ...input, actorUserId: ctx.user.id })),
 });

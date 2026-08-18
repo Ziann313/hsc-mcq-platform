@@ -183,3 +183,7 @@
 - [x] Confirm and strengthen server-authoritative question assembly, answer validation, and real attempt-to-insight data flow where needed.
 - [x] Assess governed board-question, written-practice, learning-resource, revision, integrity, and offline-readiness expansion paths without copying unlicensed content.
 - [x] Add regression coverage and deliver a verified remediation release for confirmed gaps.
+- [x] Audit current Admission Preparation routes, pattern contracts, unit selectors, practice flow, roadmap data, and eligibility support before adding anything.
+- [x] Register only verified, attributable admission unit-pattern, date, and cut-off benchmark evidence; retain truthful unavailable states where evidence is absent.
+- [x] Refine existing Admission Preparation into clear unit-specific practice and adaptive-roadmap flows without duplicating the frozen exam engine or source-governance workflow.
+- [x] Add regression coverage, responsive verification, and deliver the focused admission-preparation update.

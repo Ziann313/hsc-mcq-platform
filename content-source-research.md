@@ -124,3 +124,9 @@ The next group-specific release adds four original Bangla Sociology 1st Paper qu
 ## Board-paper intake boundary
 
 The official Dhaka Education Board portal was checked on 18 August 2026. Its public homepage exposes HSC notices, results, examination contact information, and an HSC Corner, but the inspected page did **not** identify an authorized 2015–2025 question-paper archive or a licence permitting reproduction of board-question text. The portal is therefore an official notice and verification lead, not a source from which to copy past-paper content. MCQ GURU already preserves optional board and year metadata; those fields must be populated only after a board or rights holder provides an attributable reusable source and each question completes the protected review workflow.
+
+## Admission-source verification — DU and GST
+
+The University of Dhaka official admission portal identifies the **2025–26 undergraduate admission application** session and links to its notices area. The public landing page inspected on 18 August 2026 did not expose an attributable unit pattern, eligibility rule, or cut-off figure without further authenticated or notice-level review, so none of those values are inferred.
+
+The official GST admission portal publicly identifies the 2025–26 centralized process and displayed unit-labelled examination schedule information. It also states that central admission has been completed and remaining admission processes are managed by individual universities. This source is suitable for a versioned GST schedule/pattern review record; it is not an authorization to reproduce admission-question text or answers. Any displayed date, pattern, eligibility, or cut-off in MCQ GURU must remain source-linked, session-specific, and reviewer-confirmed.

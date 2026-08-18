@@ -773,12 +773,53 @@ export async function getAdmissionPatternVersions() {
     createdAt: examPatternVersions.createdAt,
   }).from(examPatternVersions)
     .innerJoin(examProfiles, eq(examPatternVersions.examProfileId, examProfiles.id))
-    .where(eq(examProfiles.examType, "university"))
     .orderBy(desc(examPatternVersions.createdAt))
     .limit(50);
 }
 
+type AdmissionPatternConfiguration = {
+  sourceUrl?: string;
+  notes?: string | null;
+  questionCount?: number | null;
+  durationMinutes?: number | null;
+  marksPerCorrect?: number | null;
+  negativeMarkPerWrong?: number | null;
+  session?: string | null;
+  examDateIso?: string | null;
+  eligibilitySummary?: string | null;
+  cutoffScore?: number | null;
+  evidenceStatus?: string;
+};
+
+function admissionConfiguration(value: unknown): AdmissionPatternConfiguration {
+  return value && typeof value === "object" && !Array.isArray(value) ? value as AdmissionPatternConfiguration : {};
+}
+
+export async function getActiveAdmissionTracks() {
+  const db = await getDb();
+  if (!db) return [];
+  const rows = await db.select({
+    id: examPatternVersions.id,
+    institution: examProfiles.institution,
+    title: examProfiles.title,
+    examType: examProfiles.examType,
+    unit: examProfiles.unit,
+    versionLabel: examPatternVersions.versionLabel,
+    configuration: examPatternVersions.configuration,
+  }).from(examPatternVersions)
+    .innerJoin(examProfiles, eq(examPatternVersions.examProfileId, examProfiles.id))
+    .where(eq(examPatternVersions.status, "active"))
+    .orderBy(desc(examPatternVersions.createdAt));
+  return rows.map(row => ({ ...row, configuration: admissionConfiguration(row.configuration) }));
+}
+
+export async function getAdmissionReadiness(userId: number) {
+  const [progress, activeTracks] = await Promise.all([getStudentProgressSummary(userId), getActiveAdmissionTracks()]);
+  return { progress, activeTracks };
+}
+
 export async function createAdmissionPatternVersion(input: {
+  examType: "medical" | "engineering" | "university";
   institution: string;
   title: string;
   unit?: string;
@@ -789,19 +830,23 @@ export async function createAdmissionPatternVersion(input: {
   durationMinutes?: number;
   marksPerCorrect?: number;
   negativeMarkPerWrong?: number;
+  session?: string;
+  examDateIso?: string;
+  eligibilitySummary?: string;
+  cutoffScore?: number;
   status: "draft" | "under_review" | "active";
   actorUserId: number;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const existing = await db.select({ id: examProfiles.id }).from(examProfiles)
-    .where(and(eq(examProfiles.title, input.title), eq(examProfiles.institution, input.institution)))
+    .where(and(eq(examProfiles.title, input.title), eq(examProfiles.institution, input.institution), eq(examProfiles.examType, input.examType), ...(input.unit ? [eq(examProfiles.unit, input.unit)] : [sql`${examProfiles.unit} is null`])))
     .limit(1);
   let profileId = existing[0]?.id;
   if (!profileId) {
     const created = await db.insert(examProfiles).values({
       title: input.title,
-      examType: "university",
+      examType: input.examType,
       institution: input.institution,
       unit: input.unit || null,
       status: "active",
@@ -815,6 +860,10 @@ export async function createAdmissionPatternVersion(input: {
     durationMinutes: input.durationMinutes ?? null,
     marksPerCorrect: input.marksPerCorrect ?? null,
     negativeMarkPerWrong: input.negativeMarkPerWrong ?? null,
+    session: input.session || null,
+    examDateIso: input.examDateIso || null,
+    eligibilitySummary: input.eligibilitySummary || null,
+    cutoffScore: input.cutoffScore ?? null,
     evidenceStatus: input.status === "active" ? "reviewer confirmed" : "pending official-source review",
   };
   const result = await db.insert(examPatternVersions).values({
