@@ -69,3 +69,30 @@ The official [NCTB publications catalogue](https://nctb.gov.bd/pages/publication
 Search results pointing to social posts, app stores, generic PDF libraries, and unverified catalogues were intentionally excluded. They may be useful discovery leads only when a publisher or government authority separately confirms authorization; they must not be ingested or cited for student practice in their current form.
 
 For all current core HSC taxonomy records, the official restructured HSC curriculum page is the shared primary curriculum-evidence link; the official NCTB publications catalogue and the Dhaka Education Board HSC Corner add pattern and moderation evidence where their entries apply. This completes the **authorized-source discovery baseline** for registry purposes. It does not mean that every subject has a separately authorized online textbook file, and the release workflow continues to require a mapped chapter, source link, deterministic answer key, explanation, and review before that subject appears to students.
+
+## Supplied HSC 2025–26 master curriculum catalogue intake
+
+The supplied workbook contains **61 subject-paper rows**, **159 chapter rows**, **26 book-catalogue records**, **13 source leads**, and **7 explicit verification-queue items**. It covers common, science, humanities, and business-studies combinations and distinguishes Bangla, English, and unverified English-version availability. It is now the project’s **intake catalogue**, not an authority that automatically permits source use.
+
+| Catalogue lead | Registry treatment | Permitted use in MCQ GURU |
+|---|---|---|
+| NCTB 2025–26 higher-secondary textbook listing and 2026 index | Official public source; independently confirmed on `nctb.gov.bd` | Curriculum and official-list evidence; links to the authorized original only |
+| Dhaka Education Board HSC Corner | Official public governance source | Pattern, assessment, and moderation evidence; never a question bank |
+| 10 Minute School, HSC ICT, BiologyBD, and New Commerce course pages | Non-government instructional or catalogue leads | Subject to source-by-source verification; may help locate chapter sequencing but are not authoritative answer-key or book-reproduction sources by default |
+| Rokomari and Udvash commercial listings | Commercial discovery/catalogue sources | Confirm that a title is commercially sold; never ingest, copy, download, rehost, or derive question text from the listed books without written permission or a clear license |
+
+The workbook itself correctly flags incomplete direct verification for Bangla 2nd Paper, the exact English paper/unit map, much of humanities and business studies, English-version humanities/business material, and commercial-book authorization. Those items remain blocked from publication until a lawful curriculum-evidence path and independently checked question review are complete.
+
+### Source-eligibility verification from the supplied leads
+
+The official NCTB 2025–26 XI–XII page was independently confirmed and visibly lists **Sahityapath**, **Sahopath**, **English for Today**, ICT, and ICT English Version. It remains the only supplied book-listing source currently eligible as an official curriculum/textbook-list record.
+
+The supplied Rokomari Chemistry page is a purchase catalogue with prices, stock states, cart controls, and multiple publisher titles. It does not provide reuse permission. The supplied 10 Minute School science page is a paid HSC 2026 course offering. The supplied New Commerce page is likewise a paid course with private-group lessons, PDF lecture sheets, a practice book, chapter MCQs, and copyright notices. These three are **commercial discovery leads only** and are prohibited from question-text reuse, answer-key copying, downloading, or rehosting.
+
+HSC ICT Online publicly identifies its six ICT chapter headings and credits a BUET-supported research-and-development project while retaining copyright. It can be retained as a supplementary **chapter-discovery reference** alongside NCTB evidence, but its lesson and assessment content must not be copied. The supplied BiologyBD URL could not be safely resolved by the text-extraction service and remains **unverified** until it can be authenticated through an accessible, clearly licensed source.
+
+## Catalogue reconciliation — 2025–26 baseline
+
+The supplied workbook has now been normalized into **60 HSC subject-paper rows** across common, science, humanities, and business studies. Every row is linked to a dedicated MCQ GURU taxonomy subject, including stream-specific electives that share a national subject code but must not be collapsed across student groups. The registry also contains **24 book-listing metadata records**: five official NCTB listings and nineteen commercial-discovery listings. These are metadata and link-outs only; no book file, page image, paragraph, exercise, solution, or question text was stored.
+
+Commercial and course records are deliberately classified as `commercial_discovery_only` or `discovery_only`. They cannot be used to write copied questions, import answer keys, rehost PDFs, or extract content. Existing student-ready questions remain original MCQ GURU records with active NCTB source evidence: **12 Bangla** and **17 English** published questions, with none lacking an active source link. New question batches may proceed only where a reviewer can demonstrate curriculum scope from an eligible official or expressly licensed source and independently validate the answer and explanation.

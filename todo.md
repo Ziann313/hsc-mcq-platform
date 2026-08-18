@@ -154,3 +154,7 @@
 - [x] Create and validate a small original HSC ICT fundamentals pilot with active NCTB curriculum evidence, four options, one answer key, and an explanation per question.
 - [x] Diagnose and fix mobile lag, stuck loading states, and non-responsive interface controls across core student routes.
 - [x] Verify mobile performance and interaction recovery at 360px, 390px, and 430px viewports with regression coverage.
+- [x] Extract the supplied HSC 2025–26 curriculum catalogue into a normalized stream, subject, paper, language, and source-lead registry.
+- [x] Verify each supplied external book/source lead for authorization before it is used as curriculum evidence; do not download or rehost unlicensed copies.
+- [x] Reconcile verified catalogue coverage with the MCQ GURU taxonomy and source provenance records.
+- [x] Confirm that the existing original reviewed question batches use only active NCTB evidence and do not draw from commercial catalogue leads.

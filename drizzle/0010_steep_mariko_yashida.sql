@@ -1,0 +1,2 @@
+ALTER TABLE `catalog_subjects` DROP INDEX `catalog_subject_year_code_paper`;--> statement-breakpoint
+ALTER TABLE `catalog_subjects` ADD CONSTRAINT `catalog_subject_year_group_code_paper` UNIQUE(`academicYearId`,`groupSlug`,`subjectCode`,`paperLabel`);

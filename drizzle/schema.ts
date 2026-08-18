@@ -121,6 +121,70 @@ export const sources = mysqlTable("sources", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
+/**
+ * A provenance-first register of catalogue links. It records what a public page
+ * establishes and, equally importantly, what it must never be used to copy.
+ * No textbook bytes, pages, lesson text, or question text are stored here.
+ */
+export const catalogSourceLeads = mysqlTable("catalog_source_leads", {
+  id: int("id").autoincrement().primaryKey(),
+  academicYearId: int("academicYearId").notNull().references(() => academicYears.id),
+  linkedSourceId: int("linkedSourceId").references(() => sources.id),
+  organization: varchar("organization", { length: 180 }).notNull(),
+  title: varchar("title", { length: 300 }).notNull(),
+  sourceUrl: varchar("sourceUrl", { length: 1000 }).notNull(),
+  sourceCategory: mysqlEnum("sourceCategory", ["official_catalog", "official_governance", "instructional_reference", "commercial_catalog"]).notNull(),
+  languageVersion: mysqlEnum("languageVersion", ["bn", "en", "bilingual", "not_applicable"]).default("not_applicable").notNull(),
+  eligibility: mysqlEnum("eligibility", ["official_evidence", "supplementary_reference", "discovery_only", "blocked_unverified"]).notNull(),
+  permittedUse: mysqlEnum("permittedUse", ["curriculum_alignment", "chapter_discovery", "catalogue_discovery", "governance_reference", "none"]).notNull(),
+  reusePermission: mysqlEnum("reusePermission", ["not_required_for_metadata", "not_granted", "requires_written_permission", "unknown"]).notNull(),
+  reviewNotes: text("reviewNotes").notNull(),
+  verifiedAt: timestamp("verifiedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("catalog_source_url_unique").on(table.sourceUrl), index("catalog_source_eligibility_idx").on(table.academicYearId, table.eligibility)]);
+
+/**
+ * Normalized paper-level catalogue rows supplied for an HSC academic year.
+ * A mapped platform subject is optional until equivalence is confirmed.
+ */
+export const catalogSubjects = mysqlTable("catalog_subjects", {
+  id: int("id").autoincrement().primaryKey(),
+  academicYearId: int("academicYearId").notNull().references(() => academicYears.id),
+  subjectId: int("subjectId").references(() => subjects.id),
+  groupSlug: varchar("groupSlug", { length: 40 }).notNull(),
+  subjectCode: varchar("subjectCode", { length: 20 }).notNull(),
+  paperLabel: varchar("paperLabel", { length: 60 }).notNull(),
+  nameEn: varchar("nameEn", { length: 160 }).notNull(),
+  nameBn: varchar("nameBn", { length: 220 }).notNull(),
+  englishVersionAvailability: mysqlEnum("englishVersionAvailability", ["verified", "not_verified", "none"]).default("not_verified").notNull(),
+  verificationStatus: mysqlEnum("verificationStatus", ["verified", "needs_review"]).default("needs_review").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("catalog_subject_year_group_code_paper").on(table.academicYearId, table.groupSlug, table.subjectCode, table.paperLabel), index("catalog_subject_platform_idx").on(table.subjectId)]);
+
+/**
+ * Metadata-only book/listing entries from the supplied catalogue. These rows
+ * deliberately retain the listing and copyright status while excluding files
+ * and protected book contents.
+ */
+export const catalogBookEntries = mysqlTable("catalog_book_entries", {
+  id: int("id").autoincrement().primaryKey(),
+  academicYearId: int("academicYearId").notNull().references(() => academicYears.id),
+  catalogSourceLeadId: int("catalogSourceLeadId").notNull().references(() => catalogSourceLeads.id),
+  catalogSubjectId: int("catalogSubjectId").references(() => catalogSubjects.id),
+  groupSlug: varchar("groupSlug", { length: 40 }).notNull(),
+  subjectLabel: varchar("subjectLabel", { length: 180 }).notNull(),
+  paperScope: varchar("paperScope", { length: 100 }).notNull(),
+  titleEn: varchar("titleEn", { length: 300 }).notNull(),
+  titleBn: varchar("titleBn", { length: 360 }).notNull(),
+  languageVersion: mysqlEnum("languageVersion", ["bn", "en", "bilingual"]).notNull(),
+  listingType: mysqlEnum("listingType", ["official", "commercial"]).notNull(),
+  edition: varchar("edition", { length: 100 }).notNull(),
+  attribution: varchar("attribution", { length: 300 }).notNull(),
+  sourceUrl: varchar("sourceUrl", { length: 1000 }).notNull(),
+  useStatus: mysqlEnum("useStatus", ["official_metadata", "commercial_discovery_only", "pending_verification"]).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("catalog_book_source_title_attribution_unique").on(table.sourceUrl, table.titleEn, table.attribution), index("catalog_book_subject_idx").on(table.academicYearId, table.catalogSubjectId)]);
+
 export const sourceVersions = mysqlTable("source_versions", {
   id: int("id").autoincrement().primaryKey(),
   sourceId: int("sourceId").notNull().references(() => sources.id),

@@ -1,0 +1,2 @@
+ALTER TABLE `catalog_book_entries` DROP INDEX `catalog_book_source_title_unique`;--> statement-breakpoint
+ALTER TABLE `catalog_book_entries` ADD CONSTRAINT `catalog_book_source_title_attribution_unique` UNIQUE(`sourceUrl`,`titleEn`,`attribution`);
