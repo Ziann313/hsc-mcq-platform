@@ -122,3 +122,7 @@
 - [x] Add result analytics and durable daily-challenge scheduling contracts with an idempotent scheduled callback.
 - [x] Build bilingual incorrect-answer filters, subject-wise accuracy cards, and daily-challenge scheduling controls.
 - [x] Add regression coverage, responsive verification, and publish the outcome-and-engagement enhancement.
+- [x] Audit existing student notification preferences, delivery channels, and daily-challenge scheduling execution for opt-in challenge alerts.
+- [x] Implement preference-aware daily-challenge notification delivery with idempotent scheduled-run safeguards.
+- [x] Add bilingual student controls and administrator visibility for daily-challenge alerts.
+- [x] Add regression coverage, responsive verification, and publish the daily-challenge notification release.

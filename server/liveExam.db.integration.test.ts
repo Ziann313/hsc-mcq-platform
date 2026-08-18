@@ -1,8 +1,8 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import { academicYears, attemptAnswers, dailyChallengeSchedules, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, sources, subjects, users } from "../drizzle/schema";
+import { academicYears, attemptAnswers, dailyChallengeNotificationDeliveries, dailyChallengeSchedules, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, notifications, questionOptions, questionSources, questions, sourceVersions, sources, studentNotificationPreferences, subjects, users } from "../drizzle/schema";
 import { attachDailyChallengeTask, closeLiveExamRoom, createDailyChallengeSchedule, createLiveExamRoom, getLiveExamLaunchReadiness, getLiveExamResult, getLiveLeaderboard, joinLiveExamRoom, runScheduledDailyChallenge } from "./liveExamDb";
-import { getDb } from "./db";
+import { getDb, saveNotificationPreferences } from "./db";
 import { saveAttemptSelection } from "./mcqDb";
 
 const enabled = Boolean(process.env.DATABASE_URL);
@@ -26,6 +26,9 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
       if (roomId) await db.delete(liveExamIntegrityEvents).where(eq(liveExamIntegrityEvents.liveExamRoomId, roomId));
       if (roomId) await db.delete(liveExamParticipants).where(eq(liveExamParticipants.liveExamRoomId, roomId));
       if (attemptId) { await db.delete(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId)); await db.delete(examAttempts).where(eq(examAttempts.id, attemptId)); }
+      if (studentId) await db.delete(dailyChallengeNotificationDeliveries).where(eq(dailyChallengeNotificationDeliveries.userId, studentId));
+      if (studentId) await db.delete(notifications).where(eq(notifications.userId, studentId));
+      if (scheduleId) await db.delete(dailyChallengeNotificationDeliveries).where(eq(dailyChallengeNotificationDeliveries.dailyChallengeScheduleId, scheduleId));
       if (scheduleId) await db.delete(liveExamRooms).where(eq(liveExamRooms.dailyChallengeScheduleId, scheduleId));
       if (roomId) await db.delete(liveExamRooms).where(eq(liveExamRooms.id, roomId));
       if (scheduleId) await db.delete(dailyChallengeSchedules).where(eq(dailyChallengeSchedules.id, scheduleId));
@@ -33,6 +36,7 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
       if (sourceVersionId) await db.delete(sourceVersions).where(eq(sourceVersions.id, sourceVersionId));
       if (sourceId) await db.delete(sources).where(eq(sources.id, sourceId));
       if (adminId || studentId) await db.delete(leaderboardScores).where(inArray(leaderboardScores.userId, [adminId, studentId].filter(Boolean)));
+      if (studentId) await db.delete(studentNotificationPreferences).where(eq(studentNotificationPreferences.userId, studentId));
       if (adminId) await db.delete(users).where(eq(users.id, adminId));
       if (studentId) await db.delete(users).where(eq(users.id, studentId));
     };
@@ -74,9 +78,14 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     expect(readiness.sourceValidatedQuestionCount).toBeGreaterThanOrEqual(1);
     scheduleId = await createDailyChallengeSchedule({ createdByUserId: adminId, title: "Daily integration challenge", questionIds: [questionId], durationMinutes: 10, marksPerCorrect: 1, negativeMarkPerWrong: 0.25, autoSubmitAfterWarnings: 3, cronExpression: "0 0 12 * * *" });
     await attachDailyChallengeTask(scheduleId, `daily-test-${stamp}`);
+    await saveNotificationPreferences(studentId, { dailyChallengeEnabled: true });
     const generated = await runScheduledDailyChallenge(`daily-test-${stamp}`, new Date());
     expect(generated).toMatchObject({ ok: true, challengeDate: expect.any(String) });
     const duplicate = await runScheduledDailyChallenge(`daily-test-${stamp}`, new Date());
     expect(duplicate).toMatchObject({ ok: true, skipped: "already_created", roomId: generated.roomId });
+    const deliveries = await db.select().from(dailyChallengeNotificationDeliveries).where(eq(dailyChallengeNotificationDeliveries.userId, studentId));
+    expect(deliveries).toEqual([expect.objectContaining({ dailyChallengeScheduleId: scheduleId, liveExamRoomId: generated.roomId })]);
+    const [challengeNotice] = await db.select().from(notifications).where(eq(notifications.id, deliveries[0].notificationId!));
+    expect(challengeNotice).toMatchObject({ type: "study", actionUrl: `/live-exams/${generated.roomId}` });
   });
 });

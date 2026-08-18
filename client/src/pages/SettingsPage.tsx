@@ -11,12 +11,14 @@ import { useLocation } from "wouter";
 
 type NotificationDraft = {
   studyEnabled: boolean;
+  dailyChallengeEnabled: boolean;
   admissionEnabled: boolean;
   contentEnabled: boolean;
 };
 
 const fallbackPreferences: NotificationDraft = {
   studyEnabled: true,
+  dailyChallengeEnabled: false,
   admissionEnabled: true,
   contentEnabled: true,
 };
@@ -34,6 +36,7 @@ export default function SettingsPage({ language, onLanguageChange }: { language:
     if (preferences.data) {
       setDraft({
         studyEnabled: preferences.data.studyEnabled,
+        dailyChallengeEnabled: preferences.data.dailyChallengeEnabled,
         admissionEnabled: preferences.data.admissionEnabled,
         contentEnabled: preferences.data.contentEnabled,
       });
@@ -43,6 +46,7 @@ export default function SettingsPage({ language, onLanguageChange }: { language:
   const hasChanges = useMemo(() => {
     const saved = preferences.data ?? fallbackPreferences;
     return draft.studyEnabled !== saved.studyEnabled
+      || draft.dailyChallengeEnabled !== saved.dailyChallengeEnabled
       || draft.admissionEnabled !== saved.admissionEnabled
       || draft.contentEnabled !== saved.contentEnabled;
   }, [draft, preferences.data]);
@@ -63,6 +67,7 @@ export default function SettingsPage({ language, onLanguageChange }: { language:
 
   const preferenceRows: Array<{ key: keyof NotificationDraft; icon: typeof BookOpen; title: string; titleBn: string; detail: string; detailBn: string }> = [
     { key: "studyEnabled", icon: BookOpen, title: "Study updates", titleBn: "স্টাডি আপডেট", detail: "Practice readiness, review reminders, and study-plan updates.", detailBn: "প্র্যাকটিস প্রস্তুতি, রিভিউ রিমাইন্ডার ও স্টাডি প্ল্যান আপডেট।" },
+    { key: "dailyChallengeEnabled", icon: BellRing, title: "Daily challenge alerts", titleBn: "ডেইলি চ্যালেঞ্জ অ্যালার্ট", detail: "Receive an optional in-app alert when a newly scheduled daily challenge opens.", detailBn: "নতুন শিডিউল করা ডেইলি চ্যালেঞ্জ শুরু হলে ঐচ্ছিক ইন-অ্যাপ অ্যালার্ট পাও।" },
     { key: "admissionEnabled", icon: Landmark, title: "Admission notices", titleBn: "ভর্তি নোটিশ", detail: "Published official admission updates that apply to your account.", detailBn: "তোমার অ্যাকাউন্টে প্রযোজ্য প্রকাশিত অফিসিয়াল ভর্তি আপডেট।" },
     { key: "contentEnabled", icon: BellRing, title: "Content updates", titleBn: "কনটেন্ট আপডেট", detail: "New approved question sets, cheat sheets, and reviewed learning content.", detailBn: "নতুন অনুমোদিত প্রশ্নসেট, চিট শিট ও রিভিউ করা লার্নিং কনটেন্ট।" },
   ];

@@ -77,6 +77,7 @@ export const learningRouter = router({
 
   updateNotificationPreferences: protectedProcedure.input(z.object({
     studyEnabled: z.boolean().optional(),
+    dailyChallengeEnabled: z.boolean().optional(),
     admissionEnabled: z.boolean().optional(),
     contentEnabled: z.boolean().optional(),
   }).refine(input => Object.values(input).some(value => value !== undefined), {

@@ -44,6 +44,7 @@ export const studentNotificationPreferences = mysqlTable("student_notification_p
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().unique().references(() => users.id),
   studyEnabled: boolean("studyEnabled").default(true).notNull(),
+  dailyChallengeEnabled: boolean("dailyChallengeEnabled").default(false).notNull(),
   admissionEnabled: boolean("admissionEnabled").default(true).notNull(),
   contentEnabled: boolean("contentEnabled").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -246,6 +247,16 @@ export const dailyChallengeSchedules = mysqlTable("daily_challenge_schedules", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [uniqueIndex("daily_challenge_task_uid_unique").on(table.scheduleCronTaskUid), index("daily_challenge_enabled_idx").on(table.isEnabled)]);
+
+export const dailyChallengeNotificationDeliveries = mysqlTable("daily_challenge_notification_deliveries", {
+  id: int("id").autoincrement().primaryKey(),
+  dailyChallengeScheduleId: int("dailyChallengeScheduleId").notNull().references(() => dailyChallengeSchedules.id),
+  liveExamRoomId: int("liveExamRoomId").notNull().references(() => liveExamRooms.id),
+  userId: int("userId").notNull().references(() => users.id),
+  notificationId: int("notificationId").references(() => notifications.id),
+  challengeDate: varchar("challengeDate", { length: 10 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("daily_challenge_notify_once").on(table.dailyChallengeScheduleId, table.challengeDate, table.userId), index("daily_challenge_delivery_room_idx").on(table.liveExamRoomId), foreignKey({ columns: [table.dailyChallengeScheduleId], foreignColumns: [dailyChallengeSchedules.id], name: "daily_notify_schedule_fk" }), foreignKey({ columns: [table.liveExamRoomId], foreignColumns: [liveExamRooms.id], name: "daily_notify_room_fk" }), foreignKey({ columns: [table.userId], foreignColumns: [users.id], name: "daily_notify_user_fk" }), foreignKey({ columns: [table.notificationId], foreignColumns: [notifications.id], name: "daily_notify_notification_fk" })]);
 
 export const liveExamRooms = mysqlTable("live_exam_rooms", {
   id: int("id").autoincrement().primaryKey(),

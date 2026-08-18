@@ -22,6 +22,7 @@ import {
   X,
 } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { DailyChallengeBrowserAlert } from "@/components/DailyChallengeBrowserAlert";
 import { useState } from "react";
 import { useLocation } from "wouter";
 
@@ -94,7 +95,7 @@ export function PlatformShell({ children, language, onLanguageChange }: { childr
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7f7] text-slate-900">
+    <div className="min-h-screen bg-[#f4f7f7] text-slate-900"><DailyChallengeBrowserAlert />
       <aside className="fixed inset-y-0 left-0 z-40 hidden w-[264px] flex-col bg-[#071d33] px-4 py-5 text-slate-100 lg:flex">
         <button className="mb-8 flex items-center gap-3 px-2 text-left" onClick={() => navigate("/")}>
           <span className="grid size-10 place-items-center rounded-2xl bg-[#16b89b] shadow-[0_8px_24px_rgba(22,184,155,.25)]"><GraduationCap size={22} /></span>

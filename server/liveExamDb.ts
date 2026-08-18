@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
-import { attemptAnswers, dailyChallengeSchedules, examAttempts, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, subjects, chapters, questionStems, users } from "../drizzle/schema";
+import { attemptAnswers, dailyChallengeNotificationDeliveries, dailyChallengeSchedules, examAttempts, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, subjects, chapters, questionStems, users } from "../drizzle/schema";
 import { getDb } from "./db";
+import { deliverDailyChallengeNotifications } from "./db";
 import { getAttemptResult, submitFrozenAttempt } from "./mcqDb";
 import { resolveLiveRoomState, shouldAutoSubmitForIntegrityWarnings } from "../shared/liveExam";
 
@@ -157,7 +158,11 @@ export async function getLiveExamLaunchReadiness() {
 export async function listDailyChallengeSchedules() {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(dailyChallengeSchedules).orderBy(desc(dailyChallengeSchedules.createdAt)).limit(30);
+  const schedules = await db.select().from(dailyChallengeSchedules).orderBy(desc(dailyChallengeSchedules.createdAt)).limit(30);
+  return Promise.all(schedules.map(async schedule => {
+    const [delivery] = await db.select({ count: sql<number>`count(*)` }).from(dailyChallengeNotificationDeliveries).where(eq(dailyChallengeNotificationDeliveries.dailyChallengeScheduleId, schedule.id));
+    return { ...schedule, notificationDeliveryCount: Number(delivery?.count ?? 0) };
+  }));
 }
 
 export async function createDailyChallengeSchedule(input: { createdByUserId: number; title: string; description?: string; questionIds: number[]; durationMinutes: number; marksPerCorrect: number; negativeMarkPerWrong: number; autoSubmitAfterWarnings: number; cronExpression: string; }) {
@@ -198,7 +203,8 @@ export async function runScheduledDailyChallenge(taskUid: string, now = new Date
   const [existing] = await db.select({ id: liveExamRooms.id }).from(liveExamRooms).where(and(eq(liveExamRooms.dailyChallengeScheduleId, schedule.id), eq(liveExamRooms.challengeDate, challengeDate))).limit(1);
   if (existing) return { ok: true, skipped: "already_created" as const, roomId: existing.id };
   const room = await createLiveExamRoom({ createdByUserId: schedule.createdByUserId, title: schedule.title, description: schedule.description ?? undefined, mode: "daily_challenge", startsAt: now, durationMinutes: schedule.durationMinutes, questionIds: Array.isArray(schedule.questionIds) ? schedule.questionIds.map(Number) : [], marksPerCorrect: Number(schedule.marksPerCorrect), negativeMarkPerWrong: Number(schedule.negativeMarkPerWrong), autoSubmitAfterWarnings: schedule.autoSubmitAfterWarnings, dailyChallengeScheduleId: schedule.id, challengeDate });
-  return { ok: true, roomId: room.roomId, challengeDate };
+  const notification = await deliverDailyChallengeNotifications({ scheduleId: schedule.id, roomId: room.roomId, challengeDate, title: schedule.title, durationMinutes: schedule.durationMinutes });
+  return { ok: true, roomId: room.roomId, challengeDate, notification };
 }
 
 export async function joinLiveExamRoom(roomId: number, userId: number) {

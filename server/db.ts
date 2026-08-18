@@ -1,6 +1,6 @@
 import { and, desc, eq, like } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears } from "../drizzle/schema";
+import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -98,12 +98,14 @@ export async function getStudentProfile(userId: number) {
 
 type NotificationPreferenceState = {
   studyEnabled: boolean;
+  dailyChallengeEnabled: boolean;
   admissionEnabled: boolean;
   contentEnabled: boolean;
 };
 
 const defaultNotificationPreferences: NotificationPreferenceState = {
   studyEnabled: true,
+  dailyChallengeEnabled: false,
   admissionEnabled: true,
   contentEnabled: true,
 };
@@ -410,6 +412,37 @@ export async function createNotification(input: {
     });
   }
   return notificationId;
+}
+
+export async function deliverDailyChallengeNotifications(input: { scheduleId: number; roomId: number; challengeDate: string; title: string; durationMinutes: number }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const recipients = await db.select({ userId: users.id, role: users.role, language: studentProfiles.preferredLanguage }).from(users)
+    .innerJoin(studentNotificationPreferences, eq(studentNotificationPreferences.userId, users.id))
+    .leftJoin(studentProfiles, eq(studentProfiles.userId, users.id))
+    .where(eq(studentNotificationPreferences.dailyChallengeEnabled, true));
+  let delivered = 0;
+  for (const recipient of recipients) {
+    if (!(["user", "student"] as string[]).includes(recipient.role)) continue;
+    const [existing] = await db.select({ id: dailyChallengeNotificationDeliveries.id, notificationId: dailyChallengeNotificationDeliveries.notificationId }).from(dailyChallengeNotificationDeliveries)
+      .where(and(eq(dailyChallengeNotificationDeliveries.dailyChallengeScheduleId, input.scheduleId), eq(dailyChallengeNotificationDeliveries.challengeDate, input.challengeDate), eq(dailyChallengeNotificationDeliveries.userId, recipient.userId))).limit(1);
+    if (existing?.notificationId) continue;
+    let deliveryId = existing?.id;
+    if (!deliveryId) {
+      try {
+        const created = await db.insert(dailyChallengeNotificationDeliveries).values({ dailyChallengeScheduleId: input.scheduleId, liveExamRoomId: input.roomId, userId: recipient.userId, challengeDate: input.challengeDate });
+        deliveryId = Number(created[0].insertId);
+      } catch (error) {
+        if (!(error instanceof Error) || !/duplicate|unique/i.test(error.message)) throw error;
+        continue;
+      }
+    }
+    const bn = recipient.language === "bn";
+    const notification = await db.insert(notifications).values({ userId: recipient.userId, type: "study", priority: "normal", title: bn ? "নতুন ডেইলি চ্যালেঞ্জ শুরু হয়েছে" : "A new daily challenge is open", body: bn ? `“${input.title}” এখন শুরু হয়েছে। ${input.durationMinutes} মিনিটের মধ্যে অংশ নাও।` : `“${input.title}” is now open. Join within ${input.durationMinutes} minutes.`, actionUrl: `/live-exams/${input.roomId}` });
+    await db.update(dailyChallengeNotificationDeliveries).set({ notificationId: Number(notification[0].insertId) }).where(eq(dailyChallengeNotificationDeliveries.id, deliveryId));
+    delivered += 1;
+  }
+  return { delivered, eligible: recipients.filter(recipient => (["user", "student"] as string[]).includes(recipient.role)).length };
 }
 
 export async function updateStudentPreferences(userId: number, input: {

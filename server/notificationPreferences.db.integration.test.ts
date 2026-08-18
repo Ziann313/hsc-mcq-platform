@@ -50,5 +50,8 @@ describe.skipIf(!enabled)("notification-preference database integration", () => 
       admissionEnabled: true,
       contentEnabled: true,
     });
+    await expect(saveNotificationPreferences(userId, { dailyChallengeEnabled: true })).resolves.toMatchObject({
+      dailyChallengeEnabled: true,
+    });
   });
 });
