@@ -7,6 +7,10 @@ import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import Home from "./pages/Home";
 import { homeRoutePaths, legacyRouteRedirects } from "./routePaths";
+import { useAuth } from "./_core/hooks/useAuth";
+import { trpc } from "./lib/trpc";
+import { resolveFirstVisitState } from "./lib/firstVisitFlow";
+import PublicLandingPage from "./pages/PublicLandingPage";
 
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ImageSolver = lazy(() => import("./pages/ImageSolver"));
@@ -28,27 +32,57 @@ const ImporterPage = lazy(() => import("./pages/MCQInsightsPage").then(module =>
 
 function RouteLoader() { return <div className="grid min-h-screen place-items-center bg-[#f4f7f7] text-sm font-semibold text-[#087b6c]">Loading MCQ GURU…</div>; }
 
+function FirstVisitRoute({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const profile = trpc.learning.profile.useQuery(undefined, { enabled: isAuthenticated && !authLoading, retry: false, refetchOnWindowFocus: false });
+  const state = resolveFirstVisitState({ authLoading, authenticated: isAuthenticated, profileLoading: profile.isLoading, onboardingCompleted: Boolean(profile.data?.onboardingCompletedAt) });
+  if (state === "loading") return <RouteLoader />;
+  if (state === "public") return <PublicLandingPage language={language} onLanguageChange={onLanguageChange} />;
+  if (state === "onboarding") return <Redirect to="/onboarding" />;
+  return <Home language={language} onLanguageChange={onLanguageChange} />;
+}
+
+function OnboardingRoute({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const profile = trpc.learning.profile.useQuery(undefined, { enabled: isAuthenticated && !authLoading, retry: false, refetchOnWindowFocus: false });
+  const state = resolveFirstVisitState({ authLoading, authenticated: isAuthenticated, profileLoading: profile.isLoading, onboardingCompleted: Boolean(profile.data?.onboardingCompletedAt) });
+  if (state === "loading") return <RouteLoader />;
+  if (state === "public" || state === "dashboard") return <Redirect to="/" />;
+  return <Onboarding language={language} onLanguageChange={onLanguageChange} />;
+}
+
+function StudentRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const profile = trpc.learning.profile.useQuery(undefined, { enabled: isAuthenticated && !authLoading, retry: false, refetchOnWindowFocus: false });
+  const state = resolveFirstVisitState({ authLoading, authenticated: isAuthenticated, profileLoading: profile.isLoading, onboardingCompleted: Boolean(profile.data?.onboardingCompletedAt) });
+  if (state === "loading") return <RouteLoader />;
+  if (state === "public") return <Redirect to="/" />;
+  if (state === "onboarding") return <Redirect to="/onboarding" />;
+  return <>{children}</>;
+}
+
 function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
   return <Suspense fallback={<RouteLoader />}><Switch>
-    <Route path="/onboarding">{() => <Onboarding language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/image-solver">{() => <ImageSolver language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/admin">{() => <AdminWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/governance">{() => <GovernanceWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/notifications">{() => <NotificationsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/settings">{() => <SettingsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/notices">{() => <OfficialNoticesPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/profile">{() => <AccountPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/questions/new">{() => <QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/admission-patterns">{() => <AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/practice">{() => <ExamLabPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/mcq-lab">{() => <ExamLabPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/live-exam">{() => <LiveExamPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/leaderboard">{() => <LeaderboardPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/cheat-sheets">{() => <CheatSheetsPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/mistake-vault">{() => <MistakeVaultPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/community">{() => <CommunityPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    <Route path="/import">{() => <ImporterPage language={language} onLanguageChange={onLanguageChange} />}</Route>
-    {homeRoutePaths.map(path => <Route key={path} path={path}>{() => <Home language={language} onLanguageChange={onLanguageChange} />}</Route>)}
+    <Route path="/onboarding">{() => <OnboardingRoute language={language} onLanguageChange={onLanguageChange} />}</Route>
+    <Route path="/image-solver">{() => <StudentRoute><ImageSolver language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/admin">{() => <StudentRoute><AdminWorkspace language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/governance">{() => <StudentRoute><GovernanceWorkspace language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/notifications">{() => <StudentRoute><NotificationsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/settings">{() => <StudentRoute><SettingsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/notices">{() => <StudentRoute><OfficialNoticesPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/profile">{() => <StudentRoute><AccountPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/questions/new">{() => <StudentRoute><QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/admission-patterns">{() => <StudentRoute><AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/practice">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/mcq-lab">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/live-exam">{() => <StudentRoute><LiveExamPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/leaderboard">{() => <StudentRoute><LeaderboardPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/cheat-sheets">{() => <StudentRoute><CheatSheetsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/mistake-vault">{() => <StudentRoute><MistakeVaultPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/community">{() => <StudentRoute><CommunityPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/import">{() => <StudentRoute><ImporterPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/">{() => <FirstVisitRoute language={language} onLanguageChange={onLanguageChange} />}</Route>
+    {homeRoutePaths.filter(path => path !== "/").map(path => <Route key={path} path={path}>{() => <StudentRoute><Home language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>)}
     {Object.entries(legacyRouteRedirects).map(([from, to]) => <Route key={from} path={from}><Redirect to={to} /></Route>)}
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />

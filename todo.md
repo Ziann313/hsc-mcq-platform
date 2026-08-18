@@ -82,6 +82,15 @@
 - [x] Wire the `/practice` route to the persisted published-question practice flow and reverify the student experience.
 - [x] Wire the `/practice` route to the persisted published-question practice flow and reverify the student experience.
 - [x] Save and deliver the content-ready practice release.
+- [x] Inspect the current authentication hook, onboarding persistence, route registry, and public-facing shells for the first-visit experience fix.
+- [x] Build a mobile-first public MCQ GURU landing page with genuine feature and subject previews for visitors.
+- [x] Route root visitors through loading, public landing, onboarding, or authenticated dashboard states without guest-visible personal data.
+- [x] Fix the directly related onboarding academic-year and institution persistence/handoff issues.
+- [x] Add automated coverage and browser verification for guest, logged-in, onboarding, refresh, and mobile states.
+- [x] Verify authenticated root and refresh decisions through the existing routing-state regression tests without changing user profile data.
+- [x] Verify incomplete-account onboarding-to-dashboard routing through isolated route-state and persistence regression coverage.
+- [x] Complete and document isolated mobile verification for the public landing and guarded direct-entry routes.
+- [x] Save and deliver the verified authentication-aware first-visit experience release.
 - [x] Replace all remaining legacy Shikha/Rafi labels with MCQ GURU and Zian, then re-audit visible text.
 - [x] Expose board/college filters and stem-based question retrieval through production MCQ APIs.
 - [x] Connect the timed exam runner to persisted attempts with server-authoritative timeout submission and result breakdowns.
