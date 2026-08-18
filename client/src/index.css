@@ -29,7 +29,7 @@ html { background: #f4f7f7; -webkit-text-size-adjust: 100%; }
 body { margin: 0; min-width: 320px; min-height: 100dvh; overflow-x: hidden; background: #f4f7f7; font-family: "Inter", "Hind Siliguri", "Noto Sans Bengali", sans-serif; }
 button, input, textarea { font: inherit; }
 .font-display { font-family: "Hind Siliguri", "Noto Sans Bengali", "Inter", sans-serif; }
-button { -webkit-tap-highlight-color: transparent; }
+button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
 button:active { transform: scale(.98); }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #16b89b; outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) { button { transition: color 160ms cubic-bezier(.23,1,.32,1), background-color 160ms cubic-bezier(.23,1,.32,1), border-color 160ms cubic-bezier(.23,1,.32,1), transform 160ms cubic-bezier(.23,1,.32,1), box-shadow 160ms cubic-bezier(.23,1,.32,1); } }

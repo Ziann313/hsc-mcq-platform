@@ -9,13 +9,26 @@ import App from "./App";
 import { startLogin } from "./const";
 import "./index.css";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
+      retry: 1,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: true,
+    },
+    mutations: { retry: 0 },
+  },
+});
 
 let updateServiceWorker: (reloadPage?: boolean) => Promise<void> = async () => undefined;
 updateServiceWorker = registerSW({
   immediate: true,
   onNeedRefresh() {
-    void updateServiceWorker(true);
+    // Never force a live mobile session to reload. A forced update can interrupt
+    // a running attempt or look like a frozen interface on slower devices.
+    console.info("[PWA] An update is ready and will apply on the next reload.");
   },
   onOfflineReady() {
     console.info("[PWA] Offline resources are ready.");
@@ -75,10 +88,13 @@ const trpcClient = trpc.createClient({
         return {};
       },
       fetch(input, init) {
+        const controller = init?.signal ? null : new AbortController();
+        const timeout = controller ? globalThis.setTimeout(() => controller.abort(), 12_000) : null;
         return globalThis.fetch(input, {
           ...(init ?? {}),
           credentials: "include",
-        });
+          signal: init?.signal ?? controller?.signal,
+        }).finally(() => { if (timeout) globalThis.clearTimeout(timeout); });
       },
     }),
   ],

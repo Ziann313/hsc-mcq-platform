@@ -50,11 +50,16 @@ export function useAuth(options?: UseAuthOptions) {
     }
   }, [logoutMutation, utils]);
 
+  useEffect(() => {
+    try {
+      localStorage.setItem("manus-runtime-user-info", JSON.stringify(meQuery.data));
+    } catch {
+      // Private browsing and restricted WebViews can deny storage access. Auth
+      // must remain usable even when the optional local cache is unavailable.
+    }
+  }, [meQuery.data]);
+
   const state = useMemo(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
     return {
       user: meQuery.data ?? null,
       loading: meQuery.isLoading || logoutMutation.isPending,

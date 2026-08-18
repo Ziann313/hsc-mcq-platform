@@ -194,6 +194,18 @@ export default defineConfig({
   build: {
     outDir: path.resolve(import.meta.dirname, "dist/public"),
     emptyOutDir: true,
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("recharts")) return "charts";
+          if (id.includes("framer-motion")) return "motion";
+          if (id.includes("katex")) return "math-rendering";
+          if (id.includes("streamdown") || id.includes("marked") || id.includes("shiki")) return "rich-content";
+          return undefined;
+        },
+      },
+    },
   },
   server: {
     host: true,

@@ -152,3 +152,5 @@
 - [x] Add an end-to-end Bangla/English question-version selector so students never receive mixed-language attempts.
 - [x] Publish only verified content records and confirm multi-subject practice availability for students.
 - [x] Create and validate a small original HSC ICT fundamentals pilot with active NCTB curriculum evidence, four options, one answer key, and an explanation per question.
+- [x] Diagnose and fix mobile lag, stuck loading states, and non-responsive interface controls across core student routes.
+- [x] Verify mobile performance and interaction recovery at 360px, 390px, and 430px viewports with regression coverage.

@@ -5,12 +5,13 @@ import { lazy, Suspense, useState } from "react";
 import { Redirect, Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
-import Home from "./pages/Home";
 import { homeRoutePaths, legacyRouteRedirects } from "./routePaths";
 import { useAuth } from "./_core/hooks/useAuth";
 import { trpc } from "./lib/trpc";
 import { resolveFirstVisitState } from "./lib/firstVisitFlow";
-import PublicLandingPage from "./pages/PublicLandingPage";
+
+const Home = lazy(() => import("./pages/Home"));
+const PublicLandingPage = lazy(() => import("./pages/PublicLandingPage"));
 
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ImageSolver = lazy(() => import("./pages/ImageSolver"));
