@@ -110,7 +110,7 @@
 - [x] Restore persisted answer selections when a participant resumes a live room, including answer-palette hydration.
 - [x] Add administrator room-management status visibility and a protected close-and-finalize control for scheduled and live rooms.
 - [x] Apply focused mobile layout, toast, skeleton, and reduced-motion transition improvements to the affected flows.
-- [ ] Add critical tests and run desktop/mobile/production verification for the live-exam release.
+- [x] Add critical tests and run desktop/mobile/production verification for the live-exam release.
 - [x] Add database-backed regression coverage for live-exam join/resume, leaderboard submission, and administrator close/finalization.
-- [ ] Verify the authenticated Live Exams lobby and runner at desktop and mobile sizes, then confirm the deployed production route after publishing.
-- [ ] Save and deliver the verified MCQ GURU live-exam mobile release.
+- [x] Verify the authenticated Live Exams lobby and runner at desktop and mobile sizes, then confirm the deployed production route after publishing.
+- [x] Save and deliver the verified MCQ GURU live-exam mobile release.
