@@ -176,3 +176,6 @@
 - [x] Publish original source-linked Bangla Sociology and Business Organization chapter batches with complete review audit trails.
 - [x] Add group-specific source-governed recommended chapters to Today’s Study for Humanities and Business Studies students.
 - [x] Verify bilingual availability boundaries, group recommendations, and responsive student flows with regression coverage.
+- [x] Add accessible loading animation or skeleton states for student pages while data is fetched.
+- [x] Add useful search or filter controls that help students find available learning content quickly.
+- [x] Add regression coverage and responsive verification for the loading and discovery experience.

@@ -30,7 +30,7 @@ function LearningDashboard({ language }: { language: Language }) {
   const coverage = trpc.learning.curriculumCoverageSummary.useQuery();
   const progress = trpc.learning.studentProgressSummary.useQuery(undefined, { enabled: isAuthenticated && !loading });
   const copy = (en: string, bn: string) => language === "bn" ? bn : en;
-  if (loading) return <div className="min-h-[520px] animate-pulse rounded-[28px] bg-white" />;
+  if (loading || availability.isLoading || coverage.isLoading) return <LearningDashboardSkeleton language={language} />;
 
   const publishedCount = availability.data?.publishedQuestionCount ?? 0;
   const hasPractice = publishedCount > 0;
@@ -80,6 +80,16 @@ function LearningDashboard({ language }: { language: Language }) {
       <Metric icon={Trophy} value={isAuthenticated && !progress.isLoading ? String(personal?.studyStreakDays ?? 0) : "—"} label={copy("Activity streak", "অ্যাক্টিভিটি স্ট্রিক")} detail={isAuthenticated ? copy("from submitted attempts", "আসল অ্যাটেম্পট দিনের ভিত্তিতে") : copy("sign in required", "সাইন ইন প্রয়োজন")} tint="bg-[#fff0eb] text-[#e45f38]" />
     </section>
     <section className="rounded-[24px] border border-[#bdeadd] bg-[#effcf9] p-5 text-sm leading-6 text-[#165e54]"><ShieldCheck className="mr-2 inline text-[#088a78]" size={17} /><b>{copy("No demo performance data. ", "কোনো ডেমো পারফরম্যান্স ডেটা নয়। ")}</b>{copy("Streaks, accuracy, attempts, and content availability come from live published content and your persisted activity.", "স্ট্রিক, নির্ভুলতা, অ্যাটেম্পট ও কনটেন্ট অ্যাভেইলেবিলিটি লাইভ প্রকাশিত কনটেন্ট এবং তোমার সংরক্ষিত অ্যাক্টিভিটি থেকে আসে।")}</section>
+  </div>;
+}
+
+function LearningDashboardSkeleton({ language }: { language: Language }) {
+  const copy = (en: string, bn: string) => language === "bn" ? bn : en;
+  return <div className="card-container mx-auto w-full max-w-5xl space-y-6" aria-busy="true" aria-label={copy("Loading your learning dashboard", "তোমার লার্নিং ড্যাশবোর্ড লোড হচ্ছে")}>
+    <section className="rounded-[28px] bg-[#071d33] p-6 sm:p-8"><div className="grid gap-7 lg:grid-cols-[1fr_230px]"><div><div className="h-12 w-12 animate-pulse rounded-2xl bg-white/10" /><div className="mt-6 h-3 w-36 animate-pulse rounded bg-white/10" /><div className="mt-3 h-10 max-w-xl animate-pulse rounded bg-white/10" /><div className="mt-4 h-4 max-w-2xl animate-pulse rounded bg-white/10" /><div className="mt-6 flex gap-3"><div className="h-11 w-48 animate-pulse rounded-xl bg-white/10" /><div className="h-11 w-44 animate-pulse rounded-xl bg-white/10" /></div></div><div className="h-40 animate-pulse rounded-2xl border border-white/10 bg-white/5" /></div></section>
+    <section className="rounded-[24px] bg-white p-5 shadow-sm sm:p-6"><div className="h-4 w-32 animate-pulse rounded bg-slate-100" /><div className="mt-3 h-7 w-80 max-w-full animate-pulse rounded bg-slate-100" /><div className="mt-5 grid gap-3 md:grid-cols-3">{[1, 2, 3].map(item => <div key={item} className="h-32 animate-pulse rounded-2xl bg-slate-100" />)}</div></section>
+    <section className="rounded-[24px] border border-[#bdeadd] bg-[#effcf9] p-5 sm:p-6"><div className="h-5 w-48 animate-pulse rounded bg-[#d7f5ed]" /><div className="mt-4 h-2 animate-pulse rounded-full bg-[#d7f5ed]" /></section>
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">{[1, 2, 3, 4].map(item => <div key={item} className="h-40 animate-pulse rounded-2xl bg-white" />)}</section>
   </div>;
 }
 

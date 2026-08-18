@@ -1,7 +1,9 @@
 import { PlatformShell, type Language } from "@/components/PlatformShell";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { filterContentBySearch } from "@/lib/contentDiscovery";
 import { trpc } from "@/lib/trpc";
-import { ArrowRight, Clock3, FileQuestion, ShieldCheck, Target } from "lucide-react";
+import { ArrowRight, Clock3, FileQuestion, Search, ShieldCheck, Target, X } from "lucide-react";
 import { useMemo, useState } from "react";
 import { useLocation } from "wouter";
 
@@ -13,9 +15,11 @@ export default function ExamPreparationPage({ language, onLanguageChange }: { la
   const [chapterId, setChapterId] = useState<number | null>(null);
   const [duration, setDuration] = useState(30);
   const [limit, setLimit] = useState(20);
+  const [subjectSearch, setSubjectSearch] = useState("");
   const availability = trpc.learning.publishedContentAvailability.useQuery({ contentLanguage });
   const readiness = trpc.learning.examReadinessSummary.useQuery();
   const subjects = availability.data?.subjects ?? [];
+  const visibleSubjects = useMemo(() => filterContentBySearch(subjects.map(subject => ({ ...subject, title: subject.name })), subjectSearch), [subjectSearch, subjects]);
   const selected = subjects.find(subject => subject.subjectId === subjectId);
   const chapterInput = useMemo(() => subjectId ? { subjectId, contentLanguage } : undefined, [contentLanguage, subjectId]);
   const chapterAvailability = trpc.mcq.publishedChapterAvailability.useQuery(chapterInput);
@@ -38,7 +42,7 @@ export default function ExamPreparationPage({ language, onLanguageChange }: { la
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/5 p-5">
             <p className="text-xs font-bold text-[#7ce3d1]">{copy("READINESS SIGNAL", "রেডিনেস সিগন্যাল")}</p>
-            <p className="mt-3 text-3xl font-extrabold">{readiness.data?.overallAccuracy === null || readiness.data?.overallAccuracy === undefined ? "—" : `${readiness.data.overallAccuracy}%`}</p>
+            {readiness.isLoading ? <div className="mt-3 h-9 w-16 animate-pulse rounded bg-white/10" /> : <p className="mt-3 text-3xl font-extrabold">{readiness.data?.overallAccuracy === null || readiness.data?.overallAccuracy === undefined ? "—" : `${readiness.data.overallAccuracy}%`}</p>}
             <p className="mt-1 text-xs text-slate-300">{copy("from submitted answers", "জমা দেওয়া উত্তর থেকে")}</p>
           </div>
         </div>
@@ -52,10 +56,7 @@ export default function ExamPreparationPage({ language, onLanguageChange }: { la
       </SelectionSection>
 
       <SelectionSection icon={Target} title={copy("2. Choose your subject", "২. বিষয় বেছে নাও")} description={copy("Leave this as all subjects for a broader practice set, or choose one published subject to unlock its chapter focus.", "বিস্তৃত প্র্যাকটিসের জন্য সব বিষয় রাখো, অথবা অধ্যায় ফোকাস চালু করতে একটি প্রকাশিত বিষয় বেছে নাও।")}>
-        {availability.isLoading ? <div className="mt-5 h-14 animate-pulse rounded-xl bg-slate-100" /> : subjects.length ? <div className="mt-5 flex flex-wrap gap-2">
-          <Choice active={subjectId === null} onClick={() => { setSubjectId(null); setChapterId(null); }}>{copy("All available subjects", "সব উপলভ্য বিষয়")}</Choice>
-          {subjects.map(subject => <Choice key={subject.subjectId} active={subjectId === subject.subjectId} onClick={() => { setSubjectId(subject.subjectId); setChapterId(null); }}>{subject.name} <span className="ml-1 opacity-70">{subject.questionCount}</span></Choice>)}
-        </div> : <div className="mt-5 rounded-xl bg-[#fffaf0] p-4 text-sm text-[#8b642f]">{copy("No approved published questions are available in this language version yet. Choose the other version or return as source-linked content is released.", "এই ভাষা সংস্করণে এখনও কোনো অনুমোদিত প্রকাশিত প্রশ্ন নেই। অন্য সংস্করণ বেছে নাও অথবা সোর্স-লিংকড কনটেন্ট প্রকাশিত হলে ফিরে আসো।")}</div>}
+        {availability.isLoading ? <div className="mt-5 space-y-3" aria-busy="true"><div className="h-11 w-full animate-pulse rounded-xl bg-slate-100" /><div className="flex flex-wrap gap-2">{[1, 2, 3, 4].map(item => <div key={item} className="h-11 w-36 animate-pulse rounded-xl bg-slate-100" />)}</div></div> : subjects.length ? <div className="mt-5"><div className="relative"><Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-slate-400" /><Input value={subjectSearch} onChange={event => setSubjectSearch(event.target.value)} placeholder={copy("Search a subject", "বিষয় খুঁজুন")} aria-label={copy("Search published subjects", "প্রকাশিত বিষয় খুঁজুন")} className="h-11 rounded-xl border-slate-200 bg-slate-50 pl-10 pr-10" />{subjectSearch && <button type="button" onClick={() => setSubjectSearch("")} aria-label={copy("Clear subject search", "বিষয় অনুসন্ধান মুছুন")} className="absolute right-2 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-lg text-slate-500 hover:bg-slate-200"><X size={16} /></button>}</div><p className="mt-2 text-xs text-slate-500">{copy(`${visibleSubjects.length} matching published subject${visibleSubjects.length === 1 ? "" : "s"}`, `${visibleSubjects.length}টি মিল থাকা প্রকাশিত বিষয়`)}</p><div className="mt-3 flex flex-wrap gap-2"><Choice active={subjectId === null} onClick={() => { setSubjectId(null); setChapterId(null); }}>{copy("All available subjects", "সব উপলভ্য বিষয়")}</Choice>{visibleSubjects.map(subject => <Choice key={subject.subjectId} active={subjectId === subject.subjectId} onClick={() => { setSubjectId(subject.subjectId); setChapterId(null); }}>{subject.name} <span className="ml-1 opacity-70">{subject.questionCount}</span></Choice>)}</div>{!visibleSubjects.length && <p className="mt-4 rounded-xl bg-slate-50 p-4 text-sm leading-6 text-slate-600">{copy("No published subject matches that search. Try a shorter subject or paper name.", "এই অনুসন্ধানের সঙ্গে কোনো প্রকাশিত বিষয় মেলেনি। ছোট করে বিষয় বা পেপারের নাম লিখে চেষ্টা করো।")}</p>}</div> : <div className="mt-5 rounded-xl bg-[#fffaf0] p-4 text-sm text-[#8b642f]">{copy("No approved published questions are available in this language version yet. Choose the other version or return as source-linked content is released.", "এই ভাষা সংস্করণে এখনও কোনো অনুমোদিত প্রকাশিত প্রশ্ন নেই। অন্য সংস্করণ বেছে নাও অথবা সোর্স-লিংকড কনটেন্ট প্রকাশিত হলে ফিরে আসো।")}</div>}
       </SelectionSection>
 
       {subjectId && <SelectionSection icon={Target} title={copy("3. Narrow by chapter", "৩. অধ্যায় দিয়ে ফোকাস করো")} description={copy("Only chapters with published questions and active source evidence appear here.", "শুধু প্রকাশিত প্রশ্ন ও অ্যাকটিভ সোর্স এভিডেন্স থাকা অধ্যায়গুলো এখানে দেখা যায়।")} tone="blue">
