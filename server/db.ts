@@ -644,6 +644,8 @@ export async function createReviewQuestion(input: {
   academicYearId: number;
   subjectId: number;
   bookId?: number;
+  chapterId?: number;
+  contentLanguage?: "bn" | "en" | "bilingual";
   prompt: string;
   explanation?: string;
   difficulty: "easy" | "medium" | "hard";
@@ -658,6 +660,8 @@ export async function createReviewQuestion(input: {
     academicYearId: input.academicYearId,
     subjectId: input.subjectId,
     bookId: input.bookId ?? null,
+    chapterId: input.chapterId ?? null,
+    contentLanguage: input.contentLanguage ?? "en",
     prompt: input.prompt,
     explanation: input.explanation || null,
     difficulty: input.difficulty,
@@ -679,6 +683,7 @@ export async function createReviewQuestion(input: {
       prompt: input.prompt,
       explanation: input.explanation || null,
       options: input.options,
+      contentLanguage: input.contentLanguage ?? "en",
       sourceVersionId: input.sourceVersionId,
       pageReference: input.pageReference,
     },

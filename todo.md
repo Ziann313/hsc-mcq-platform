@@ -158,3 +158,6 @@
 - [x] Verify each supplied external book/source lead for authorization before it is used as curriculum evidence; do not download or rehost unlicensed copies.
 - [x] Reconcile verified catalogue coverage with the MCQ GURU taxonomy and source provenance records.
 - [x] Confirm that the existing original reviewed question batches use only active NCTB evidence and do not draw from commercial catalogue leads.
+- [x] Fix mobile text, card, banner, and control overflow with wrapping and truncation used only where appropriate.
+- [x] Create and publish original source-linked HSC Physics, Chemistry, and Biology second-paper batches after answer and source validation.
+- [x] Run a focused regression, runtime-log, and mobile layout bug sweep for the responsive science-content update.

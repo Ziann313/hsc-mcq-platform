@@ -27,6 +27,7 @@
 * { border-color: var(--border); }
 html { background: #f4f7f7; -webkit-text-size-adjust: 100%; }
 body { margin: 0; min-width: 320px; min-height: 100dvh; overflow-x: hidden; background: #f4f7f7; font-family: "Inter", "Hind Siliguri", "Noto Sans Bengali", sans-serif; }
+#root { min-width: 0; max-width: 100%; overflow-x: clip; }
 button, input, textarea { font: inherit; }
 .font-display { font-family: "Hind Siliguri", "Noto Sans Bengali", "Inter", sans-serif; }
 button { -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
@@ -34,6 +35,40 @@ button:active { transform: scale(.98); }
 button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible { outline: 3px solid #16b89b; outline-offset: 2px; }
 @media (prefers-reduced-motion: no-preference) { button { transition: color 160ms cubic-bezier(.23,1,.32,1), background-color 160ms cubic-bezier(.23,1,.32,1), border-color 160ms cubic-bezier(.23,1,.32,1), transform 160ms cubic-bezier(.23,1,.32,1), box-shadow 160ms cubic-bezier(.23,1,.32,1); } }
 @media (max-width: 639px) { input:not([type="checkbox"]):not([type="radio"]), select, textarea { min-height: 44px; } }
+@media (max-width: 639px) {
+  .mcq-content-wrapper,
+  .card-container {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    box-sizing: border-box;
+    overflow-x: clip;
+  }
+
+  .mcq-content-wrapper :is(h1, h2, h3, p, li, label, button, a),
+  .card-container :is(h1, h2, h3, p, li, label, button, a) {
+    min-width: 0;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: normal;
+  }
+
+  .mcq-action-button {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+    min-height: 2.75rem;
+    white-space: normal;
+    text-align: center;
+  }
+
+  .mcq-intentional-truncate {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}
 @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; } }
 @import "tw-animate-css";
 

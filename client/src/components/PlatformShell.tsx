@@ -126,10 +126,10 @@ export function PlatformShell({ children, language, onLanguageChange }: { childr
       </aside>
 
       <div className="lg:pl-[264px]">
-        <header className="sticky top-0 z-30 flex h-[74px] items-center justify-between border-b border-slate-200/80 bg-[#f4f7f7] px-4 sm:px-7 lg:bg-[#f4f7f7]/85 lg:px-10 lg:backdrop-blur-lg">
-          <div className="flex items-center gap-3 lg:hidden">
+        <header className="sticky top-0 z-30 flex h-[74px] min-w-0 items-center justify-between border-b border-slate-200/80 bg-[#f4f7f7] px-4 sm:px-7 lg:bg-[#f4f7f7]/85 lg:px-10 lg:backdrop-blur-lg">
+          <div className="flex min-w-0 items-center gap-3 lg:hidden">
             <button onClick={() => setMobileOpen(true)} className="grid size-10 place-items-center rounded-xl bg-white text-[#071d33] shadow-sm"><Menu size={20} /></button>
-            <span className="font-display text-xl font-bold text-[#071d33]">MCQ GURU</span>
+            <span className="mcq-intentional-truncate font-display text-xl font-bold text-[#071d33]">MCQ GURU</span>
           </div>
           <div className="hidden lg:block"><p className="text-xs font-semibold uppercase tracking-[.18em] text-[#168f80]">{copy("Your learning space", "তোমার লার্নিং স্পেস")}</p><p className="text-sm text-slate-500">{copy("HSC & admission preparation", "এইচএসসি ও ভর্তি প্রস্তুতি")}</p></div>
           <div className="ml-auto flex items-center gap-2 sm:gap-3">
@@ -138,7 +138,7 @@ export function PlatformShell({ children, language, onLanguageChange }: { childr
             <button disabled={loading} onClick={() => navigate("/profile")} className="hidden items-center gap-2 rounded-xl bg-white py-1.5 pl-1.5 pr-3 shadow-sm ring-1 ring-slate-200 disabled:opacity-60 sm:flex"><span className="grid size-8 place-items-center rounded-lg bg-[#dff8f1] text-xs font-bold text-[#087b6c]">{initials}</span><span className="text-sm font-semibold text-slate-700">{loading ? copy("Loading", "লোড হচ্ছে") : identityLabel}</span></button>
           </div>
         </header>
-        <main className="mx-auto w-full max-w-[1480px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-7 lg:px-10 lg:pb-10">{children}</main>
+        <main className="mcq-content-wrapper mx-auto w-full max-w-[1480px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-7 lg:px-10 lg:pb-10">{children}</main>
       </div>
 
       {mobileOpen && <div className="fixed inset-0 z-50 touch-none lg:hidden"><button type="button" aria-label="Close menu" onClick={() => setMobileOpen(false)} className="absolute inset-0 bg-[#071d33]/50" /><aside className="relative flex h-full w-[82%] max-w-[330px] touch-pan-y flex-col overflow-y-auto bg-[#071d33] px-4 py-5 text-slate-100 shadow-2xl"><div className="mb-7 flex items-center justify-between"><button type="button" onClick={() => navigate("/")} className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-[#16b89b]"><GraduationCap size={22} /></span><b className="font-display text-xl">MCQ GURU</b></button><button type="button" onClick={() => setMobileOpen(false)} className="rounded-xl p-2 text-slate-300"><X /></button></div><nav className="space-y-1">{navItems.map(item => { const Icon = item.icon; return <button type="button" key={item.path} onClick={() => navigate(item.path)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left ${location === item.path ? "bg-[#16b89b] font-semibold text-[#04131f]" : "text-slate-200"}`}><Icon size={18} />{copy(item.label, item.bn)}</button>; })}</nav><button type="button" onClick={() => navigate("/profile")} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-white/10 px-3 py-3 text-left text-slate-200"><UserRound size={18} />{isAuthenticated ? copy("My profile", "আমার প্রোফাইল") : copy("Secure sign-in", "নিরাপদ সাইন-ইন")}</button></aside></div>}
