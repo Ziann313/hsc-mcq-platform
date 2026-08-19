@@ -14,18 +14,16 @@ describe("visibleNavigationItems", () => {
     }
   });
 
-  it("exposes review tools only to content governance roles", () => {
-    for (const role of ["admin", "reviewer", "content_admin", "super_admin"]) {
-      const paths = visibleNavigationItems(role).map(item => item.path);
+  it("exposes review tools only to the role supported by server authorization", () => {
+    const paths = visibleNavigationItems("admin").map(item => item.path);
 
-      expect(paths).toEqual(expect.arrayContaining([
-        "/admin",
-        "/governance",
-        "/import",
-        "/questions/new",
-        "/admission-patterns",
-      ]));
-    }
+    expect(paths).toEqual(expect.arrayContaining([
+      "/admin",
+      "/governance",
+      "/import",
+      "/questions/new",
+      "/admission-patterns",
+    ]));
   });
 
   it("does not label the live-exam destination as a question bank", () => {
@@ -36,7 +34,7 @@ describe("visibleNavigationItems", () => {
 
   it("uses the same role policy for direct governance URLs and hidden navigation", () => {
     expect(canAccessGovernance("student")).toBe(false);
-    expect(canAccessGovernance("reviewer")).toBe(true);
+    expect(canAccessGovernance("reviewer")).toBe(false);
     expect(canAccessGovernance("admin")).toBe(true);
   });
 });

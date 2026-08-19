@@ -214,13 +214,12 @@ export async function getActiveSourceEvidence(query: string, academicYear: strin
     chapterTitle: chapters.titleEn,
   }).from(knowledgeChunks)
     .innerJoin(sourceVersions, eq(knowledgeChunks.sourceVersionId, sourceVersions.id))
+    .innerJoin(academicYears, eq(knowledgeChunks.academicYearId, academicYears.id))
     .leftJoin(books, eq(knowledgeChunks.bookId, books.id))
     .leftJoin(chapters, eq(knowledgeChunks.chapterId, chapters.id))
-    .where(and(eq(sourceVersions.status, "active"), like(knowledgeChunks.content, `%${query.slice(0, 120)}%`)))
+    .where(and(eq(sourceVersions.status, "active"), eq(academicYears.name, academicYear), like(knowledgeChunks.content, `%${query.slice(0, 120)}%`)))
     .orderBy(desc(knowledgeChunks.id))
     .limit(4);
-  // Academic version enforcement is performed by matching the selected book hierarchy; this fallback avoids returning content when no sources exist.
-  void academicYear;
   return rows.map(row => ({
     content: row.content,
     pageReference: row.pageReference,
@@ -281,10 +280,15 @@ export async function getApprovedQuestionPublicationQueue() {
 export async function publishApprovedQuestion(input: { questionId: number; actorUserId: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const question = await db.select({ id: questions.id, status: questions.status, currentVersion: questions.currentVersion })
+  const question = await db.select({ id: questions.id, status: questions.status, currentVersion: questions.currentVersion, academicYearId: questions.academicYearId, subjectId: questions.subjectId, bookId: questions.bookId, chapterId: questions.chapterId })
     .from(questions).where(eq(questions.id, input.questionId)).limit(1);
   if (!question[0]) return { outcome: "not_found" as const };
   if (question[0].status !== "approved") return { outcome: "not_approved" as const };
+  if (!question[0].bookId || !question[0].chapterId) return { outcome: "invalid_curriculum" as const };
+  const [curriculum] = await db.select({ subjectYearId: subjects.academicYearId, bookSubjectId: books.subjectId, chapterBookId: chapters.bookId })
+    .from(subjects).innerJoin(books, eq(books.id, question[0].bookId)).innerJoin(chapters, eq(chapters.id, question[0].chapterId))
+    .where(eq(subjects.id, question[0].subjectId)).limit(1);
+  if (!curriculum || curriculum.subjectYearId !== question[0].academicYearId || curriculum.bookSubjectId !== question[0].subjectId || curriculum.chapterBookId !== question[0].bookId) return { outcome: "invalid_curriculum" as const };
   const evidence = await db.select({ sourceVersionStatus: sourceVersions.status, pageReference: questionSources.pageReference })
     .from(questionSources)
     .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
@@ -620,26 +624,29 @@ export async function registerOfficialSource(input: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const sourceResult = await db.insert(sources).values({
+  const [existingSource] = await db.select({ id: sources.id }).from(sources).where(eq(sources.sourceUrl, input.sourceUrl)).limit(1);
+  const sourceId = existingSource ? existingSource.id : Number((await db.insert(sources).values({
     organization: input.organization,
     title: input.title,
     sourceUrl: input.sourceUrl,
     sourceType: input.sourceType,
     licenseNotes: input.licenseNotes || null,
-  });
-  const sourceId = Number(sourceResult[0].insertId);
+  }))[0].insertId);
+  const [activeVersion] = await db.select({ id: sourceVersions.id }).from(sourceVersions)
+    .where(and(eq(sourceVersions.sourceId, sourceId), eq(sourceVersions.status, "active"))).limit(1);
+  const versionStatus = input.status === "active" && activeVersion ? "under_review" : input.status;
   const versionResult = await db.insert(sourceVersions).values({
     sourceId,
     versionLabel: input.versionLabel,
     contentHash: input.contentHash,
-    status: input.status,
+    status: versionStatus,
   });
   await db.insert(auditLogs).values({
     actorUserId: input.actorUserId,
     action: "source.registered",
     entityType: "source",
     entityId: String(sourceId),
-    metadata: { sourceType: input.sourceType, versionLabel: input.versionLabel, status: input.status },
+    metadata: { sourceType: input.sourceType, versionLabel: input.versionLabel, status: versionStatus, activationDeferred: input.status === "active" && versionStatus !== "active" },
   });
   return { sourceId, sourceVersionId: Number(versionResult[0].insertId) };
 }
@@ -698,12 +705,55 @@ export async function createAdmissionNotice(input: {
   return noticeId;
 }
 
+function normalizedQuestionValue(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
+}
+
+function optionSignature(options: Array<{ text: string; isCorrect: boolean }>) {
+  return options.map(option => `${option.isCorrect ? "1" : "0"}:${normalizedQuestionValue(option.text)}`).sort().join("|");
+}
+
+async function validateQuestionIntake(input: {
+  academicYearId: number;
+  subjectId: number;
+  bookId: number;
+  chapterId: number;
+  contentLanguage: "bn" | "en";
+  sourceVersionId: number;
+  pageReference: string;
+  prompt: string;
+  options: Array<{ text: string; isCorrect: boolean }>;
+}) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const [year] = await db.select({ id: academicYears.id, status: academicYears.status }).from(academicYears).where(eq(academicYears.id, input.academicYearId)).limit(1);
+  if (!year || year.status !== "active") throw new Error("Question intake requires an active academic year");
+  const [subject] = await db.select({ id: subjects.id, academicYearId: subjects.academicYearId }).from(subjects).where(eq(subjects.id, input.subjectId)).limit(1);
+  if (!subject || subject.academicYearId !== input.academicYearId) throw new Error("Selected subject does not belong to the academic year");
+  const [book] = await db.select({ id: books.id, subjectId: books.subjectId }).from(books).where(eq(books.id, input.bookId)).limit(1);
+  if (!book || book.subjectId !== input.subjectId) throw new Error("Selected book does not belong to the subject");
+  const [chapter] = await db.select({ id: chapters.id, bookId: chapters.bookId }).from(chapters).where(eq(chapters.id, input.chapterId)).limit(1);
+  if (!chapter || chapter.bookId !== input.bookId) throw new Error("Selected chapter does not belong to the book");
+  const [source] = await db.select({ id: sourceVersions.id, status: sourceVersions.status }).from(sourceVersions).where(eq(sourceVersions.id, input.sourceVersionId)).limit(1);
+  if (!source || source.status !== "active" || !input.pageReference.trim()) throw new Error("Question intake requires an active source version and page reference");
+
+  const candidates = await db.select({ id: questions.id, prompt: questions.prompt }).from(questions)
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .where(and(eq(questions.academicYearId, input.academicYearId), eq(questions.subjectId, input.subjectId), eq(questions.bookId, input.bookId), eq(questions.chapterId, input.chapterId), eq(questions.contentLanguage, input.contentLanguage), eq(questionSources.sourceVersionId, input.sourceVersionId)));
+  const prompt = normalizedQuestionValue(input.prompt);
+  const signature = optionSignature(input.options);
+  for (const candidate of candidates.filter(item => normalizedQuestionValue(item.prompt) === prompt)) {
+    const candidateOptions = await db.select({ text: questionOptions.text, isCorrect: questionOptions.isCorrect }).from(questionOptions).where(eq(questionOptions.questionId, candidate.id));
+    if (optionSignature(candidateOptions) === signature) throw new Error(`Duplicate question matches existing source-linked record #${candidate.id}`);
+  }
+}
+
 export async function createReviewQuestion(input: {
   academicYearId: number;
   subjectId: number;
-  bookId?: number;
-  chapterId?: number;
-  contentLanguage?: "bn" | "en" | "bilingual";
+  bookId: number;
+  chapterId: number;
+  contentLanguage: "bn" | "en";
   prompt: string;
   explanation?: string;
   difficulty: "easy" | "medium" | "hard";
@@ -715,12 +765,13 @@ export async function createReviewQuestion(input: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  await validateQuestionIntake(input);
   const questionResult = await db.insert(questions).values({
     academicYearId: input.academicYearId,
     subjectId: input.subjectId,
-    bookId: input.bookId ?? null,
-    chapterId: input.chapterId ?? null,
-    contentLanguage: input.contentLanguage ?? "en",
+    bookId: input.bookId,
+    chapterId: input.chapterId,
+    contentLanguage: input.contentLanguage,
     prompt: input.prompt,
     explanation: input.explanation || null,
     difficulty: input.difficulty,
@@ -743,7 +794,7 @@ export async function createReviewQuestion(input: {
       prompt: input.prompt,
       explanation: input.explanation || null,
       options: input.options,
-      contentLanguage: input.contentLanguage ?? "en",
+      contentLanguage: input.contentLanguage,
       admissionTrack: input.admissionTrack ?? null,
       sourceVersionId: input.sourceVersionId,
       pageReference: input.pageReference,
@@ -860,6 +911,10 @@ export async function createAdmissionPatternVersion(input: {
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  const [sourceEvidence] = await db.select({ sourceVersionId: sourceVersions.id }).from(sources)
+    .innerJoin(sourceVersions, eq(sourceVersions.sourceId, sources.id))
+    .where(and(eq(sources.sourceUrl, input.sourceUrl), eq(sources.sourceType, "official_admission"), eq(sourceVersions.status, "active"))).limit(1);
+  if (input.status === "active" && !sourceEvidence) throw new Error("Activating an admission pattern requires an active official-admission source record");
   const existing = await db.select({ id: examProfiles.id }).from(examProfiles)
     .where(and(eq(examProfiles.title, input.title), eq(examProfiles.institution, input.institution), eq(examProfiles.examType, input.examType), ...(input.unit ? [eq(examProfiles.unit, input.unit)] : [sql`${examProfiles.unit} is null`])))
     .limit(1);
@@ -885,7 +940,8 @@ export async function createAdmissionPatternVersion(input: {
     examDateIso: input.examDateIso || null,
     eligibilitySummary: input.eligibilitySummary || null,
     cutoffScore: input.cutoffScore ?? null,
-    evidenceStatus: input.status === "active" ? "reviewer confirmed" : "pending official-source review",
+    sourceVersionId: sourceEvidence?.sourceVersionId ?? null,
+    evidenceStatus: input.status === "active" ? "active official-source evidence" : "pending official-source review",
   };
   const result = await db.insert(examPatternVersions).values({
     examProfileId: profileId,
@@ -906,12 +962,13 @@ export async function createAdmissionPatternVersion(input: {
 
 export async function getQuestionIntakeOptions() {
   const db = await getDb();
-  if (!db) return { academicYears: [], subjects: [], books: [], sourceVersions: [] };
-  const [academicYearsRows, subjectRows, bookRows, sourceVersionRows] = await Promise.all([
+  if (!db) return { academicYears: [], subjects: [], books: [], chapters: [], sourceVersions: [] };
+  const [academicYearsRows, subjectRows, bookRows, chapterRows, sourceVersionRows] = await Promise.all([
     db.select({ id: academicYears.id, name: academicYears.name }).from(academicYears).where(eq(academicYears.status, "active")).orderBy(desc(academicYears.name)),
     db.select({ id: subjects.id, academicYearId: subjects.academicYearId, nameEn: subjects.nameEn, nameBn: subjects.nameBn }).from(subjects).orderBy(subjects.nameEn),
     db.select({ id: books.id, subjectId: books.subjectId, titleEn: books.titleEn, titleBn: books.titleBn }).from(books).orderBy(books.titleEn),
+    db.select({ id: chapters.id, bookId: chapters.bookId, chapterNo: chapters.chapterNo, titleEn: chapters.titleEn, titleBn: chapters.titleBn }).from(chapters).orderBy(chapters.chapterNo),
     db.select({ id: sourceVersions.id, sourceId: sources.id, title: sources.title, organization: sources.organization, versionLabel: sourceVersions.versionLabel }).from(sourceVersions).innerJoin(sources, eq(sourceVersions.sourceId, sources.id)).where(eq(sourceVersions.status, "active")).orderBy(desc(sourceVersions.retrievedAt)),
   ]);
-  return { academicYears: academicYearsRows, subjects: subjectRows, books: bookRows, sourceVersions: sourceVersionRows };
+  return { academicYears: academicYearsRows, subjects: subjectRows, books: bookRows, chapters: chapterRows, sourceVersions: sourceVersionRows };
 }

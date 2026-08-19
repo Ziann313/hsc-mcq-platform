@@ -211,6 +211,7 @@ export const learningRouter = router({
     const result = await publishApprovedQuestion({ ...input, actorUserId: ctx.user.id });
     if (result.outcome === "not_found") throw new TRPCError({ code: "NOT_FOUND", message: "Question not found" });
     if (result.outcome === "not_approved") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Only approved questions can be published" });
+    if (result.outcome === "invalid_curriculum") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Publication requires a consistent academic year, subject, book, and chapter mapping" });
     if (result.outcome === "source_not_active") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Publication requires an active source version and page reference" });
     if (result.outcome === "invalid_options") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Publication requires at least two options and exactly one correct answer" });
     return { published: true } as const;
@@ -271,7 +272,9 @@ export const learningRouter = router({
   createReviewQuestion: adminProcedure.input(z.object({
     academicYearId: z.number().int().positive(),
     subjectId: z.number().int().positive(),
-    bookId: z.number().int().positive().optional(),
+    bookId: z.number().int().positive(),
+    chapterId: z.number().int().positive(),
+    contentLanguage: z.enum(["bn", "en"]),
     prompt: z.string().min(10).max(5000),
     explanation: z.string().max(5000).optional(),
     difficulty: z.enum(["easy", "medium", "hard"]),

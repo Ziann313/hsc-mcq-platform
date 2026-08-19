@@ -40,12 +40,12 @@ export const studentNavigationItems: NavigationItem[] = [
   { path: "/practice", label: "Daily study", bn: "দৈনিক পড়া", icon: BookOpen },
   { path: "/exams", label: "Mock exams", bn: "মক এক্সাম", icon: ClipboardCheck },
   { path: "/admission", label: "Admission prep", bn: "ভর্তি প্রস্তুতি", icon: Landmark },
+  { path: "/tutor", label: "AI Tutor", bn: "এআই টিউটর", icon: Bot },
   { path: "/live-exams", label: "Live exams", bn: "লাইভ এক্সাম", icon: Flame },
   { path: "/leaderboard", label: "Leaderboard", bn: "লিডারবোর্ড", icon: BarChart3 },
   { path: "/cheat-sheets", label: "Cheat sheets", bn: "চিট শিট", icon: FileText },
   { path: "/mistake-vault", label: "Mistake Vault", bn: "মিসটেক ভল্ট", icon: Brain },
   { path: "/community", label: "Doubts", bn: "ডাউটস", icon: Bot },
-  { path: "/tutor", label: "AI Tutor", bn: "এআই টিউটর", icon: Bot },
   { path: "/image-solver", label: "Image solver", bn: "ইমেজ সলভার", icon: Camera },
   { path: "/notices", label: "Official notices", bn: "অফিসিয়াল নোটিশ", icon: Bell },
   { path: "/progress", label: "Progress", bn: "অগ্রগতি", icon: BarChart3 },
@@ -60,7 +60,7 @@ export const adminNavigationItems: NavigationItem[] = [
 ];
 
 export function canAccessGovernance(role?: string) {
-  return ["admin", "reviewer", "content_admin", "super_admin"].includes(role ?? "");
+  return role === "admin";
 }
 
 export function visibleNavigationItems(role?: string) {
@@ -73,7 +73,7 @@ const mobileItems = [
   studentNavigationItems[0],
   studentNavigationItems[1],
   studentNavigationItems[3],
-  studentNavigationItems[11],
+  studentNavigationItems[12],
   { path: "/profile", label: "Profile", bn: "প্রোফাইল", icon: UserRound },
 ];
 
@@ -113,7 +113,9 @@ export function PlatformShell({ children, language, onLanguageChange }: { childr
           {navItems.map(item => {
             const active = location === item.path;
             const Icon = item.icon;
-            return <button key={item.path} onClick={() => navigate(item.path)} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-[#16b89b] font-semibold text-[#04131f] shadow-lg shadow-[#16b89b]/15" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}><Icon size={18} /><span>{copy(item.label, item.bn)}</span>{active && <ChevronRight className="ml-auto" size={15} />}</button>;
+            const utilityStart = item.path === "/live-exams";
+            const managementStart = item.path === "/admin";
+            return <div key={item.path}>{utilityStart && <p className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500">{copy("Learning tools", "লার্নিং টুলস")}</p>}{managementStart && <p className="px-3 pb-1 pt-4 text-[10px] font-bold uppercase tracking-[.16em] text-slate-500">{copy("Management", "ম্যানেজমেন্ট")}</p>}<button onClick={() => navigate(item.path)} className={`group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm transition ${active ? "bg-[#16b89b] font-semibold text-[#04131f] shadow-lg shadow-[#16b89b]/15" : "text-slate-300 hover:bg-white/8 hover:text-white"}`}><Icon size={18} /><span>{copy(item.label, item.bn)}</span>{active && <ChevronRight className="ml-auto" size={15} />}</button></div>;
           })}
         </nav>
         <div className="space-y-1 border-t border-white/10 pt-4">

@@ -5,7 +5,7 @@ import { addQuestionComment, getAttemptResult, getLeaderboard, getMistakeVault, 
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 
 const importedQuestion = z.object({
-  academicYearId: z.number().int().positive(), subjectId: z.number().int().positive(), bookId: z.number().int().positive().optional(),
+  academicYearId: z.number().int().positive(), subjectId: z.number().int().positive(), bookId: z.number().int().positive(), chapterId: z.number().int().positive(), contentLanguage: z.enum(["bn", "en"]),
   prompt: z.string().min(10).max(5000), explanation: z.string().max(5000).optional(), difficulty: z.enum(["easy", "medium", "hard"]), admissionTrack: z.enum(["du", "buet", "medical"]).optional(),
   sourceVersionId: z.number().int().positive(), pageReference: z.string().min(1).max(100),
   options: z.array(z.object({ text: z.string().min(1).max(1000), isCorrect: z.boolean() })).min(2).max(6).refine(items => items.filter(item => item.isCorrect).length === 1, "Exactly one correct option is required"),

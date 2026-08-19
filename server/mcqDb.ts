@@ -52,7 +52,10 @@ export async function getQuestionComments(questionId: number) {
     userName: users.name,
   }).from(questionComments)
     .innerJoin(users, eq(questionComments.userId, users.id))
-    .where(and(eq(questionComments.questionId, questionId), eq(questionComments.status, "visible")))
+    .innerJoin(questions, eq(questionComments.questionId, questions.id))
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(eq(questionComments.questionId, questionId), eq(questionComments.status, "visible"), eq(questions.status, "published"), eq(sourceVersions.status, "active")))
     .orderBy(questionComments.createdAt)
     .limit(200);
 }
@@ -60,7 +63,10 @@ export async function getQuestionComments(questionId: number) {
 export async function addQuestionComment(input: { questionId: number; userId: number; content: string; parentCommentId?: number }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const exists = await db.select({ id: questions.id }).from(questions).where(eq(questions.id, input.questionId)).limit(1);
+  const exists = await db.select({ id: questions.id }).from(questions)
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(eq(questions.id, input.questionId), eq(questions.status, "published"), eq(sourceVersions.status, "active"))).limit(1);
   if (!exists[0]) return undefined;
   const result = await db.insert(questionComments).values({
     questionId: input.questionId,

@@ -7,7 +7,7 @@ import { toast } from "sonner";
 
 type ExamType = "medical" | "engineering" | "university";
 type PatternForm = { examType: ExamType; institution: string; title: string; unit: string; versionLabel: string; sourceUrl: string; notes: string; session: string; examDateIso: string; eligibilitySummary: string; questionCount: string; durationMinutes: string; marksPerCorrect: string; negativeMarkPerWrong: string; cutoffScore: string; status: "under_review" | "active" };
-const initialForm: PatternForm = { examType: "university", institution: "University of Dhaka", title: "Undergraduate Admission", unit: "DU A Unit", versionLabel: "2025–26 source review", sourceUrl: "https://admission.eis.du.ac.bd/en/408b7c8ad06e4d9954fa2d948a01f508", notes: "", session: "2025–26", examDateIso: "", eligibilitySummary: "", questionCount: "", durationMinutes: "", marksPerCorrect: "", negativeMarkPerWrong: "", cutoffScore: "", status: "under_review" };
+const initialForm: PatternForm = { examType: "university", institution: "", title: "", unit: "", versionLabel: "", sourceUrl: "", notes: "", session: "", examDateIso: "", eligibilitySummary: "", questionCount: "", durationMinutes: "", marksPerCorrect: "", negativeMarkPerWrong: "", cutoffScore: "", status: "under_review" };
 
 export default function AdmissionPatternsPage({ language, onLanguageChange }: { language: Language; onLanguageChange: (value: Language) => void }) {
   const copy = (en: string, bn: string) => language === "bn" ? bn : en;

@@ -68,18 +68,25 @@ function StudentRoute({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { user, isAuthenticated, loading } = useAuth();
+  if (loading) return <RouteLoader />;
+  if (!isAuthenticated || user?.role !== "admin") return <Redirect to="/" />;
+  return <>{children}</>;
+}
+
 function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
   return <Suspense fallback={<RouteLoader />}><Switch>
     <Route path="/onboarding">{() => <OnboardingRoute language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/image-solver">{() => <StudentRoute><ImageSolver language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
-    <Route path="/admin">{() => <StudentRoute><AdminWorkspace language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
-    <Route path="/governance">{() => <StudentRoute><GovernanceWorkspace language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/admin">{() => <AdminRoute><AdminWorkspace language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
+    <Route path="/governance">{() => <AdminRoute><GovernanceWorkspace language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/notifications">{() => <StudentRoute><NotificationsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/settings">{() => <StudentRoute><SettingsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/notices">{() => <StudentRoute><OfficialNoticesPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/profile">{() => <StudentRoute><AccountPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
-    <Route path="/questions/new">{() => <StudentRoute><QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
-    <Route path="/admission-patterns">{() => <StudentRoute><AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/questions/new">{() => <AdminRoute><QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
+    <Route path="/admission-patterns">{() => <AdminRoute><AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/admission">{() => <StudentRoute><AdmissionPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/practice">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/tutor">{() => <StudentRoute><TutorPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
@@ -96,7 +103,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/cheat-sheets">{() => <StudentRoute><CheatSheetsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mistake-vault">{() => <StudentRoute><MistakeVaultPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/community">{() => <StudentRoute><CommunityPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
-    <Route path="/import">{() => <StudentRoute><ImporterPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/import">{() => <AdminRoute><ImporterPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/">{() => <FirstVisitRoute language={language} onLanguageChange={onLanguageChange} />}</Route>
     {homeRoutePaths.filter(path => path !== "/").map(path => <Route key={path} path={path}>{() => <StudentRoute><Home language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>)}
     {Object.entries(legacyRouteRedirects).map(([from, to]) => <Route key={from} path={from}><Redirect to={to} /></Route>)}

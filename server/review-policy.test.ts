@@ -42,6 +42,9 @@ describe("learning.reviewQuestion", () => {
     await expect(caller.learning.createReviewQuestion({
       academicYearId: 1,
       subjectId: 1,
+      bookId: 1,
+      chapterId: 1,
+      contentLanguage: "bn",
       sourceVersionId: 1,
       pageReference: "p. 1",
       difficulty: "easy",

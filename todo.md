@@ -200,3 +200,11 @@
 - [x] Add a source-reviewed prior-year cut-mark benchmark that compares only compatible real student mock results.
 - [x] Show a clear unavailable state when no eligible mock result or verified historical cut mark exists.
 - [x] Add regression coverage, responsive verification, and deliver the score-benchmarking update.
+- [x] Define an audit-safe source-code inventory for a Word export, excluding secrets, dependencies, build output, and logs.
+- [x] Generate and verify a Word-compatible document containing the included MCQ GURU source and configuration files.
+- [x] Deliver the audit document to the user.
+- [x] Inventory the complete client, server, shared, schema, migration, router, test, and data-contract baseline before modifying features.
+- [x] Audit route authorization, source/version governance, question-publication validity, assessment integrity, user isolation, real-data states, and AI grounding.
+- [x] Remediate confirmed root-cause defects and complete only genuinely missing curriculum, review, coverage, duplicate-detection, admission, search, and error-state requirements.
+- [x] Consolidate only genuinely duplicate feature surfaces and remove any misleading student-facing placeholder or demo behavior.
+- [x] Validate protected scoring, frozen attempts, expiry, revision, source retrieval, student progress, daily study, challenges, live exams, admission versioning, and responsive flows before publishing.
