@@ -1,9 +1,10 @@
 import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
-import { attemptAnswers, attemptIntegrityEvents, books, chapterCheatSheets, chapters, examAttempts, leaderboardScores, mistakes, questionComments, questionIntelligence, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, users } from "../drizzle/schema";
+import { attemptAnswers, attemptIntegrityEvents, books, chapterCheatSheets, chapters, concepts, examAttempts, leaderboardScores, mistakes, questionComments, questionIntelligence, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, topics, users } from "../drizzle/schema";
 import { scoreMcqExam, type McqSelection } from "../shared/mcq";
 import { isReviewDue, nextReviewAt } from "../shared/spacedReview";
 import { shouldFinalizeExpiredAttempt } from "../shared/attemptExpiry";
 import { buildExpiredAttemptFinalization, type FrozenAttemptQuestion } from "../shared/expiredAttemptFlow";
+import { deriveWeakConcepts } from "../shared/examIntelligence";
 import { getDb } from "./db";
 
 export async function getLeaderboard(periodType: "global" | "weekly", periodKey: string) {
@@ -214,7 +215,7 @@ export async function setAttemptQuestionPosition(input: { userId: number; attemp
   return true;
 }
 
-type RenderFrozenQuestion = FrozenAttemptQuestion & { correctOptionIds?: number[]; position?: number; prompt?: string; questionType?: string; stemContext?: string | null; options?: Array<{ id: number; optionKey: string; text: string }>; explanation?: string | null; solutionImageUrl?: string | null; topic?: string | null; concept?: string | null };
+type RenderFrozenQuestion = FrozenAttemptQuestion & { correctOptionIds?: number[]; position?: number; subjectId?: number; chapterId?: number | null; topicId?: number | null; conceptId?: number | null; contentLanguage?: "bn" | "en"; prompt?: string; questionType?: string; stemContext?: string | null; options?: Array<{ id: number; optionKey: string; text: string }>; explanation?: string | null; solutionImageUrl?: string | null; topic?: string | null; concept?: string | null };
 
 function safeFrozenQuestions(frozen: RenderFrozenQuestion[]) {
   return frozen.map(question => ({
@@ -275,7 +276,7 @@ export async function getMistakeVault(userId: number) {
   });
 }
 
-type QuestionFilter = { subjectId?: number; chapterId?: number; chapterIds?: number[]; topicIds?: number[]; examProfileId?: number; sourceMode?: "historical_only" | "generated_only" | "mixed" | "verified_only"; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; admissionTrack?: "du" | "buet" | "medical"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
+type QuestionFilter = { subjectId?: number; chapterId?: number; chapterIds?: number[]; topicIds?: number[]; conceptIds?: number[]; examProfileId?: number; sourceMode?: "historical_only" | "generated_only" | "mixed" | "verified_only"; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; admissionTrack?: "du" | "buet" | "medical"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
 
 export async function getPublishedChapterAvailability(subjectId?: number, contentLanguage?: "bn" | "en") {
   const db = await getDb();
@@ -308,6 +309,7 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
   if (filters.chapterId) conditions.push(eq(questions.chapterId, filters.chapterId));
   if (filters.chapterIds?.length) conditions.push(inArray(questions.chapterId, filters.chapterIds));
   if (filters.topicIds?.length) conditions.push(inArray(questions.topicId, filters.topicIds));
+  if (filters.conceptIds?.length) conditions.push(inArray(questions.conceptId, filters.conceptIds));
   if (filters.examProfileId) conditions.push(eq(questionIntelligence.examProfileId, filters.examProfileId));
   if (filters.sourceMode === "historical_only") conditions.push(sql`${questionIntelligence.provenance} IN ('historical_official', 'historical_verified') AND ${questionIntelligence.verificationStatus} = 'approved'`);
   if (filters.sourceMode === "generated_only") conditions.push(sql`${questionIntelligence.provenance} IN ('generated_from_curriculum', 'generated_from_historical_analysis', 'generated_from_exam_pattern') AND ${questionIntelligence.verificationStatus} = 'approved'`);
@@ -321,16 +323,18 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
   if (filters.contentLanguage) conditions.push(eq(questions.contentLanguage, filters.contentLanguage));
   if (filters.questionIds?.length) conditions.push(inArray(questions.id, filters.questionIds));
   const rows = await db.select({
-    id: questions.id, prompt: questions.prompt, questionType: questions.questionType, difficulty: questions.difficulty, boardStandard: questions.boardStandard,
+    id: questions.id, subjectId: questions.subjectId, chapterId: questions.chapterId, topicId: questions.topicId, conceptId: questions.conceptId, contentLanguage: questions.contentLanguage, prompt: questions.prompt, questionType: questions.questionType, difficulty: questions.difficulty, boardStandard: questions.boardStandard,
     boardName: questions.boardName, boardExamYear: questions.boardExamYear, collegePaper: questions.collegePaper,
     chapterTags: questions.chapterTags, negativeMarkWeight: questions.negativeMarkWeight, explanation: questions.explanation,
-    solutionImageUrl: questions.solutionImageUrl, subject: subjects.nameEn, chapter: chapters.titleEn,
+    solutionImageUrl: questions.solutionImageUrl, subject: subjects.nameEn, chapter: chapters.titleEn, topic: topics.titleEn, concept: concepts.titleEn,
     provenance: questionIntelligence.provenance, cognitiveLevel: questionIntelligence.cognitiveLevel, reasoningMode: questionIntelligence.reasoningMode,
     difficultyScore: questionIntelligence.difficultyScore, importanceScore: questionIntelligence.importanceScore,
     stemContext: questionStems.contextParagraph,
   }).from(questions)
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
     .leftJoin(chapters, eq(questions.chapterId, chapters.id))
+    .leftJoin(topics, eq(questions.topicId, topics.id))
+    .leftJoin(concepts, eq(questions.conceptId, concepts.id))
     .leftJoin(questionStems, eq(questions.stemId, questionStems.id))
     .leftJoin(questionIntelligence, eq(questionIntelligence.questionId, questions.id))
     .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
@@ -368,10 +372,15 @@ export async function startFilteredAttempt(input: { userId: number; filters: Que
     explanation: question.explanation,
     solutionImageUrl: question.solutionImageUrl,
     options: question.options.map(({ isCorrect: _isCorrect, ...option }) => option),
+    subjectId: question.subjectId,
+    chapterId: question.chapterId,
+    topicId: question.topicId,
+    conceptId: question.conceptId,
+    contentLanguage: question.contentLanguage,
     subject: question.subject,
     chapter: question.chapter ?? "General",
-    topic: null,
-    concept: null,
+    topic: question.topic ?? null,
+    concept: question.concept ?? null,
     difficulty: question.difficulty,
     marks: 1,
     negativeMarkWeight: Number(question.negativeMarkWeight),
@@ -422,6 +431,25 @@ export async function getAttemptResult(userId: number, attemptId: number) {
     return { questionId: question.questionId, selectedOptionId: answer?.selectedOptionId ?? null, selectedOptionIds: Array.isArray(answer?.selectedOptionIds) ? answer!.selectedOptionIds as number[] : [], markedForReview: answer?.markedForReview ?? false, isCorrect: answer?.isCorrect ?? false, awardedMarks: answer?.awardedMarks ?? "0", prompt: question.prompt ?? "", explanation: question.explanation ?? null, solutionImageUrl: question.solutionImageUrl ?? null, subject: question.subject ?? "", chapter: question.chapter ?? null, topic: question.topic ?? null, concept: question.concept ?? null, difficulty: question.difficulty ?? null, options: question.options ?? [], correctOptionIds };
   });
   return { attempt, answers };
+}
+
+export async function getAttemptExamIntelligence(userId: number, attemptId: number) {
+  const db = await getDb();
+  if (!db) return { status: "unavailable" as const, reason: "Database unavailable", weakConcepts: [], recommendations: [] };
+  const [attempt] = await db.select({ status: examAttempts.status, questionSetSnapshot: examAttempts.questionSetSnapshot }).from(examAttempts).where(and(eq(examAttempts.id, attemptId), eq(examAttempts.userId, userId))).limit(1);
+  if (!attempt || attempt.status === "in_progress") return { status: "unavailable" as const, reason: "Concept intelligence is available only after submission.", weakConcepts: [], recommendations: [] };
+  const frozen = attempt.questionSetSnapshot as RenderFrozenQuestion[];
+  if (!Array.isArray(frozen)) return { status: "unavailable" as const, reason: "This legacy attempt has no immutable concept mapping.", weakConcepts: [], recommendations: [] };
+  const answers = await db.select({ questionId: attemptAnswers.questionId, selectedOptionIds: attemptAnswers.selectedOptionIds, isCorrect: attemptAnswers.isCorrect }).from(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId));
+  const weakConcepts = deriveWeakConcepts(frozen, answers.map(answer => ({ questionId: answer.questionId, selectedOptionIds: Array.isArray(answer.selectedOptionIds) ? answer.selectedOptionIds as number[] : [], isCorrect: answer.isCorrect })));
+  if (!weakConcepts.length) return { status: "unavailable" as const, reason: "No submitted questions in this attempt have verified concept mappings yet.", weakConcepts: [], recommendations: [] };
+  const conceptIds = weakConcepts.map(item => item.conceptId);
+  const availableRows = await db.select({ conceptId: questions.conceptId, count: sql<number>`count(distinct ${questions.id})` }).from(questions)
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id)).innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(eq(questions.status, "published"), eq(sourceVersions.status, "active"), inArray(questions.conceptId, conceptIds))).groupBy(questions.conceptId);
+  const availability = new Map(availableRows.filter(row => row.conceptId !== null).map(row => [row.conceptId!, Number(row.count)]));
+  const recommendations = weakConcepts.filter(item => (availability.get(item.conceptId) ?? 0) > 0).map(item => ({ ...item, availableQuestionCount: availability.get(item.conceptId) ?? 0, contentLanguage: frozen.find(question => question.conceptId === item.conceptId)?.contentLanguage ?? null })).slice(0, 3);
+  return { status: "available" as const, reason: null, weakConcepts, recommendations };
 }
 
 export async function getExamHistory(userId: number) {

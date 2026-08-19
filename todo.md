@@ -222,3 +222,8 @@
 - [x] Replace only confirmed remaining demo exam UI with real database-backed exam instructions, runner, palette, result, and recovery flows.
 - [x] Add end-to-end and regression coverage for blueprint validation, immutable snapshots, duplicate prevention, scoring, authorization, recovery, and admissions/HSC profile boundaries.
 - [x] Register HSC, Medical, Engineering, and DU official-source evidence as under-review, student-unavailable records; keep every official-pattern acceptance flow unavailable until a reviewer verifies exact configuration and authorised question capacity.
+- [x] Audit the supplied Exam Intelligence flow against the current exam profile, blueprint, frozen attempt, result, analytics, and recommendation implementation.
+- [x] Add evidence-based weak-concept detection that derives only from frozen submitted attempt data and mapped concepts.
+- [x] Add verified recommended-practice outputs that only reference published source-linked content available for the detected learning need.
+- [x] Surface weak-concept and recommended-practice results in responsive student result and learning interfaces with truthful unavailable states.
+- [x] Add regression coverage for the complete Exam Intelligence analytics-to-recommendation path.
