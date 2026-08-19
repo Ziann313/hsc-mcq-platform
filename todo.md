@@ -208,3 +208,7 @@
 - [x] Remediate confirmed root-cause defects and complete only genuinely missing curriculum, review, coverage, duplicate-detection, admission, search, and error-state requirements.
 - [x] Consolidate only genuinely duplicate feature surfaces and remove any misleading student-facing placeholder or demo behavior.
 - [x] Validate protected scoring, frozen attempts, expiry, revision, source retrieval, student progress, daily study, challenges, live exams, admission versioning, and responsive flows before publishing.
+- [x] Audit the full master-upgrade brief against existing curriculum, question, source, admission, AI, progress, and student-flow implementation before adding systems.
+- [x] Design compatible normalized contracts for topic/concept/DNA metadata, historical pattern intelligence, configurable admission profiles, and provenance states without duplicating existing governance tables.
+- [x] Implement only verified data-driven intelligence, source, workflow, and student-flow enhancements; preserve truthful unavailable states where official evidence or reviewed content is absent.
+- [x] Add regression coverage and responsive verification for the upgraded source-governed preparation journeys.

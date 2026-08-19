@@ -35,6 +35,7 @@ import { invokeLLM } from "../_core/llm";
 import { notifyOwner } from "../_core/notification";
 import { storagePut } from "../storage";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { questionIntelligenceInput } from "../questionIntelligenceInput";
 
 const onboardingInput = z.object({
   language: z.enum(["bn", "en"]),
@@ -214,6 +215,7 @@ export const learningRouter = router({
     if (result.outcome === "invalid_curriculum") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Publication requires a consistent academic year, subject, book, and chapter mapping" });
     if (result.outcome === "source_not_active") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Publication requires an active source version and page reference" });
     if (result.outcome === "invalid_options") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Publication requires at least two options and exactly one correct answer" });
+    if (result.outcome === "intelligence_not_reviewed") throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Question intelligence metadata must be approved by a reviewer before publication" });
     return { published: true } as const;
   }),
 
@@ -274,6 +276,8 @@ export const learningRouter = router({
     subjectId: z.number().int().positive(),
     bookId: z.number().int().positive(),
     chapterId: z.number().int().positive(),
+    topicId: z.number().int().positive().optional(),
+    conceptId: z.number().int().positive().optional(),
     contentLanguage: z.enum(["bn", "en"]),
     prompt: z.string().min(10).max(5000),
     explanation: z.string().max(5000).optional(),
@@ -283,6 +287,7 @@ export const learningRouter = router({
       .refine(options => options.filter(option => option.isCorrect).length === 1, "Exactly one correct option is required"),
     sourceVersionId: z.number().int().positive(),
     pageReference: z.string().min(1).max(100),
+    intelligence: questionIntelligenceInput,
   })).mutation(async ({ ctx, input }) => {
     const questionId = await createReviewQuestion({ ...input, actorUserId: ctx.user.id });
     return { questionId };

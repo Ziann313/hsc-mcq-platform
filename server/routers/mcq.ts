@@ -3,15 +3,16 @@ import { z } from "zod";
 import { createReviewQuestion } from "../db";
 import { addQuestionComment, getAttemptResult, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestions, getQuestionComments, recordAttemptIntegrityEvent, recordImportBatch, saveAttemptSelection, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
+import { questionIntelligenceInput } from "../questionIntelligenceInput";
 
 const importedQuestion = z.object({
-  academicYearId: z.number().int().positive(), subjectId: z.number().int().positive(), bookId: z.number().int().positive(), chapterId: z.number().int().positive(), contentLanguage: z.enum(["bn", "en"]),
+  academicYearId: z.number().int().positive(), subjectId: z.number().int().positive(), bookId: z.number().int().positive(), chapterId: z.number().int().positive(), topicId: z.number().int().positive().optional(), conceptId: z.number().int().positive().optional(), contentLanguage: z.enum(["bn", "en"]),
   prompt: z.string().min(10).max(5000), explanation: z.string().max(5000).optional(), difficulty: z.enum(["easy", "medium", "hard"]), admissionTrack: z.enum(["du", "buet", "medical"]).optional(),
-  sourceVersionId: z.number().int().positive(), pageReference: z.string().min(1).max(100),
+  sourceVersionId: z.number().int().positive(), pageReference: z.string().min(1).max(100), intelligence: questionIntelligenceInput,
   options: z.array(z.object({ text: z.string().min(1).max(1000), isCorrect: z.boolean() })).min(2).max(6).refine(items => items.filter(item => item.isCorrect).length === 1, "Exactly one correct option is required"),
 });
 const questionFilterInput = z.object({
-  subjectId: z.number().int().positive().optional(), chapterId: z.number().int().positive().optional(), boardExamYear: z.number().int().min(2000).max(2100).optional(), boardName: z.string().max(100).optional(), collegePaper: z.string().max(180).optional(), boardStandard: z.enum(["board_standard", "varsity_admission_standard"]).optional(), admissionTrack: z.enum(["du", "buet", "medical"]).optional(), questionType: z.enum(["single_mcq", "multi_statement", "stem_subquestion"]).optional(), contentLanguage: z.enum(["bn", "en"]).optional(), limit: z.number().int().min(1).max(100).default(20),
+  subjectId: z.number().int().positive().optional(), chapterId: z.number().int().positive().optional(), chapterIds: z.array(z.number().int().positive()).min(1).max(30).optional(), topicIds: z.array(z.number().int().positive()).min(1).max(50).optional(), examProfileId: z.number().int().positive().optional(), sourceMode: z.enum(["historical_only", "generated_only", "mixed", "verified_only"]).optional(), boardExamYear: z.number().int().min(2000).max(2100).optional(), boardName: z.string().max(100).optional(), collegePaper: z.string().max(180).optional(), boardStandard: z.enum(["board_standard", "varsity_admission_standard"]).optional(), admissionTrack: z.enum(["du", "buet", "medical"]).optional(), questionType: z.enum(["single_mcq", "multi_statement", "stem_subquestion"]).optional(), contentLanguage: z.enum(["bn", "en"]).optional(), limit: z.number().int().min(1).max(100).default(20),
 });
 
 export const mcqRouter = router({

@@ -1,9 +1,10 @@
 import { and, desc, eq, like } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, academicGroups, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes } from "../drizzle/schema";
+import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, concepts, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, academicGroups, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternSources, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes, questionIntelligence, topics } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { buildAdmissionBenchmarks, type BenchmarkAttempt } from "../shared/admissionBenchmark";
+import { duplicateRisk, normalizeQuestionText, validateQuestionIntelligence, type QuestionIntelligenceInput } from "../shared/questionIntelligence";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -244,6 +245,9 @@ export async function reviewQuestion(input: {
     await db.update(questionVersions)
       .set({ reviewStatus: "approved" })
       .where(and(eq(questionVersions.questionId, input.questionId), eq(questionVersions.version, 1)));
+    await db.update(questionIntelligence)
+      .set({ verificationStatus: "approved" })
+      .where(eq(questionIntelligence.questionId, input.questionId));
   }
   await db.insert(auditLogs).values({
     actorUserId: input.actorUserId,
@@ -297,6 +301,9 @@ export async function publishApprovedQuestion(input: { questionId: number; actor
   const options = await db.select({ isCorrect: questionOptions.isCorrect })
     .from(questionOptions).where(eq(questionOptions.questionId, input.questionId));
   if (options.length < 2 || options.filter(option => option.isCorrect).length !== 1) return { outcome: "invalid_options" as const };
+  const [intelligence] = await db.select({ verificationStatus: questionIntelligence.verificationStatus })
+    .from(questionIntelligence).where(eq(questionIntelligence.questionId, input.questionId)).limit(1);
+  if (intelligence && intelligence.verificationStatus !== "approved") return { outcome: "intelligence_not_reviewed" as const };
   await db.update(questions).set({ status: "published" }).where(eq(questions.id, input.questionId));
   await db.insert(auditLogs).values({
     actorUserId: input.actorUserId,
@@ -493,8 +500,24 @@ export async function getQuestionReviewQueue() {
     difficulty: questions.difficulty,
     subject: subjects.nameEn,
     version: questions.currentVersion,
+    provenance: questionIntelligence.provenance,
+    verificationStatus: questionIntelligence.verificationStatus,
+    cognitiveLevel: questionIntelligence.cognitiveLevel,
+    reasoningMode: questionIntelligence.reasoningMode,
+    difficultyScore: questionIntelligence.difficultyScore,
+    importanceScore: questionIntelligence.importanceScore,
+    formulaUsed: questionIntelligence.formulaUsed,
+    commonMistake: questionIntelligence.commonMistake,
+    generationBasis: questionIntelligence.generationBasis,
+    sourceTitle: sources.title,
+    sourceUrl: sources.sourceUrl,
+    sourcePage: questionSources.pageReference,
   }).from(questions)
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .leftJoin(questionIntelligence, eq(questionIntelligence.questionId, questions.id))
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .innerJoin(sources, eq(sourceVersions.sourceId, sources.id))
     .where(and(eq(questions.status, "human_review")))
     .orderBy(desc(questions.updatedAt))
     .limit(30);
@@ -705,12 +728,8 @@ export async function createAdmissionNotice(input: {
   return noticeId;
 }
 
-function normalizedQuestionValue(value: string) {
-  return value.trim().replace(/\s+/g, " ").toLocaleLowerCase();
-}
-
 function optionSignature(options: Array<{ text: string; isCorrect: boolean }>) {
-  return options.map(option => `${option.isCorrect ? "1" : "0"}:${normalizedQuestionValue(option.text)}`).sort().join("|");
+  return options.map(option => `${option.isCorrect ? "1" : "0"}:${normalizeQuestionText(option.text)}`).sort().join("|");
 }
 
 async function validateQuestionIntake(input: {
@@ -718,11 +737,14 @@ async function validateQuestionIntake(input: {
   subjectId: number;
   bookId: number;
   chapterId: number;
+  topicId?: number;
+  conceptId?: number;
   contentLanguage: "bn" | "en";
   sourceVersionId: number;
   pageReference: string;
   prompt: string;
   options: Array<{ text: string; isCorrect: boolean }>;
+  intelligence?: QuestionIntelligenceInput;
 }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
@@ -734,17 +756,28 @@ async function validateQuestionIntake(input: {
   if (!book || book.subjectId !== input.subjectId) throw new Error("Selected book does not belong to the subject");
   const [chapter] = await db.select({ id: chapters.id, bookId: chapters.bookId }).from(chapters).where(eq(chapters.id, input.chapterId)).limit(1);
   if (!chapter || chapter.bookId !== input.bookId) throw new Error("Selected chapter does not belong to the book");
+  if (input.topicId) {
+    const [topic] = await db.select({ id: topics.id, chapterId: topics.chapterId }).from(topics).where(eq(topics.id, input.topicId)).limit(1);
+    if (!topic || topic.chapterId !== input.chapterId) throw new Error("Selected topic does not belong to the chapter");
+  }
+  if (input.conceptId) {
+    if (!input.topicId) throw new Error("A concept requires a selected topic");
+    const [concept] = await db.select({ id: concepts.id, topicId: concepts.topicId }).from(concepts).where(eq(concepts.id, input.conceptId)).limit(1);
+    if (!concept || concept.topicId !== input.topicId) throw new Error("Selected concept does not belong to the topic");
+  }
   const [source] = await db.select({ id: sourceVersions.id, status: sourceVersions.status }).from(sourceVersions).where(eq(sourceVersions.id, input.sourceVersionId)).limit(1);
   if (!source || source.status !== "active" || !input.pageReference.trim()) throw new Error("Question intake requires an active source version and page reference");
+  validateQuestionIntelligence(input.intelligence);
 
   const candidates = await db.select({ id: questions.id, prompt: questions.prompt }).from(questions)
-    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
-    .where(and(eq(questions.academicYearId, input.academicYearId), eq(questions.subjectId, input.subjectId), eq(questions.bookId, input.bookId), eq(questions.chapterId, input.chapterId), eq(questions.contentLanguage, input.contentLanguage), eq(questionSources.sourceVersionId, input.sourceVersionId)));
-  const prompt = normalizedQuestionValue(input.prompt);
+    .where(and(eq(questions.academicYearId, input.academicYearId), eq(questions.subjectId, input.subjectId), eq(questions.bookId, input.bookId), eq(questions.chapterId, input.chapterId), eq(questions.contentLanguage, input.contentLanguage))).limit(500);
   const signature = optionSignature(input.options);
-  for (const candidate of candidates.filter(item => normalizedQuestionValue(item.prompt) === prompt)) {
+  for (const candidate of candidates) {
+    const risk = duplicateRisk(candidate.prompt, input.prompt);
+    if (risk.kind === "none") continue;
     const candidateOptions = await db.select({ text: questionOptions.text, isCorrect: questionOptions.isCorrect }).from(questionOptions).where(eq(questionOptions.questionId, candidate.id));
-    if (optionSignature(candidateOptions) === signature) throw new Error(`Duplicate question matches existing source-linked record #${candidate.id}`);
+    if (risk.kind === "exact" && optionSignature(candidateOptions) === signature) throw new Error(`Duplicate question matches existing source-linked record #${candidate.id}`);
+    if (risk.kind === "near" && optionSignature(candidateOptions) === signature) throw new Error(`Near-duplicate risk (${Math.round(risk.score * 100)}%) matches question #${candidate.id}; revise or document the distinction before review`);
   }
 }
 
@@ -753,6 +786,8 @@ export async function createReviewQuestion(input: {
   subjectId: number;
   bookId: number;
   chapterId: number;
+  topicId?: number;
+  conceptId?: number;
   contentLanguage: "bn" | "en";
   prompt: string;
   explanation?: string;
@@ -761,6 +796,7 @@ export async function createReviewQuestion(input: {
   options: Array<{ text: string; isCorrect: boolean }>;
   sourceVersionId: number;
   pageReference: string;
+  intelligence?: QuestionIntelligenceInput & { examProfileId?: number };
   actorUserId: number;
 }) {
   const db = await getDb();
@@ -771,6 +807,8 @@ export async function createReviewQuestion(input: {
     subjectId: input.subjectId,
     bookId: input.bookId,
     chapterId: input.chapterId,
+    topicId: input.topicId ?? null,
+    conceptId: input.conceptId ?? null,
     contentLanguage: input.contentLanguage,
     prompt: input.prompt,
     explanation: input.explanation || null,
@@ -787,6 +825,24 @@ export async function createReviewQuestion(input: {
   }));
   await db.insert(questionOptions).values(optionRows);
   await db.insert(questionSources).values({ questionId, sourceVersionId: input.sourceVersionId, pageReference: input.pageReference });
+  await db.insert(questionIntelligence).values({
+    questionId,
+    examProfileId: input.intelligence?.examProfileId ?? null,
+    provenance: input.intelligence?.provenance ?? "original_source_linked",
+    verificationStatus: input.intelligence?.verificationStatus ?? "source_linked",
+    cognitiveLevel: input.intelligence?.cognitiveLevel ?? "understanding",
+    reasoningMode: input.intelligence?.reasoningMode ?? "conceptual",
+    difficultyScore: input.intelligence?.difficultyScore ?? null,
+    examDifficultyProfile: input.intelligence?.examDifficultyProfile?.trim() || null,
+    historicalFrequency: input.intelligence?.historicalFrequency ?? 0,
+    chapterFrequency: input.intelligence?.chapterFrequency ?? 0,
+    topicFrequency: input.intelligence?.topicFrequency ?? 0,
+    importanceScore: input.intelligence?.importanceScore ?? null,
+    recurrenceScore: input.intelligence?.recurrenceScore ?? null,
+    formulaUsed: input.intelligence?.formulaUsed?.trim() || null,
+    commonMistake: input.intelligence?.commonMistake?.trim() || null,
+    generationBasis: input.intelligence?.generationBasis?.trim() || null,
+  });
   await db.insert(questionVersions).values({
     questionId,
     version: 1,
@@ -796,6 +852,9 @@ export async function createReviewQuestion(input: {
       options: input.options,
       contentLanguage: input.contentLanguage,
       admissionTrack: input.admissionTrack ?? null,
+      topicId: input.topicId ?? null,
+      conceptId: input.conceptId ?? null,
+      intelligence: input.intelligence ?? null,
       sourceVersionId: input.sourceVersionId,
       pageReference: input.pageReference,
     },
@@ -807,7 +866,7 @@ export async function createReviewQuestion(input: {
     action: "question.submitted_for_review",
     entityType: "question",
     entityId: String(questionId),
-    metadata: { sourceVersionId: input.sourceVersionId, pageReference: input.pageReference, admissionTrack: input.admissionTrack ?? null },
+    metadata: { sourceVersionId: input.sourceVersionId, pageReference: input.pageReference, admissionTrack: input.admissionTrack ?? null, provenance: input.intelligence?.provenance ?? "original_source_linked" },
   });
   return questionId;
 }
@@ -950,6 +1009,7 @@ export async function createAdmissionPatternVersion(input: {
     status: input.status,
   });
   const patternId = Number(result[0].insertId);
+  if (sourceEvidence) await db.insert(examPatternSources).values({ examPatternVersionId: patternId, sourceVersionId: sourceEvidence.sourceVersionId, evidenceRole: "pattern" });
   await db.insert(auditLogs).values({
     actorUserId: input.actorUserId,
     action: "admission_pattern.version_created",
@@ -962,13 +1022,16 @@ export async function createAdmissionPatternVersion(input: {
 
 export async function getQuestionIntakeOptions() {
   const db = await getDb();
-  if (!db) return { academicYears: [], subjects: [], books: [], chapters: [], sourceVersions: [] };
-  const [academicYearsRows, subjectRows, bookRows, chapterRows, sourceVersionRows] = await Promise.all([
+  if (!db) return { academicYears: [], subjects: [], books: [], chapters: [], topics: [], concepts: [], examProfiles: [], sourceVersions: [] };
+  const [academicYearsRows, subjectRows, bookRows, chapterRows, topicRows, conceptRows, examProfileRows, sourceVersionRows] = await Promise.all([
     db.select({ id: academicYears.id, name: academicYears.name }).from(academicYears).where(eq(academicYears.status, "active")).orderBy(desc(academicYears.name)),
     db.select({ id: subjects.id, academicYearId: subjects.academicYearId, nameEn: subjects.nameEn, nameBn: subjects.nameBn }).from(subjects).orderBy(subjects.nameEn),
     db.select({ id: books.id, subjectId: books.subjectId, titleEn: books.titleEn, titleBn: books.titleBn }).from(books).orderBy(books.titleEn),
     db.select({ id: chapters.id, bookId: chapters.bookId, chapterNo: chapters.chapterNo, titleEn: chapters.titleEn, titleBn: chapters.titleBn }).from(chapters).orderBy(chapters.chapterNo),
+    db.select({ id: topics.id, chapterId: topics.chapterId, titleEn: topics.titleEn, titleBn: topics.titleBn }).from(topics).orderBy(topics.titleEn),
+    db.select({ id: concepts.id, topicId: concepts.topicId, titleEn: concepts.titleEn, titleBn: concepts.titleBn }).from(concepts).orderBy(concepts.titleEn),
+    db.select({ id: examProfiles.id, title: examProfiles.title, examType: examProfiles.examType, institution: examProfiles.institution, unit: examProfiles.unit }).from(examProfiles).where(eq(examProfiles.status, "active")).orderBy(examProfiles.examType, examProfiles.title),
     db.select({ id: sourceVersions.id, sourceId: sources.id, title: sources.title, organization: sources.organization, versionLabel: sourceVersions.versionLabel }).from(sourceVersions).innerJoin(sources, eq(sourceVersions.sourceId, sources.id)).where(eq(sourceVersions.status, "active")).orderBy(desc(sourceVersions.retrievedAt)),
   ]);
-  return { academicYears: academicYearsRows, subjects: subjectRows, books: bookRows, chapters: chapterRows, sourceVersions: sourceVersionRows };
+  return { academicYears: academicYearsRows, subjects: subjectRows, books: bookRows, chapters: chapterRows, topics: topicRows, concepts: conceptRows, examProfiles: examProfileRows, sourceVersions: sourceVersionRows };
 }

@@ -271,6 +271,58 @@ export const questionSources = mysqlTable("question_sources", {
   pageReference: varchar("pageReference", { length: 100 }).notNull(),
 }, table => [index("question_source_idx").on(table.questionId, table.sourceVersionId)]);
 
+/**
+ * Exam-aware metadata for one question. This extends the existing immutable
+ * question/version/source model instead of creating a second question bank.
+ */
+export const questionIntelligence = mysqlTable("question_intelligence", {
+  id: int("id").autoincrement().primaryKey(),
+  questionId: int("questionId").notNull().unique().references(() => questions.id),
+  examProfileId: int("examProfileId").references(() => examProfiles.id),
+  provenance: mysqlEnum("provenance", ["historical_official", "historical_verified", "historical_unverified", "generated_from_curriculum", "generated_from_historical_analysis", "generated_from_exam_pattern", "original_source_linked"]).default("original_source_linked").notNull(),
+  verificationStatus: mysqlEnum("verificationStatus", ["unverified", "source_linked", "human_reviewed", "approved"]).default("source_linked").notNull(),
+  cognitiveLevel: mysqlEnum("cognitiveLevel", ["recall", "understanding", "application", "analysis", "evaluation"]).default("understanding").notNull(),
+  reasoningMode: mysqlEnum("reasoningMode", ["conceptual", "numerical", "mixed"]).default("conceptual").notNull(),
+  difficultyScore: int("difficultyScore"),
+  examDifficultyProfile: varchar("examDifficultyProfile", { length: 80 }),
+  historicalFrequency: int("historicalFrequency").default(0).notNull(),
+  chapterFrequency: int("chapterFrequency").default(0).notNull(),
+  topicFrequency: int("topicFrequency").default(0).notNull(),
+  importanceScore: int("importanceScore"),
+  recurrenceScore: int("recurrenceScore"),
+  formulaUsed: varchar("formulaUsed", { length: 360 }),
+  commonMistake: text("commonMistake"),
+  generationBasis: text("generationBasis"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("question_intelligence_profile_idx").on(table.examProfileId), index("question_intelligence_provenance_idx").on(table.provenance, table.verificationStatus)]);
+
+/**
+ * Source-versioned aggregate evidence, not a copied past-question repository.
+ * It is populated only from authorised/verified historical analysis.
+ */
+export const historicalPatternMetrics = mysqlTable("historical_pattern_metrics", {
+  id: int("id").autoincrement().primaryKey(),
+  examProfileId: int("examProfileId").notNull().references(() => examProfiles.id),
+  sourceVersionId: int("sourceVersionId").notNull().references(() => sourceVersions.id),
+  academicYearId: int("academicYearId").references(() => academicYears.id),
+  boardName: varchar("boardName", { length: 100 }),
+  examYear: int("examYear"),
+  subjectId: int("subjectId").references(() => subjects.id),
+  bookId: int("bookId").references(() => books.id),
+  chapterId: int("chapterId").references(() => chapters.id),
+  topicId: int("topicId").references(() => topics.id),
+  conceptId: int("conceptId").references(() => concepts.id),
+  appearanceCount: int("appearanceCount").default(0).notNull(),
+  importanceScore: int("importanceScore"),
+  questionTypeDistribution: json("questionTypeDistribution"),
+  difficultyDistribution: json("difficultyDistribution"),
+  notes: text("notes"),
+  verificationStatus: mysqlEnum("verificationStatus", ["under_review", "verified", "archived"]).default("under_review").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("historical_pattern_scope_idx").on(table.examProfileId, table.subjectId, table.chapterId, table.topicId), index("historical_pattern_source_idx").on(table.sourceVersionId, table.verificationStatus)]);
+
 export const examProfiles = mysqlTable("exam_profiles", {
   id: int("id").autoincrement().primaryKey(),
   title: varchar("title", { length: 180 }).notNull(),
@@ -289,6 +341,15 @@ export const examPatternVersions = mysqlTable("exam_pattern_versions", {
   status: mysqlEnum("status", ["draft", "under_review", "active", "superseded", "archived"]).default("draft").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("exam_pattern_version_unique").on(table.examProfileId, table.versionLabel)]);
+
+/** Relational evidence links for pattern versions; legacy JSON source metadata remains traceable. */
+export const examPatternSources = mysqlTable("exam_pattern_sources", {
+  id: int("id").autoincrement().primaryKey(),
+  examPatternVersionId: int("examPatternVersionId").notNull().references(() => examPatternVersions.id),
+  sourceVersionId: int("sourceVersionId").notNull().references(() => sourceVersions.id),
+  evidenceRole: mysqlEnum("evidenceRole", ["pattern", "schedule", "eligibility", "cutoff", "notice"]).default("pattern").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("exam_pattern_source_unique").on(table.examPatternVersionId, table.sourceVersionId, table.evidenceRole), index("exam_pattern_source_version_idx").on(table.sourceVersionId)]);
 
 export const exams = mysqlTable("exams", {
   id: int("id").autoincrement().primaryKey(),

@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
-import { attemptAnswers, attemptIntegrityEvents, books, chapterCheatSheets, chapters, examAttempts, leaderboardScores, mistakes, questionComments, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, users } from "../drizzle/schema";
+import { attemptAnswers, attemptIntegrityEvents, books, chapterCheatSheets, chapters, examAttempts, leaderboardScores, mistakes, questionComments, questionIntelligence, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, users } from "../drizzle/schema";
 import { scoreMcqExam, type McqSelection } from "../shared/mcq";
 import { isReviewDue, nextReviewAt } from "../shared/spacedReview";
 import { shouldFinalizeExpiredAttempt } from "../shared/attemptExpiry";
@@ -209,7 +209,7 @@ export async function getMistakeVault(userId: number) {
   });
 }
 
-type QuestionFilter = { subjectId?: number; chapterId?: number; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; admissionTrack?: "du" | "buet" | "medical"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
+type QuestionFilter = { subjectId?: number; chapterId?: number; chapterIds?: number[]; topicIds?: number[]; examProfileId?: number; sourceMode?: "historical_only" | "generated_only" | "mixed" | "verified_only"; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; admissionTrack?: "du" | "buet" | "medical"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
 
 export async function getPublishedChapterAvailability(subjectId?: number, contentLanguage?: "bn" | "en") {
   const db = await getDb();
@@ -240,6 +240,12 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
   const conditions = [eq(questions.status, "published")];
   if (filters.subjectId) conditions.push(eq(questions.subjectId, filters.subjectId));
   if (filters.chapterId) conditions.push(eq(questions.chapterId, filters.chapterId));
+  if (filters.chapterIds?.length) conditions.push(inArray(questions.chapterId, filters.chapterIds));
+  if (filters.topicIds?.length) conditions.push(inArray(questions.topicId, filters.topicIds));
+  if (filters.examProfileId) conditions.push(eq(questionIntelligence.examProfileId, filters.examProfileId));
+  if (filters.sourceMode === "historical_only") conditions.push(sql`${questionIntelligence.provenance} IN ('historical_official', 'historical_verified') AND ${questionIntelligence.verificationStatus} = 'approved'`);
+  if (filters.sourceMode === "generated_only") conditions.push(sql`${questionIntelligence.provenance} IN ('generated_from_curriculum', 'generated_from_historical_analysis', 'generated_from_exam_pattern') AND ${questionIntelligence.verificationStatus} = 'approved'`);
+  if (filters.sourceMode === "verified_only") conditions.push(sql`(${questionIntelligence.id} IS NULL OR ${questionIntelligence.verificationStatus} = 'approved')`);
   if (filters.boardExamYear) conditions.push(eq(questions.boardExamYear, filters.boardExamYear));
   if (filters.boardName) conditions.push(like(questions.boardName, `%${filters.boardName}%`));
   if (filters.collegePaper) conditions.push(like(questions.collegePaper, `%${filters.collegePaper}%`));
@@ -253,11 +259,14 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
     boardName: questions.boardName, boardExamYear: questions.boardExamYear, collegePaper: questions.collegePaper,
     chapterTags: questions.chapterTags, negativeMarkWeight: questions.negativeMarkWeight, explanation: questions.explanation,
     solutionImageUrl: questions.solutionImageUrl, subject: subjects.nameEn, chapter: chapters.titleEn,
+    provenance: questionIntelligence.provenance, cognitiveLevel: questionIntelligence.cognitiveLevel, reasoningMode: questionIntelligence.reasoningMode,
+    difficultyScore: questionIntelligence.difficultyScore, importanceScore: questionIntelligence.importanceScore,
     stemContext: questionStems.contextParagraph,
   }).from(questions)
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
     .leftJoin(chapters, eq(questions.chapterId, chapters.id))
     .leftJoin(questionStems, eq(questions.stemId, questionStems.id))
+    .leftJoin(questionIntelligence, eq(questionIntelligence.questionId, questions.id))
     .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
     .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
     .where(and(...conditions, eq(sourceVersions.status, "active")))
