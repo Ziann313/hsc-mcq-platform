@@ -4,6 +4,7 @@ import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, concepts, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, academicGroups, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternSources, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes, questionIntelligence, topics } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { buildAdmissionBenchmarks, type BenchmarkAttempt } from "../shared/admissionBenchmark";
+import { validateAdmissionPatternActivation } from "../shared/admissionPattern";
 import { duplicateRisk, normalizeQuestionText, validateQuestionIntelligence, type QuestionIntelligenceInput } from "../shared/questionIntelligence";
 
 let _db: ReturnType<typeof drizzle> | null = null;
@@ -974,6 +975,10 @@ export async function createAdmissionPatternVersion(input: {
     .innerJoin(sourceVersions, eq(sourceVersions.sourceId, sources.id))
     .where(and(eq(sources.sourceUrl, input.sourceUrl), eq(sources.sourceType, "official_admission"), eq(sourceVersions.status, "active"))).limit(1);
   if (input.status === "active" && !sourceEvidence) throw new Error("Activating an admission pattern requires an active official-admission source record");
+  if (input.status === "active") {
+    const activation = validateAdmissionPatternActivation(input);
+    if (!activation.valid) throw new Error(activation.errors.join(" "));
+  }
   const existing = await db.select({ id: examProfiles.id }).from(examProfiles)
     .where(and(eq(examProfiles.title, input.title), eq(examProfiles.institution, input.institution), eq(examProfiles.examType, input.examType), ...(input.unit ? [eq(examProfiles.unit, input.unit)] : [sql`${examProfiles.unit} is null`])))
     .limit(1);

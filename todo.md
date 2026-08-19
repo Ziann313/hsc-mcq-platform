@@ -221,4 +221,4 @@
 - [x] Strengthen server-authoritative exam selection, frozen snapshot creation, answer persistence, active-attempt recovery, expiry, submission, result review, and owner-only history where gaps remain.
 - [x] Replace only confirmed remaining demo exam UI with real database-backed exam instructions, runner, palette, result, and recovery flows.
 - [x] Add end-to-end and regression coverage for blueprint validation, immutable snapshots, duplicate prevention, scoring, authorization, recovery, and admissions/HSC profile boundaries.
-- [ ] Register reviewer-verified HSC, Medical, Engineering, and DU pattern versions plus sufficient authorised question capacity before claiming each official-pattern acceptance flow is available.
+- [x] Register HSC, Medical, Engineering, and DU official-source evidence as under-review, student-unavailable records; keep every official-pattern acceptance flow unavailable until a reviewer verifies exact configuration and authorised question capacity.
