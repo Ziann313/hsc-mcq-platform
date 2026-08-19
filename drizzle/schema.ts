@@ -410,6 +410,20 @@ export const examPatternSources = mysqlTable("exam_pattern_sources", {
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 }, table => [uniqueIndex("exam_pattern_source_unique").on(table.examPatternVersionId, table.sourceVersionId, table.evidenceRole), index("exam_pattern_source_version_idx").on(table.sourceVersionId)]);
 
+/** Typed, validated blueprint configuration attached to one versioned exam pattern. */
+export const examBlueprints = mysqlTable("exam_blueprints", {
+  id: int("id").autoincrement().primaryKey(),
+  examPatternVersionId: int("examPatternVersionId").notNull().unique().references(() => examPatternVersions.id),
+  configuration: json("configuration").notNull(),
+  validationReport: json("validationReport").notNull(),
+  status: mysqlEnum("status", ["draft", "validated", "published", "archived"]).default("draft").notNull(),
+  createdByUserId: int("createdByUserId").notNull().references(() => users.id),
+  validatedAt: timestamp("validatedAt"),
+  publishedAt: timestamp("publishedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("exam_blueprint_status_idx").on(table.status, table.createdAt)]);
+
 export const exams = mysqlTable("exams", {
   id: int("id").autoincrement().primaryKey(),
   examProfileId: int("examProfileId").references(() => examProfiles.id),
@@ -499,6 +513,8 @@ export const examAttempts = mysqlTable("exam_attempts", {
   patternVersionSnapshot: varchar("patternVersionSnapshot", { length: 60 }).notNull(),
   questionSetSnapshot: json("questionSetSnapshot").notNull(),
   markingSchemeSnapshot: json("markingSchemeSnapshot").notNull(),
+  currentQuestionIndex: int("currentQuestionIndex").default(0).notNull(),
+  resultSummary: json("resultSummary"),
   startedAt: timestamp("startedAt").notNull(),
   expiresAt: timestamp("expiresAt").notNull(),
   submittedAt: timestamp("submittedAt"),

@@ -5,6 +5,7 @@ export type McqQuestionSnapshot = {
   negativeMarkWeight: number;
   subject: string;
   chapter: string;
+  difficulty?: "easy" | "medium" | "hard" | string | null;
 };
 
 export type McqSelection = {
@@ -21,6 +22,8 @@ export type McqExamResult = {
   netMarks: number;
   accuracy: number;
   chapterAccuracy: Array<{ subject: string; chapter: string; correct: number; attempted: number; accuracy: number }>;
+  subjectAccuracy: Array<{ subject: string; correct: number; attempted: number; accuracy: number }>;
+  difficultyAccuracy: Array<{ difficulty: string; correct: number; attempted: number; accuracy: number }>;
 };
 
 function sameSelections(left: number[], right: number[]) {
@@ -35,26 +38,39 @@ export function scoreMcqExam(questions: McqQuestionSnapshot[], selections: McqSe
   let grossMarks = 0;
   let negativeMarks = 0;
   const chapters = new Map<string, { subject: string; chapter: string; correct: number; attempted: number }>();
+  const subjects = new Map<string, { subject: string; correct: number; attempted: number }>();
+  const difficulties = new Map<string, { difficulty: string; correct: number; attempted: number }>();
 
   for (const question of questions) {
     const selected = selectionMap.get(question.id) ?? [];
     const key = `${question.subject}::${question.chapter}`;
     const chapter = chapters.get(key) ?? { subject: question.subject, chapter: question.chapter, correct: 0, attempted: 0 };
+    const subject = subjects.get(question.subject) ?? { subject: question.subject, correct: 0, attempted: 0 };
+    const difficultyKey = question.difficulty ?? "unclassified";
+    const difficulty = difficulties.get(difficultyKey) ?? { difficulty: difficultyKey, correct: 0, attempted: 0 };
     if (selected.length === 0) {
       skipped += 1;
       chapters.set(key, chapter);
+      subjects.set(question.subject, subject);
+      difficulties.set(difficultyKey, difficulty);
       continue;
     }
     chapter.attempted += 1;
+    subject.attempted += 1;
+    difficulty.attempted += 1;
     if (sameSelections(selected, question.correctOptionIds)) {
       correct += 1;
       grossMarks += question.marks;
       chapter.correct += 1;
+      subject.correct += 1;
+      difficulty.correct += 1;
     } else {
       wrong += 1;
       negativeMarks += question.negativeMarkWeight;
     }
     chapters.set(key, chapter);
+    subjects.set(question.subject, subject);
+    difficulties.set(difficultyKey, difficulty);
   }
 
   const attempted = correct + wrong;
@@ -70,5 +86,7 @@ export function scoreMcqExam(questions: McqQuestionSnapshot[], selections: McqSe
       ...item,
       accuracy: item.attempted === 0 ? 0 : Number(((item.correct / item.attempted) * 100).toFixed(1)),
     })).sort((a, b) => a.accuracy - b.accuracy),
+    subjectAccuracy: Array.from(subjects.values()).map(item => ({ ...item, accuracy: item.attempted === 0 ? 0 : Number(((item.correct / item.attempted) * 100).toFixed(1)) })).sort((a, b) => a.accuracy - b.accuracy),
+    difficultyAccuracy: Array.from(difficulties.values()).map(item => ({ ...item, accuracy: item.attempted === 0 ? 0 : Number(((item.correct / item.attempted) * 100).toFixed(1)) })).sort((a, b) => a.difficulty.localeCompare(b.difficulty)),
   };
 }

@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createReviewQuestion } from "../db";
-import { addQuestionComment, getAttemptResult, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestions, getQuestionComments, recordAttemptIntegrityEvent, recordImportBatch, saveAttemptSelection, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
+import { addQuestionComment, getActiveFrozenAttempt, getAttemptResult, getExamHistory, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestions, getQuestionComments, recordAttemptIntegrityEvent, recordImportBatch, saveAttemptSelection, setAttemptMarkForReview, setAttemptQuestionPosition, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { questionIntelligenceInput } from "../questionIntelligenceInput";
 
@@ -34,6 +34,21 @@ export const mcqRouter = router({
     if (!saved) throw new TRPCError({ code: "CONFLICT", message: "This attempt is no longer accepting answers" });
     return { saved: true } as const;
   }),
+  activeAttempt: protectedProcedure.input(z.object({ attemptId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    const attempt = await getActiveFrozenAttempt(ctx.user.id, input.attemptId);
+    if (!attempt) throw new TRPCError({ code: "NOT_FOUND", message: "No recoverable active attempt was found" });
+    return attempt;
+  }),
+  setAttemptMarkForReview: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), questionId: z.number().int().positive(), markedForReview: z.boolean() })).mutation(async ({ ctx, input }) => {
+    const saved = await setAttemptMarkForReview({ ...input, userId: ctx.user.id });
+    if (!saved) throw new TRPCError({ code: "CONFLICT", message: "This attempt is no longer accepting review changes" });
+    return { saved: true } as const;
+  }),
+  setAttemptQuestionPosition: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), currentQuestionIndex: z.number().int().min(0).max(199) })).mutation(async ({ ctx, input }) => {
+    const saved = await setAttemptQuestionPosition({ ...input, userId: ctx.user.id });
+    if (!saved) throw new TRPCError({ code: "CONFLICT", message: "This attempt is no longer accepting navigation updates" });
+    return { saved: true } as const;
+  }),
   reportAttemptIntegrity: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), eventType: z.enum(["tab_blur", "visibility_hidden", "fullscreen_exit"]), metadata: z.record(z.string(), z.unknown()).optional() })).mutation(async ({ ctx, input }) => {
     const saved = await recordAttemptIntegrityEvent({ ...input, userId: ctx.user.id });
     if (!saved) throw new TRPCError({ code: "CONFLICT", message: "This attempt is no longer accepting integrity events" });
@@ -49,6 +64,7 @@ export const mcqRouter = router({
     if (!result) throw new TRPCError({ code: "NOT_FOUND", message: "Submitted attempt not found" });
     return result;
   }),
+  examHistory: protectedProcedure.query(({ ctx }) => getExamHistory(ctx.user.id)),
   leaderboard: publicProcedure.input(z.object({ period: z.enum(["global", "weekly"]), periodKey: z.string().min(4).max(30) })).query(({ input }) => getLeaderboard(input.period, input.periodKey)),
   cheatSheets: publicProcedure.query(() => getPublishedCheatSheets()),
   mistakeVault: protectedProcedure.query(({ ctx }) => getMistakeVault(ctx.user.id)),

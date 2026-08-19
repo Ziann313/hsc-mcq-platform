@@ -24,4 +24,13 @@ describe("scoreMcqExam", () => {
     ], [{ questionId: 1, selectedOptionIds: [1] }]);
     expect(result).toMatchObject({ correct: 1, wrong: 0, skipped: 1, netMarks: 1, accuracy: 100 });
   });
+
+  it("derives subject and difficulty breakdowns from the frozen question snapshot", () => {
+    const result = scoreMcqExam([
+      { id: 1, correctOptionIds: [1], marks: 1, negativeMarkWeight: 0.25, subject: "Physics", chapter: "Motion", difficulty: "easy" },
+      { id: 2, correctOptionIds: [2], marks: 1, negativeMarkWeight: 0.25, subject: "Chemistry", chapter: "Bonding", difficulty: "hard" },
+    ], [{ questionId: 1, selectedOptionIds: [1] }, { questionId: 2, selectedOptionIds: [1] }]);
+    expect(result.subjectAccuracy).toEqual(expect.arrayContaining([{ subject: "Physics", correct: 1, attempted: 1, accuracy: 100 }, { subject: "Chemistry", correct: 0, attempted: 1, accuracy: 0 }]));
+    expect(result.difficultyAccuracy).toEqual(expect.arrayContaining([{ difficulty: "easy", correct: 1, attempted: 1, accuracy: 100 }, { difficulty: "hard", correct: 0, attempted: 1, accuracy: 0 }]));
+  });
 });

@@ -23,6 +23,8 @@ const AccountPage = lazy(() => import("./pages/AccountPage"));
 const GovernanceWorkspace = lazy(() => import("./pages/GovernanceWorkspace"));
 const QuestionIntakeWorkspace = lazy(() => import("./pages/QuestionIntakeWorkspace"));
 const AdmissionPatternsPage = lazy(() => import("./pages/AdmissionPatternsPage"));
+const ExamHistoryPage = lazy(() => import("./pages/ExamHistoryPage"));
+const ExamBlueprintAdminPage = lazy(() => import("./pages/ExamBlueprintAdminPage"));
 const HistoricalAnalysisPage = lazy(() => import("./pages/HistoricalAnalysisPage"));
 const HistoricalAnalysisAdminPage = lazy(() => import("./pages/HistoricalAnalysisAdminPage"));
 const AiGenerationWorkflowPage = lazy(() => import("./pages/AiGenerationWorkflowPage"));
@@ -90,6 +92,8 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/profile">{() => <StudentRoute><AccountPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/questions/new">{() => <AdminRoute><QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/admission-patterns">{() => <AdminRoute><AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
+    <Route path="/exam-history">{() => <StudentRoute><ExamHistoryPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/exam-blueprints">{() => <AdminRoute><ExamBlueprintAdminPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/historical-import">{() => <AdminRoute><HistoricalAnalysisAdminPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/ai-generation">{() => <AdminRoute><AiGenerationWorkflowPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/historical-analysis">{() => <StudentRoute><HistoricalAnalysisPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>

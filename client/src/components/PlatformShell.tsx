@@ -49,6 +49,7 @@ export const studentNavigationItems: NavigationItem[] = [
   { path: "/image-solver", label: "Image solver", bn: "ইমেজ সলভার", icon: Camera },
   { path: "/notices", label: "Official notices", bn: "অফিসিয়াল নোটিশ", icon: Bell },
   { path: "/progress", label: "Progress", bn: "অগ্রগতি", icon: BarChart3 },
+  { path: "/exam-history", label: "Exam history", bn: "এক্সাম হিস্ট্রি", icon: ClipboardCheck },
   { path: "/historical-analysis", label: "Historical analysis", bn: "ঐতিহাসিক বিশ্লেষণ", icon: Landmark },
 ];
 

@@ -16,6 +16,8 @@ export const dedicatedRoutePaths = [
   "/profile",
   "/questions/new",
   "/admission-patterns",
+  "/exam-history",
+  "/exam-blueprints",
   "/historical-import",
   "/ai-generation",
   "/historical-analysis",

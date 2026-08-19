@@ -216,3 +216,9 @@
 - [x] Add a source-authorized import and display workflow for verified HSC and admission historical-analysis records.
 - [x] Add reviewer-controlled AI generation jobs with independent structured answer verification and auditable handoff to human review.
 - [x] Add regression coverage and responsive verification for historical-analysis and AI-review workflows.
+- [x] Audit every current exam schema, server lifecycle, route, UI, and regression test against the attached production exam-engine specification.
+- [x] Add typed, versioned exam-blueprint validation that governs distribution, duration, marking, source mode, and immutable publication state without inventing unavailable patterns.
+- [x] Strengthen server-authoritative exam selection, frozen snapshot creation, answer persistence, active-attempt recovery, expiry, submission, result review, and owner-only history where gaps remain.
+- [x] Replace only confirmed remaining demo exam UI with real database-backed exam instructions, runner, palette, result, and recovery flows.
+- [x] Add end-to-end and regression coverage for blueprint validation, immutable snapshots, duplicate prevention, scoring, authorization, recovery, and admissions/HSC profile boundaries.
+- [ ] Register reviewer-verified HSC, Medical, Engineering, and DU pattern versions plus sufficient authorised question capacity before claiming each official-pattern acceptance flow is available.

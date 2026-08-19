@@ -13,8 +13,8 @@ export default function ExamPreparationPage({ language, onLanguageChange }: { la
   const [contentLanguage, setContentLanguage] = useState<"bn" | "en">(language);
   const [subjectId, setSubjectId] = useState<number | null>(null);
   const [chapterId, setChapterId] = useState<number | null>(null);
-  const [duration, setDuration] = useState(30);
-  const [limit, setLimit] = useState(20);
+  const [duration, setDuration] = useState<number | null>(null);
+  const [limit, setLimit] = useState<number | null>(null);
   const [subjectSearch, setSubjectSearch] = useState("");
   const availability = trpc.learning.publishedContentAvailability.useQuery({ contentLanguage });
   const readiness = trpc.learning.examReadinessSummary.useQuery();
@@ -27,6 +27,7 @@ export default function ExamPreparationPage({ language, onLanguageChange }: { la
   const selectedChapter = chapters.find(chapter => chapter.chapterId === chapterId);
   const selectVersion = (nextLanguage: "bn" | "en") => { setContentLanguage(nextLanguage); setSubjectId(null); setChapterId(null); };
   const prepare = () => {
+    if (!duration || !limit) return;
     sessionStorage.setItem("mcqGuru.examPreset", JSON.stringify({ subjectId: subjectId ?? undefined, chapterId: chapterId ?? undefined, contentLanguage, duration, limit }));
     navigate("/live-exam");
   };
@@ -67,18 +68,18 @@ export default function ExamPreparationPage({ language, onLanguageChange }: { la
       </SelectionSection>}
 
       <section className="grid gap-5 lg:grid-cols-2">
-        <SetupCard icon={FileQuestion} title={copy("4. Set question count", "৪. প্রশ্নসংখ্যা সেট করো")}><div className="mt-4 grid grid-cols-3 gap-2">{[10, 20, 30].map(value => <Choice key={value} active={limit === value} onClick={() => setLimit(value)} compact>{value}</Choice>)}</div></SetupCard>
-        <SetupCard icon={Clock3} title={copy("5. Set duration", "৫. সময় সেট করো")}><div className="mt-4 grid grid-cols-3 gap-2">{[15, 30, 45].map(value => <Choice key={value} active={duration === value} onClick={() => setDuration(value)} compact>{value} {copy("min", "মিনিট")}</Choice>)}</div></SetupCard>
+        <SetupCard icon={FileQuestion} title={copy("4. Set question count", "৪. প্রশ্নসংখ্যা সেট করো")}><div className="mt-4"><Input type="number" inputMode="numeric" min={1} max={100} value={limit ?? ""} onChange={event => { const value = Number(event.target.value); setLimit(Number.isInteger(value) && value >= 1 && value <= 100 ? value : null); }} placeholder={copy("Enter a count up to 100", "১০০ পর্যন্ত প্রশ্নসংখ্যা লিখুন")} aria-label={copy("Question count", "প্রশ্নসংখ্যা")} className="h-12 rounded-xl" /></div></SetupCard>
+        <SetupCard icon={Clock3} title={copy("5. Set duration", "৫. সময় সেট করো")}><div className="mt-4"><Input type="number" inputMode="numeric" min={1} max={240} value={duration ?? ""} onChange={event => { const value = Number(event.target.value); setDuration(Number.isInteger(value) && value >= 1 && value <= 240 ? value : null); }} placeholder={copy("Enter minutes up to 240", "২৪০ পর্যন্ত মিনিট লিখুন")} aria-label={copy("Duration in minutes", "মিনিটে সময়")} className="h-12 rounded-xl" /></div></SetupCard>
       </section>
 
       <section className="rounded-[24px] border border-[#bdeadd] bg-[#effcf9] p-5">
         <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
           <div>
             <p className="text-xs font-bold uppercase tracking-[.14em] text-[#087b6c]">{copy("YOUR EXAM SETUP", "তোমার এক্সাম সেটআপ")}</p>
-            <p className="mt-2 text-sm font-extrabold text-[#071d33]">{selected?.name ?? copy("All available subjects", "সব উপলভ্য বিষয়")}{selectedChapter ? ` · ${selectedChapter.chapter}` : ""} · {contentLanguage === "bn" ? "বাংলা" : "English"} · {limit} {copy("questions", "প্রশ্ন")} · {duration} {copy("minutes", "মিনিট")}</p>
+            <p className="mt-2 text-sm font-extrabold text-[#071d33]">{selected?.name ?? copy("All available subjects", "সব উপলভ্য বিষয়")}{selectedChapter ? ` · ${selectedChapter.chapter}` : ""} · {contentLanguage === "bn" ? "বাংলা" : "English"} · {limit ?? "—"} {copy("questions", "প্রশ্ন")} · {duration ?? "—"} {copy("minutes", "মিনিট")}</p>
             <p className="mt-1 text-xs text-[#386e66]">{copy("The actual number can be lower when fewer approved questions match your selection.", "তোমার নির্বাচনের সাথে কম অনুমোদিত প্রশ্ন মিললে আসল সংখ্যা কম হতে পারে।")}</p>
           </div>
-          <Button disabled={!subjects.length} onClick={prepare} className="min-h-12 rounded-xl bg-[#071d33]">{copy("Continue to exam", "এক্সামে এগিয়ে যাও")}<ArrowRight size={16} /></Button>
+          <Button disabled={!subjects.length || !duration || !limit} onClick={prepare} className="min-h-12 rounded-xl bg-[#071d33]">{copy("Continue to exam", "এক্সামে এগিয়ে যাও")}<ArrowRight size={16} /></Button>
         </div>
       </section>
       <p className="flex items-center gap-2 text-xs leading-5 text-slate-500"><ShieldCheck size={15} className="text-[#087b6c]" />{copy("No sample questions or invented readiness data are used in this setup.", "এই সেটআপে কোনো স্যাম্পল প্রশ্ন বা কৃত্রিম রেডিনেস ডেটা ব্যবহার করা হয় না।")}</p>
