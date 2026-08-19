@@ -187,3 +187,7 @@
 - [x] Register only verified, attributable admission unit-pattern, date, and cut-off benchmark evidence; retain truthful unavailable states where evidence is absent.
 - [x] Refine existing Admission Preparation into clear unit-specific practice and adaptive-roadmap flows without duplicating the frozen exam engine or source-governance workflow.
 - [x] Add regression coverage, responsive verification, and deliver the focused admission-preparation update.
+- [x] Inventory all visible student features, routes, navigation entries, data states, and shared systems before making structural changes.
+- [x] Identify confirmed demo placeholders, non-functional controls, duplicate experiences, and misplaced features without treating truthful unavailable states as defects.
+- [x] Consolidate or repair only confirmed priority issues by reusing the existing question, exam, result, timer, progress, profile, and source-governance systems.
+- [x] Validate the complete student journey on desktop and mobile, add regression coverage, and deliver the focused consolidation release.

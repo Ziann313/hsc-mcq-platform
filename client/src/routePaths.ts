@@ -1,9 +1,5 @@
 export const homeRoutePaths = [
   "/",
-  "/tutor",
-  "/study-plan",
-  "/mistakes",
-  "/bookmarks",
 ] as const;
 
 export const dedicatedRoutePaths = [
@@ -21,7 +17,7 @@ export const dedicatedRoutePaths = [
   "/questions/new",
   "/admission-patterns",
   "/admission",
-  "/mcq-lab",
+  "/tutor",
   "/live-exam",
   "/live-exams",
   "/leaderboard",
@@ -38,8 +34,12 @@ export const registeredRoutePaths = new Set<string>([
 
 export const legacyRouteRedirects = {
   "/question-bank": "/practice",
-  "/exam-lab": "/mcq-lab",
+  "/exam-lab": "/practice",
   "/bulk-import": "/import",
   "/question-intake": "/questions/new",
   "/content-workspace": "/governance",
+  "/mcq-lab": "/practice",
+  "/study-plan": "/practice",
+  "/mistakes": "/mistake-vault",
+  "/bookmarks": "/practice",
 } as const;

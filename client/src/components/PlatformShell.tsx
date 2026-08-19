@@ -5,8 +5,6 @@ import {
   Bot,
   Camera,
   Brain,
-  Bookmark,
-  CalendarDays,
   ChevronRight,
   ClipboardCheck,
   Flame,
@@ -51,9 +49,6 @@ export const studentNavigationItems: NavigationItem[] = [
   { path: "/image-solver", label: "Image solver", bn: "ইমেজ সলভার", icon: Camera },
   { path: "/notices", label: "Official notices", bn: "অফিসিয়াল নোটিশ", icon: Bell },
   { path: "/progress", label: "Progress", bn: "অগ্রগতি", icon: BarChart3 },
-  { path: "/study-plan", label: "Study Plan", bn: "স্টাডি প্ল্যান", icon: CalendarDays },
-  { path: "/mistakes", label: "Mistakes", bn: "ভুলের খাতা", icon: Brain },
-  { path: "/bookmarks", label: "Bookmarks", bn: "বুকমার্ক", icon: Bookmark },
 ];
 
 export const adminNavigationItems: NavigationItem[] = [
@@ -110,10 +105,10 @@ export function PlatformShell({ children, language, onLanguageChange }: { childr
           <span className="grid size-10 place-items-center rounded-2xl bg-[#16b89b] shadow-[0_8px_24px_rgba(22,184,155,.25)]"><GraduationCap size={22} /></span>
           <span><b className="block font-display text-xl tracking-tight">MCQ GURU</b><span className="text-xs text-slate-400">Learn. Practice. Rise.</span></span>
         </button>
-        <div className="mb-5 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
-          <div className="flex items-center gap-2 text-xs font-semibold text-[#7ce3d1]"><Flame size={14} /> {isAuthenticated ? copy("Progress appears after real activity", "আসল অ্যাক্টিভিটির পর অগ্রগতি দেখা যাবে") : copy("Sign in to track your learning", "লার্নিং ট্র্যাক করতে সাইন ইন করো")}</div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className={`h-full rounded-full bg-[#16b89b] ${isAuthenticated ? "w-[18%]" : "w-[8%]"}`} /></div>
-        </div>
+        <button onClick={() => navigate(isAuthenticated ? "/progress" : "/profile")} className="mb-5 w-full rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left transition hover:bg-white/10">
+          <div className="flex items-center gap-2 text-xs font-semibold text-[#7ce3d1]"><Flame size={14} /> {isAuthenticated ? copy("Open your real learning progress", "আসল লার্নিং অগ্রগতি দেখো") : copy("Sign in to track your learning", "লার্নিং ট্র্যাক করতে সাইন ইন করো")}</div>
+          <p className="mt-2 text-[11px] leading-4 text-slate-400">{isAuthenticated ? copy("Accuracy, attempts, and weak areas use persisted activity.", "নির্ভুলতা, অ্যাটেম্পট ও দুর্বল অংশ সংরক্ষিত অ্যাক্টিভিটি থেকে আসে।") : copy("No personal progress is shown before secure sign-in.", "নিরাপদ সাইন-ইনের আগে কোনো ব্যক্তিগত অগ্রগতি দেখানো হয় না।")}</p>
+        </button>
         <nav className="flex-1 space-y-1">
           {navItems.map(item => {
             const active = location === item.path;

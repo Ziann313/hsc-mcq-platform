@@ -29,6 +29,7 @@ const ExamPreparationPage = lazy(() => import("./pages/ExamPreparationPage"));
 const LearningProgressPage = lazy(() => import("./pages/LearningProgressPage"));
 const LiveExamPage = lazy(() => import("./pages/LiveExamPage"));
 const LiveExamsPage = lazy(() => import("./pages/LiveExamsPage"));
+const TutorPage = lazy(() => import("./pages/TutorPage"));
 const LeaderboardPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.LeaderboardPage })));
 const CheatSheetsPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.CheatSheetsPage })));
 const MistakeVaultPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.MistakeVaultPage })));
@@ -80,7 +81,11 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/admission-patterns">{() => <StudentRoute><AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/admission">{() => <StudentRoute><AdmissionPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/practice">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
-    <Route path="/mcq-lab">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/tutor">{() => <StudentRoute><TutorPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/mcq-lab"><Redirect to="/practice" /></Route>
+    <Route path="/study-plan"><Redirect to="/practice" /></Route>
+    <Route path="/mistakes"><Redirect to="/mistake-vault" /></Route>
+    <Route path="/bookmarks"><Redirect to="/practice" /></Route>
     <Route path="/exams">{() => <StudentRoute><ExamPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/progress">{() => <StudentRoute><LearningProgressPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/live-exam">{() => <StudentRoute><LiveExamPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
