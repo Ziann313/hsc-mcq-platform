@@ -212,3 +212,7 @@
 - [x] Design compatible normalized contracts for topic/concept/DNA metadata, historical pattern intelligence, configurable admission profiles, and provenance states without duplicating existing governance tables.
 - [x] Implement only verified data-driven intelligence, source, workflow, and student-flow enhancements; preserve truthful unavailable states where official evidence or reviewed content is absent.
 - [x] Add regression coverage and responsive verification for the upgraded source-governed preparation journeys.
+- [x] Audit existing historical-metrics, source authorization, review, and LLM integration paths before extending them.
+- [x] Add a source-authorized import and display workflow for verified HSC and admission historical-analysis records.
+- [x] Add reviewer-controlled AI generation jobs with independent structured answer verification and auditable handoff to human review.
+- [x] Add regression coverage and responsive verification for historical-analysis and AI-review workflows.

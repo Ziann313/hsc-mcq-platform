@@ -23,6 +23,9 @@ const AccountPage = lazy(() => import("./pages/AccountPage"));
 const GovernanceWorkspace = lazy(() => import("./pages/GovernanceWorkspace"));
 const QuestionIntakeWorkspace = lazy(() => import("./pages/QuestionIntakeWorkspace"));
 const AdmissionPatternsPage = lazy(() => import("./pages/AdmissionPatternsPage"));
+const HistoricalAnalysisPage = lazy(() => import("./pages/HistoricalAnalysisPage"));
+const HistoricalAnalysisAdminPage = lazy(() => import("./pages/HistoricalAnalysisAdminPage"));
+const AiGenerationWorkflowPage = lazy(() => import("./pages/AiGenerationWorkflowPage"));
 const AdmissionPreparationPage = lazy(() => import("./pages/AdmissionPreparationPage"));
 const ExamLabPage = lazy(() => import("./pages/ExamLabPage"));
 const ExamPreparationPage = lazy(() => import("./pages/ExamPreparationPage"));
@@ -87,6 +90,9 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/profile">{() => <StudentRoute><AccountPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/questions/new">{() => <AdminRoute><QuestionIntakeWorkspace language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/admission-patterns">{() => <AdminRoute><AdmissionPatternsPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
+    <Route path="/historical-import">{() => <AdminRoute><HistoricalAnalysisAdminPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
+    <Route path="/ai-generation">{() => <AdminRoute><AiGenerationWorkflowPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
+    <Route path="/historical-analysis">{() => <StudentRoute><HistoricalAnalysisPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/admission">{() => <StudentRoute><AdmissionPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/practice">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/tutor">{() => <StudentRoute><TutorPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>

@@ -303,6 +303,7 @@ export const questionIntelligence = mysqlTable("question_intelligence", {
  */
 export const historicalPatternMetrics = mysqlTable("historical_pattern_metrics", {
   id: int("id").autoincrement().primaryKey(),
+  importBatchId: int("importBatchId").references(() => historicalAnalysisImportBatches.id),
   examProfileId: int("examProfileId").notNull().references(() => examProfiles.id),
   sourceVersionId: int("sourceVersionId").notNull().references(() => sourceVersions.id),
   academicYearId: int("academicYearId").references(() => academicYears.id),
@@ -317,11 +318,69 @@ export const historicalPatternMetrics = mysqlTable("historical_pattern_metrics",
   importanceScore: int("importanceScore"),
   questionTypeDistribution: json("questionTypeDistribution"),
   difficultyDistribution: json("difficultyDistribution"),
+  pageReference: varchar("pageReference", { length: 100 }),
   notes: text("notes"),
   verificationStatus: mysqlEnum("verificationStatus", ["under_review", "verified", "archived"]).default("under_review").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("historical_pattern_scope_idx").on(table.examProfileId, table.subjectId, table.chapterId, table.topicId), index("historical_pattern_source_idx").on(table.sourceVersionId, table.verificationStatus)]);
+}, table => [index("historical_pattern_scope_idx").on(table.examProfileId, table.subjectId, table.chapterId, table.topicId), index("historical_pattern_source_idx").on(table.sourceVersionId, table.verificationStatus), index("historical_pattern_import_idx").on(table.importBatchId)]);
+
+/** A reviewer-audited import envelope for aggregate, source-authorized historical analysis. */
+export const historicalAnalysisImportBatches = mysqlTable("historical_analysis_import_batches", {
+  id: int("id").autoincrement().primaryKey(),
+  importedByUserId: int("importedByUserId").notNull().references(() => users.id),
+  sourceVersionId: int("sourceVersionId").notNull().references(() => sourceVersions.id),
+  fileName: varchar("fileName", { length: 260 }).notNull(),
+  fileType: mysqlEnum("fileType", ["json", "csv"]).notNull(),
+  totalRows: int("totalRows").notNull(),
+  acceptedRows: int("acceptedRows").notNull(),
+  rejectedRows: int("rejectedRows").notNull(),
+  validationReport: json("validationReport").notNull(),
+  status: mysqlEnum("status", ["under_review", "verified", "rejected", "archived"]).default("under_review").notNull(),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("historical_import_status_idx").on(table.status, table.createdAt), index("historical_import_source_idx").on(table.sourceVersionId)]);
+
+/**
+ * A server-run, reviewer-controlled generation request. Candidate text never
+ * reaches the student bank until independent verification and human review.
+ */
+export const aiQuestionGenerationJobs = mysqlTable("ai_question_generation_jobs", {
+  id: int("id").autoincrement().primaryKey(),
+  requestedByUserId: int("requestedByUserId").notNull().references(() => users.id),
+  reviewedByUserId: int("reviewedByUserId").references(() => users.id),
+  academicYearId: int("academicYearId").notNull().references(() => academicYears.id),
+  examProfileId: int("examProfileId").references(() => examProfiles.id),
+  subjectId: int("subjectId").notNull().references(() => subjects.id),
+  bookId: int("bookId").notNull().references(() => books.id),
+  chapterId: int("chapterId").notNull().references(() => chapters.id),
+  topicId: int("topicId").references(() => topics.id),
+  conceptId: int("conceptId").references(() => concepts.id),
+  contentLanguage: mysqlEnum("contentLanguage", ["bn", "en"]).notNull(),
+  difficulty: mysqlEnum("difficulty", ["easy", "medium", "hard"]).notNull(),
+  pageReference: varchar("pageReference", { length: 100 }).notNull(),
+  requestInstructions: text("requestInstructions").notNull(),
+  status: mysqlEnum("status", ["draft", "generation_running", "generated", "answer_verification_running", "answer_verified", "answer_verification_failed", "human_review", "rejected", "archived"]).default("draft").notNull(),
+  generationModel: varchar("generationModel", { length: 120 }),
+  verificationModel: varchar("verificationModel", { length: 120 }),
+  generatedCandidate: json("generatedCandidate"),
+  verificationResult: json("verificationResult"),
+  failureReason: text("failureReason"),
+  submittedQuestionId: int("submittedQuestionId").references(() => questions.id),
+  reviewedAt: timestamp("reviewedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("ai_generation_status_idx").on(table.status, table.createdAt), index("ai_generation_scope_idx").on(table.academicYearId, table.subjectId, table.chapterId)]);
+
+/** Multiple authorised source-version/page references may ground one AI generation job. */
+export const aiGenerationJobSources = mysqlTable("ai_generation_job_sources", {
+  id: int("id").autoincrement().primaryKey(),
+  jobId: int("jobId").notNull().references(() => aiQuestionGenerationJobs.id),
+  sourceVersionId: int("sourceVersionId").notNull().references(() => sourceVersions.id),
+  pageReference: varchar("pageReference", { length: 100 }).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [uniqueIndex("ai_generation_job_source_unique").on(table.jobId, table.sourceVersionId, table.pageReference), index("ai_generation_source_idx").on(table.sourceVersionId)]);
 
 export const examProfiles = mysqlTable("exam_profiles", {
   id: int("id").autoincrement().primaryKey(),

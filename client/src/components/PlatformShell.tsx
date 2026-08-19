@@ -49,6 +49,7 @@ export const studentNavigationItems: NavigationItem[] = [
   { path: "/image-solver", label: "Image solver", bn: "ইমেজ সলভার", icon: Camera },
   { path: "/notices", label: "Official notices", bn: "অফিসিয়াল নোটিশ", icon: Bell },
   { path: "/progress", label: "Progress", bn: "অগ্রগতি", icon: BarChart3 },
+  { path: "/historical-analysis", label: "Historical analysis", bn: "ঐতিহাসিক বিশ্লেষণ", icon: Landmark },
 ];
 
 export const adminNavigationItems: NavigationItem[] = [
@@ -57,6 +58,8 @@ export const adminNavigationItems: NavigationItem[] = [
   { path: "/import", label: "Bulk import", bn: "বাল্ক ইমপোর্ট", icon: Upload },
   { path: "/questions/new", label: "Question intake", bn: "প্রশ্ন ইনটেক", icon: BookOpen },
   { path: "/admission-patterns", label: "Admission patterns", bn: "ভর্তি প্যাটার্ন", icon: FileText },
+  { path: "/historical-import", label: "Historical imports", bn: "ঐতিহাসিক ইমপোর্ট", icon: Upload },
+  { path: "/ai-generation", label: "AI generation review", bn: "এআই জেনারেশন রিভিউ", icon: Bot },
 ];
 
 export function canAccessGovernance(role?: string) {
