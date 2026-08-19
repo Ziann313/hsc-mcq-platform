@@ -191,3 +191,8 @@
 - [x] Identify confirmed demo placeholders, non-functional controls, duplicate experiences, and misplaced features without treating truthful unavailable states as defects.
 - [x] Consolidate or repair only confirmed priority issues by reusing the existing question, exam, result, timer, progress, profile, and source-governance systems.
 - [x] Validate the complete student journey on desktop and mobile, add regression coverage, and deliver the focused consolidation release.
+- [x] Review existing loading UI, practice setup filters, active admission-track records, and date fields before adding new controls.
+- [x] Add an accessible lightweight 2D loading animation that respects reduced-motion preferences.
+- [x] Reuse governed admission tracks to filter DU, BUET, and Medical practice options without claiming unsupported question availability.
+- [x] Add a verified upcoming-admission countdown with a clear handoff to the existing daily-study flow and truthful unavailable state.
+- [x] Add regression coverage, responsive verification, and deliver the loading and admission-discovery update.

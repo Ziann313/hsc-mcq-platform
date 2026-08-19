@@ -30,13 +30,14 @@ const LearningProgressPage = lazy(() => import("./pages/LearningProgressPage"));
 const LiveExamPage = lazy(() => import("./pages/LiveExamPage"));
 const LiveExamsPage = lazy(() => import("./pages/LiveExamsPage"));
 const TutorPage = lazy(() => import("./pages/TutorPage"));
+const StudyPlanPage = lazy(() => import("./pages/StudyPlanPage"));
 const LeaderboardPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.LeaderboardPage })));
 const CheatSheetsPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.CheatSheetsPage })));
 const MistakeVaultPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.MistakeVaultPage })));
 const CommunityPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.CommunityPage })));
 const ImporterPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.ImporterPage })));
 
-function RouteLoader() { return <div className="grid min-h-screen place-items-center bg-[#f4f7f7] text-sm font-semibold text-[#087b6c]">Loading MCQ GURU…</div>; }
+function RouteLoader() { return <div className="grid min-h-screen place-items-center bg-[#f4f7f7] px-5 text-center" role="status" aria-live="polite" aria-label="Loading MCQ GURU"><div className="mcq-route-loader"><div className="mcq-route-loader__orbit"><span className="mcq-route-loader__spark mcq-route-loader__spark--one" /><span className="mcq-route-loader__spark mcq-route-loader__spark--two" /><span className="mcq-route-loader__book"><span /><span /><span /></span></div><p className="mt-6 font-display text-xl font-extrabold text-[#071d33]">MCQ GURU</p><p className="mt-1 text-sm font-semibold text-[#087b6c]">Loading your learning space…</p><div className="mcq-route-loader__progress mt-4"><span /></div></div></div>; }
 
 function FirstVisitRoute({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
   const { isAuthenticated, loading: authLoading } = useAuth();
@@ -83,7 +84,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/practice">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/tutor">{() => <StudentRoute><TutorPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mcq-lab"><Redirect to="/practice" /></Route>
-    <Route path="/study-plan"><Redirect to="/practice" /></Route>
+    <Route path="/study-plan">{() => <StudentRoute><StudyPlanPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mistakes"><Redirect to="/mistake-vault" /></Route>
     <Route path="/bookmarks"><Redirect to="/practice" /></Route>
     <Route path="/exams">{() => <StudentRoute><ExamPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>

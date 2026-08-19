@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { TodaysStudyGuide } from "@/components/TodaysStudyGuide";
+import { AdmissionCountdown } from "@/components/AdmissionCountdown";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, Bell, BookOpenCheck, CheckCircle2, FlaskConical, Landmark, LockKeyhole, Play, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import { useLocation } from "wouter";
@@ -59,6 +60,8 @@ function LearningDashboard({ language }: { language: Language }) {
     </section>
 
     <HscGroups language={language} coverage={coverage.data} loading={coverage.isLoading} onExamSetup={() => navigate("/exams")} />
+
+    <AdmissionCountdown language={language} />
 
     <section className="rounded-[24px] border border-[#d8e4ff] bg-[#f4f7ff] p-5 sm:p-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">

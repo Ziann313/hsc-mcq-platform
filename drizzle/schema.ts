@@ -222,6 +222,7 @@ export const questions = mysqlTable("questions", {
   contentLanguage: mysqlEnum("contentLanguage", ["bn", "en", "bilingual"]).default("en").notNull(),
   questionType: mysqlEnum("questionType", ["single_mcq", "multi_statement", "stem_subquestion"]).default("single_mcq").notNull(),
   boardStandard: mysqlEnum("boardStandard", ["board_standard", "varsity_admission_standard"]).default("board_standard").notNull(),
+  admissionTrack: mysqlEnum("admissionTrack", ["du", "buet", "medical"]),
   boardName: varchar("boardName", { length: 100 }),
   boardExamYear: int("boardExamYear"),
   collegePaper: varchar("collegePaper", { length: 180 }),
@@ -234,7 +235,7 @@ export const questions = mysqlTable("questions", {
   currentVersion: int("currentVersion").default(1).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-}, table => [index("question_catalog_idx").on(table.academicYearId, table.subjectId, table.chapterId, table.topicId), index("question_status_idx").on(table.status)]);
+}, table => [index("question_catalog_idx").on(table.academicYearId, table.subjectId, table.chapterId, table.topicId), index("question_admission_track_idx").on(table.admissionTrack, table.status), index("question_status_idx").on(table.status)]);
 
 export const questionStems = mysqlTable("question_stems", {
   id: int("id").autoincrement().primaryKey(),

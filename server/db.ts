@@ -706,6 +706,7 @@ export async function createReviewQuestion(input: {
   prompt: string;
   explanation?: string;
   difficulty: "easy" | "medium" | "hard";
+  admissionTrack?: "du" | "buet" | "medical";
   options: Array<{ text: string; isCorrect: boolean }>;
   sourceVersionId: number;
   pageReference: string;
@@ -722,6 +723,7 @@ export async function createReviewQuestion(input: {
     prompt: input.prompt,
     explanation: input.explanation || null,
     difficulty: input.difficulty,
+    admissionTrack: input.admissionTrack ?? null,
     status: "human_review",
   });
   const questionId = Number(questionResult[0].insertId);
@@ -741,6 +743,7 @@ export async function createReviewQuestion(input: {
       explanation: input.explanation || null,
       options: input.options,
       contentLanguage: input.contentLanguage ?? "en",
+      admissionTrack: input.admissionTrack ?? null,
       sourceVersionId: input.sourceVersionId,
       pageReference: input.pageReference,
     },
@@ -752,7 +755,7 @@ export async function createReviewQuestion(input: {
     action: "question.submitted_for_review",
     entityType: "question",
     entityId: String(questionId),
-    metadata: { sourceVersionId: input.sourceVersionId, pageReference: input.pageReference },
+    metadata: { sourceVersionId: input.sourceVersionId, pageReference: input.pageReference, admissionTrack: input.admissionTrack ?? null },
   });
   return questionId;
 }

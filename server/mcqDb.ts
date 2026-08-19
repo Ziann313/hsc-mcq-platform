@@ -203,7 +203,7 @@ export async function getMistakeVault(userId: number) {
   });
 }
 
-type QuestionFilter = { subjectId?: number; chapterId?: number; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
+type QuestionFilter = { subjectId?: number; chapterId?: number; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; admissionTrack?: "du" | "buet" | "medical"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
 
 export async function getPublishedChapterAvailability(subjectId?: number, contentLanguage?: "bn" | "en") {
   const db = await getDb();
@@ -238,6 +238,7 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
   if (filters.boardName) conditions.push(like(questions.boardName, `%${filters.boardName}%`));
   if (filters.collegePaper) conditions.push(like(questions.collegePaper, `%${filters.collegePaper}%`));
   if (filters.boardStandard) conditions.push(eq(questions.boardStandard, filters.boardStandard));
+  if (filters.admissionTrack) conditions.push(eq(questions.admissionTrack, filters.admissionTrack));
   if (filters.questionType) conditions.push(eq(questions.questionType, filters.questionType));
   if (filters.contentLanguage) conditions.push(eq(questions.contentLanguage, filters.contentLanguage));
   if (filters.questionIds?.length) conditions.push(inArray(questions.id, filters.questionIds));
