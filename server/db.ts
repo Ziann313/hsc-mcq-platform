@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, academicGroups, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes } from "../drizzle/schema";
 import { ENV } from './_core/env';
+import { buildAdmissionBenchmarks, type BenchmarkAttempt } from "../shared/admissionBenchmark";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -819,6 +820,23 @@ export async function getActiveAdmissionTracks() {
 export async function getAdmissionReadiness(userId: number) {
   const [progress, activeTracks] = await Promise.all([getStudentProgressSummary(userId), getActiveAdmissionTracks()]);
   return { progress, activeTracks };
+}
+
+export async function getStudentAdmissionScoreBenchmarks(userId: number) {
+  const [tracks, db] = await Promise.all([getActiveAdmissionTracks(), getDb()]);
+  if (!db) return [];
+  const attempts = await db.select({ id: examAttempts.id, score: examAttempts.score, questionSetSnapshot: examAttempts.questionSetSnapshot, markingSchemeSnapshot: examAttempts.markingSchemeSnapshot, submittedAt: examAttempts.submittedAt, status: examAttempts.status })
+    .from(examAttempts).where(eq(examAttempts.userId, userId));
+  const completed: BenchmarkAttempt[] = attempts.filter(attempt => (attempt.status === "submitted" || attempt.status === "expired") && attempt.score !== null)
+    .map(attempt => {
+      const marking = attempt.markingSchemeSnapshot && typeof attempt.markingSchemeSnapshot === "object" && !Array.isArray(attempt.markingSchemeSnapshot) ? attempt.markingSchemeSnapshot as { admissionTrack?: unknown; maxMarks?: unknown } : {};
+      const frozen = Array.isArray(attempt.questionSetSnapshot) ? attempt.questionSetSnapshot : [];
+      const summedMarks = frozen.reduce((total, question) => total + (question && typeof question === "object" && "marks" in question && Number.isFinite(Number((question as { marks?: unknown }).marks)) ? Number((question as { marks?: unknown }).marks) : 0), 0);
+      const maxMarks = Number.isFinite(Number(marking.maxMarks)) ? Number(marking.maxMarks) : summedMarks;
+      const track: BenchmarkAttempt["track"] = marking.admissionTrack === "du" || marking.admissionTrack === "buet" || marking.admissionTrack === "medical" ? marking.admissionTrack : null;
+      return { id: attempt.id, score: Number(attempt.score), maxMarks, track, submittedAt: attempt.submittedAt };
+    }).filter(attempt => Number.isFinite(attempt.score) && attempt.maxMarks > 0);
+  return buildAdmissionBenchmarks(tracks, completed);
 }
 
 export async function createAdmissionPatternVersion(input: {

@@ -293,7 +293,7 @@ export async function startFilteredAttempt(input: { userId: number; filters: Que
     examVersionSnapshot: "mcq-guru-v1",
     patternVersionSnapshot: input.mistakeRetest ? "mistake-retest-v1" : "filter-snapshot-v1",
     questionSetSnapshot: frozen,
-    markingSchemeSnapshot: { marksPerCorrect: 1, negativeMarkPolicy: "per_question" },
+    markingSchemeSnapshot: { marksPerCorrect: 1, negativeMarkPolicy: "per_question", admissionTrack: input.filters.admissionTrack ?? null, maxMarks: frozen.reduce((total, question) => total + question.marks, 0) },
     startedAt,
     expiresAt,
   });

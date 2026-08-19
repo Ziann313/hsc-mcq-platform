@@ -4,6 +4,7 @@ import { startLogin } from "@/const";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { TodaysStudyGuide } from "@/components/TodaysStudyGuide";
 import { AdmissionCountdown } from "@/components/AdmissionCountdown";
+import { AdmissionScoreBenchmark } from "@/components/AdmissionScoreBenchmark";
 import { trpc } from "@/lib/trpc";
 import { BarChart3, Bell, BookOpenCheck, CheckCircle2, FlaskConical, Landmark, LockKeyhole, Play, ShieldCheck, Sparkles, Trophy } from "lucide-react";
 import { useLocation } from "wouter";
@@ -30,6 +31,7 @@ function LearningDashboard({ language }: { language: Language }) {
   const availability = trpc.learning.publishedContentAvailability.useQuery();
   const coverage = trpc.learning.curriculumCoverageSummary.useQuery();
   const progress = trpc.learning.studentProgressSummary.useQuery(undefined, { enabled: isAuthenticated && !loading });
+  const benchmarks = trpc.learning.admissionScoreBenchmarks.useQuery(undefined, { enabled: isAuthenticated && !loading });
   const copy = (en: string, bn: string) => language === "bn" ? bn : en;
   if (loading || availability.isLoading || coverage.isLoading) return <LearningDashboardSkeleton language={language} />;
 
@@ -62,6 +64,8 @@ function LearningDashboard({ language }: { language: Language }) {
     <HscGroups language={language} coverage={coverage.data} loading={coverage.isLoading} onExamSetup={() => navigate("/exams")} />
 
     <AdmissionCountdown language={language} />
+
+    <AdmissionScoreBenchmark language={language} signedIn={isAuthenticated} loading={benchmarks.isLoading} items={benchmarks.data} onOpenAdmission={() => navigate("/admission")} />
 
     <section className="rounded-[24px] border border-[#d8e4ff] bg-[#f4f7ff] p-5 sm:p-6">
       <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-center">

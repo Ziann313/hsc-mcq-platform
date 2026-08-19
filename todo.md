@@ -196,3 +196,7 @@
 - [x] Reuse governed admission tracks to filter DU, BUET, and Medical practice options without claiming unsupported question availability.
 - [x] Add a verified upcoming-admission countdown with a clear handoff to the existing daily-study flow and truthful unavailable state.
 - [x] Add regression coverage, responsive verification, and deliver the loading and admission-discovery update.
+- [x] Review existing mock-attempt scoring, admission pattern cut-mark records, and dashboard data flow before adding benchmarking.
+- [x] Add a source-reviewed prior-year cut-mark benchmark that compares only compatible real student mock results.
+- [x] Show a clear unavailable state when no eligible mock result or verified historical cut mark exists.
+- [x] Add regression coverage, responsive verification, and deliver the score-benchmarking update.

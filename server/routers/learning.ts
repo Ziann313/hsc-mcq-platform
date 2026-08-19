@@ -9,6 +9,7 @@ import {
   getAdmissionPatternVersions,
   getActiveAdmissionTracks,
   getAdmissionReadiness,
+  getStudentAdmissionScoreBenchmarks,
   getDailyStudyGuide,
   getApprovedSources,
   getApprovedQuestionPublicationQueue,
@@ -90,6 +91,7 @@ export const learningRouter = router({
   activeAdmissionTracks: publicProcedure.query(async () => getActiveAdmissionTracks()),
 
   admissionReadiness: protectedProcedure.query(async ({ ctx }) => getAdmissionReadiness(ctx.user.id)),
+  admissionScoreBenchmarks: protectedProcedure.query(async ({ ctx }) => getStudentAdmissionScoreBenchmarks(ctx.user.id)),
 
   askTutor: protectedProcedure.input(z.object({
     question: z.string().min(4).max(1800),
