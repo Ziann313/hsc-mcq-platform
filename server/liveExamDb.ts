@@ -7,6 +7,11 @@ import { resolveLiveRoomState, shouldAutoSubmitForIntegrityWarnings } from "../s
 
 type LiveMode = "scheduled" | "daily_challenge";
 type IntegrityEvent = "tab_blur" | "visibility_hidden" | "disconnect" | "manual_flag";
+type LiveFrozenQuestion = { questionId: number; questionVersion: number; correctOptionId: number; prompt: string; questionType: string; stemContext: string | null; subject: string; chapter: string; options: Array<{ id: number; optionKey: string; text: string }>; marks: number; negativeMarkWeight: number };
+
+function safeLiveFrozenQuestions(frozen: LiveFrozenQuestion[]) {
+  return frozen.map(question => ({ id: question.questionId, questionId: question.questionId, prompt: question.prompt, questionType: question.questionType, stemContext: question.stemContext, subject: question.subject, chapter: question.chapter, options: question.options }));
+}
 
 async function syncRoomLifecycle(roomId: number) {
   const db = await getDb();
@@ -24,7 +29,7 @@ async function getSourceValidatedQuestions(questionIds: number[]) {
   const ids = Array.from(new Set(questionIds));
   if (!ids.length) throw new Error("Choose at least one published question");
   const rows = await db.select({
-    id: questions.id, prompt: questions.prompt, questionType: questions.questionType, negativeMarkWeight: questions.negativeMarkWeight,
+    id: questions.id, questionVersion: questions.currentVersion, prompt: questions.prompt, questionType: questions.questionType, negativeMarkWeight: questions.negativeMarkWeight,
     subject: subjects.nameEn, chapter: chapters.titleEn, stemContext: questionStems.contextParagraph,
   }).from(questions).innerJoin(subjects, eq(questions.subjectId, subjects.id)).leftJoin(chapters, eq(questions.chapterId, chapters.id)).leftJoin(questionStems, eq(questions.stemId, questionStems.id))
     .where(and(inArray(questions.id, ids), eq(questions.status, "published")));
@@ -219,20 +224,30 @@ export async function joinLiveExamRoom(roomId: number, userId: number) {
   if (room.maxParticipants && Number(counter?.count ?? 0) >= room.maxParticipants) throw new Error("This live exam room is full");
   const questionIds = Array.isArray(room.questionIds) ? room.questionIds.map(Number) : [];
   const questionSet = await getSourceValidatedQuestions(questionIds);
-  const frozen = questionSet.map(question => ({ questionId: question.id, correctOptionId: question.correctOptionId, subject: question.subject, chapter: question.chapter ?? "General", marks: Number(room.marksPerCorrect), negativeMarkWeight: Number(room.negativeMarkPerWrong) }));
-  const created = await db.insert(examAttempts).values({ userId, titleSnapshot: room.title, examVersionSnapshot: `live-room-${room.id}`, patternVersionSnapshot: room.mode, questionSetSnapshot: frozen, markingSchemeSnapshot: { marksPerCorrect: Number(room.marksPerCorrect), negativeMarkPerWrong: Number(room.negativeMarkPerWrong), liveExamRoomId: room.id }, startedAt: room.startsAt, expiresAt: room.endsAt });
-  const attemptId = Number(created[0].insertId);
+  const frozen = questionSet.map(question => ({ questionId: question.id, questionVersion: question.questionVersion, correctOptionId: question.correctOptionId, prompt: question.prompt, questionType: question.questionType, stemContext: question.stemContext ?? null, subject: question.subject, chapter: question.chapter ?? "General", options: question.options.map(({ isCorrect: _isCorrect, ...option }) => ({ id: option.id, optionKey: option.optionKey, text: option.text })), marks: Number(room.marksPerCorrect), negativeMarkWeight: Number(room.negativeMarkPerWrong) })) satisfies LiveFrozenQuestion[];
+  const activeSessionKey = `live-room:${room.id}:${userId}`;
+  let attemptId: number;
+  try {
+    const created = await db.insert(examAttempts).values({ userId, titleSnapshot: room.title, examVersionSnapshot: `live-room-${room.id}`, patternVersionSnapshot: room.mode, questionSetSnapshot: frozen, markingSchemeSnapshot: { marksPerCorrect: Number(room.marksPerCorrect), negativeMarkPerWrong: Number(room.negativeMarkPerWrong), liveExamRoomId: room.id }, startedAt: room.startsAt, expiresAt: room.endsAt, activeSessionKey });
+    attemptId = Number(created[0].insertId);
+  } catch {
+    const [racedParticipant] = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.userId, userId))).limit(1);
+    if (racedParticipant?.attemptId) return getLiveAttempt(room, racedParticipant);
+    throw new Error("A live-exam join is already being initialized; please retry");
+  }
   const participantResult = await db.insert(liveExamParticipants).values({ liveExamRoomId: roomId, userId, attemptId });
   const participant = { id: Number(participantResult[0].insertId), liveExamRoomId: roomId, userId, attemptId, joinedAt: new Date(), submittedAt: null, finalScore: null, timeTakenSeconds: null, warningCount: 0, status: "joined" as const };
-  return { participant, attemptId, expiresAt: room.endsAt, selections: [], questions: questionSet.map(({ correctOptionId: _correctOptionId, options, ...question }) => ({ ...question, options: options.map(({ isCorrect: _isCorrect, ...option }) => option) })) };
+  return { participant, attemptId, expiresAt: room.endsAt, selections: [], questions: safeLiveFrozenQuestions(frozen) };
 }
 
 async function getLiveAttempt(room: typeof liveExamRooms.$inferSelect, participant: typeof liveExamParticipants.$inferSelect) {
-  const questionSet = await getSourceValidatedQuestions((Array.isArray(room.questionIds) ? room.questionIds : []).map(Number));
   const db = await getDb();
+  const [attempt] = db && participant.attemptId ? await db.select({ questionSetSnapshot: examAttempts.questionSetSnapshot, expiresAt: examAttempts.expiresAt }).from(examAttempts).where(eq(examAttempts.id, participant.attemptId)).limit(1) : [];
+  const frozen = attempt?.questionSetSnapshot as LiveFrozenQuestion[] | undefined;
+  if (!Array.isArray(frozen) || !frozen.length || frozen.some(question => !question.prompt || !Array.isArray(question.options) || !question.options.length)) throw new Error("This live attempt has no immutable rendering snapshot");
   const saved = db && participant.attemptId ? await db.select({ questionId: attemptAnswers.questionId, selectedOptionIds: attemptAnswers.selectedOptionIds }).from(attemptAnswers).where(eq(attemptAnswers.attemptId, participant.attemptId)) : [];
   const selections = saved.map(answer => ({ questionId: answer.questionId, selectedOptionIds: Array.isArray(answer.selectedOptionIds) ? answer.selectedOptionIds as number[] : [] }));
-  return { participant, attemptId: participant.attemptId!, expiresAt: room.endsAt, selections, questions: questionSet.map(({ correctOptionId: _correctOptionId, options, ...question }) => ({ ...question, options: options.map(({ isCorrect: _isCorrect, ...option }) => option) })) };
+  return { participant, attemptId: participant.attemptId!, expiresAt: attempt.expiresAt, selections, questions: safeLiveFrozenQuestions(frozen) };
 }
 
 export async function closeLiveExamRoom(roomId: number) {

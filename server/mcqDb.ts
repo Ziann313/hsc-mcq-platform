@@ -125,9 +125,11 @@ export async function submitFrozenAttempt(input: { userId: number; attemptId: nu
   if (!Array.isArray(frozen) || frozen.length === 0 || !frozen.every(item => typeof item.questionId === "number" && typeof item.correctOptionId === "number")) return undefined;
   const frozenQuestionIds = new Set(frozen.map(question => question.questionId));
   if (input.selections.some(selection => !frozenQuestionIds.has(selection.questionId) || new Set(selection.selectedOptionIds).size !== selection.selectedOptionIds.length)) return undefined;
-  const optionRows = await db.select({ id: questionOptions.id, questionId: questionOptions.questionId }).from(questionOptions).where(inArray(questionOptions.questionId, Array.from(frozenQuestionIds)));
   const optionIdsByQuestion = new Map<number, Set<number>>();
-  optionRows.forEach(option => optionIdsByQuestion.set(option.questionId, (optionIdsByQuestion.get(option.questionId) ?? new Set()).add(option.id)));
+  for (const question of frozen as Array<FrozenAttemptQuestion & { options?: Array<{ id: number }> }>) {
+    if (!Array.isArray(question.options) || !question.options.length) return undefined;
+    optionIdsByQuestion.set(question.questionId, new Set(question.options.map(option => option.id)));
+  }
   if (input.selections.some(selection => selection.selectedOptionIds.some(optionId => !optionIdsByQuestion.get(selection.questionId)?.has(optionId)))) return undefined;
   const storedSelections = await db.select({ questionId: attemptAnswers.questionId, selectedOptionIds: attemptAnswers.selectedOptionIds }).from(attemptAnswers).where(eq(attemptAnswers.attemptId, input.attemptId));
   const persisted = storedSelections.map(selection => ({ questionId: selection.questionId, selectedOptionIds: Array.isArray(selection.selectedOptionIds) ? selection.selectedOptionIds as number[] : [] }));
@@ -137,7 +139,7 @@ export async function submitFrozenAttempt(input: { userId: number; attemptId: nu
   const result = finalized.result;
   const submittedAt = new Date();
   const finalStatus = submittedAt > attempt.expiresAt ? "expired" as const : "submitted" as const;
-  const locked = await db.update(examAttempts).set({ status: finalStatus, submittedAt, score: String(result.netMarks), resultSummary: result }).where(and(eq(examAttempts.id, input.attemptId), eq(examAttempts.userId, input.userId), eq(examAttempts.status, "in_progress")));
+  const locked = await db.update(examAttempts).set({ status: finalStatus, activeSessionKey: null, submittedAt, score: String(result.netMarks), resultSummary: result }).where(and(eq(examAttempts.id, input.attemptId), eq(examAttempts.userId, input.userId), eq(examAttempts.status, "in_progress")));
   if (!locked[0].affectedRows) {
     const [completed] = await db.select({ status: examAttempts.status, score: examAttempts.score }).from(examAttempts).where(and(eq(examAttempts.id, input.attemptId), eq(examAttempts.userId, input.userId))).limit(1);
     return completed?.status === "submitted" || completed?.status === "expired" ? finalized.result : undefined;
@@ -179,18 +181,17 @@ export async function saveAttemptSelection(input: { userId: number; attemptId: n
   const frozen = attempt.questionSetSnapshot as unknown as FrozenAttemptQuestion[];
   if (!Array.isArray(frozen) || !frozen.some(question => question.questionId === input.questionId) || new Set(input.selectedOptionIds).size !== input.selectedOptionIds.length) return false;
   const frozenQuestion = frozen.find(question => question.questionId === input.questionId) as (FrozenAttemptQuestion & { options?: Array<{ id: number }> }) | undefined;
-  const frozenOptionIds = Array.isArray(frozenQuestion?.options) ? frozenQuestion.options.map(option => option.id) : [];
-  const optionRows = frozenOptionIds.length ? [] : await db.select({ id: questionOptions.id }).from(questionOptions).where(eq(questionOptions.questionId, input.questionId));
-  const validOptionIds = new Set(frozenOptionIds.length ? frozenOptionIds : optionRows.map(option => option.id));
+  if (!Array.isArray(frozenQuestion?.options) || !frozenQuestion.options.length) return false;
+  const validOptionIds = new Set(frozenQuestion.options.map(option => option.id));
   if (input.selectedOptionIds.some(optionId => !validOptionIds.has(optionId))) return false;
   await db.insert(attemptAnswers).values({
     attemptId: input.attemptId,
     questionId: input.questionId,
     selectedOptionId: input.selectedOptionIds[0] ?? null,
     selectedOptionIds: input.selectedOptionIds,
-    answeredAt: new Date(),
+    answeredAt: input.selectedOptionIds.length ? new Date() : null,
   }).onDuplicateKeyUpdate({
-    set: { selectedOptionId: input.selectedOptionIds[0] ?? null, selectedOptionIds: input.selectedOptionIds, answeredAt: new Date() },
+    set: { selectedOptionId: input.selectedOptionIds[0] ?? null, selectedOptionIds: input.selectedOptionIds, answeredAt: input.selectedOptionIds.length ? new Date() : null },
   });
   return true;
 }
@@ -215,7 +216,7 @@ export async function setAttemptQuestionPosition(input: { userId: number; attemp
   return true;
 }
 
-type RenderFrozenQuestion = FrozenAttemptQuestion & { correctOptionIds?: number[]; position?: number; subjectId?: number; chapterId?: number | null; topicId?: number | null; conceptId?: number | null; contentLanguage?: "bn" | "en"; prompt?: string; questionType?: string; stemContext?: string | null; options?: Array<{ id: number; optionKey: string; text: string }>; explanation?: string | null; solutionImageUrl?: string | null; topic?: string | null; concept?: string | null };
+type RenderFrozenQuestion = FrozenAttemptQuestion & { correctOptionIds?: number[]; position?: number; questionVersion?: number; subjectId?: number; chapterId?: number | null; topicId?: number | null; conceptId?: number | null; contentLanguage?: "bn" | "en"; prompt?: string; questionType?: string; stemContext?: string | null; options?: Array<{ id: number; optionKey: string; text: string }>; explanation?: string | null; solutionImageUrl?: string | null; topic?: string | null; concept?: string | null };
 
 function safeFrozenQuestions(frozen: RenderFrozenQuestion[]) {
   return frozen.map(question => ({
@@ -323,7 +324,7 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
   if (filters.contentLanguage) conditions.push(eq(questions.contentLanguage, filters.contentLanguage));
   if (filters.questionIds?.length) conditions.push(inArray(questions.id, filters.questionIds));
   const rows = await db.select({
-    id: questions.id, subjectId: questions.subjectId, chapterId: questions.chapterId, topicId: questions.topicId, conceptId: questions.conceptId, contentLanguage: questions.contentLanguage, prompt: questions.prompt, questionType: questions.questionType, difficulty: questions.difficulty, boardStandard: questions.boardStandard,
+    id: questions.id, questionVersion: questions.currentVersion, subjectId: questions.subjectId, chapterId: questions.chapterId, topicId: questions.topicId, conceptId: questions.conceptId, contentLanguage: questions.contentLanguage, prompt: questions.prompt, questionType: questions.questionType, difficulty: questions.difficulty, boardStandard: questions.boardStandard,
     boardName: questions.boardName, boardExamYear: questions.boardExamYear, collegePaper: questions.collegePaper,
     chapterTags: questions.chapterTags, negativeMarkWeight: questions.negativeMarkWeight, explanation: questions.explanation,
     solutionImageUrl: questions.solutionImageUrl, subject: subjects.nameEn, chapter: chapters.titleEn, topic: topics.titleEn, concept: concepts.titleEn,
@@ -351,6 +352,23 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
 export async function startFilteredAttempt(input: { userId: number; filters: QuestionFilter; durationMinutes: number; mistakeRetest?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
+  const activeSessionKey = input.mistakeRetest ? `mistake-retest:${input.userId}` : `filtered-practice:${input.userId}`;
+  const [existing] = await db.select({ id: examAttempts.id, startedAt: examAttempts.startedAt, expiresAt: examAttempts.expiresAt, status: examAttempts.status, questionSetSnapshot: examAttempts.questionSetSnapshot }).from(examAttempts).where(eq(examAttempts.activeSessionKey, activeSessionKey)).limit(1);
+  if (existing?.status === "in_progress") {
+    if (shouldFinalizeExpiredAttempt(existing.status, existing.expiresAt)) await getAttemptResult(input.userId, existing.id);
+    else {
+      const frozen = existing.questionSetSnapshot as RenderFrozenQuestion[];
+      if (Array.isArray(frozen) && frozen.length) return { attemptId: existing.id, startedAt: existing.startedAt, expiresAt: existing.expiresAt, questions: safeFrozenQuestions(frozen) };
+    }
+  }
+  const [legacy] = await db.select({ id: examAttempts.id, startedAt: examAttempts.startedAt, expiresAt: examAttempts.expiresAt, questionSetSnapshot: examAttempts.questionSetSnapshot, markingSchemeSnapshot: examAttempts.markingSchemeSnapshot }).from(examAttempts)
+    .where(and(eq(examAttempts.userId, input.userId), eq(examAttempts.status, "in_progress"), sql`${examAttempts.activeSessionKey} IS NULL`)).orderBy(desc(examAttempts.startedAt)).limit(1);
+  const legacyMarking = legacy?.markingSchemeSnapshot && typeof legacy.markingSchemeSnapshot === "object" && !Array.isArray(legacy.markingSchemeSnapshot) ? legacy.markingSchemeSnapshot as { liveExamRoomId?: unknown } : {};
+  const legacyFrozen = legacy?.questionSetSnapshot as RenderFrozenQuestion[] | undefined;
+  if (legacy && !shouldFinalizeExpiredAttempt("in_progress", legacy.expiresAt) && !legacyMarking.liveExamRoomId && Array.isArray(legacyFrozen) && legacyFrozen.length && legacyFrozen.every(question => Array.isArray(question.options) && question.options.length)) {
+    const adopted = await db.update(examAttempts).set({ activeSessionKey }).where(and(eq(examAttempts.id, legacy.id), eq(examAttempts.userId, input.userId), eq(examAttempts.status, "in_progress"), sql`${examAttempts.activeSessionKey} IS NULL`));
+    if (adopted[0].affectedRows) return { attemptId: legacy.id, startedAt: legacy.startedAt, expiresAt: legacy.expiresAt, questions: safeFrozenQuestions(legacyFrozen) };
+  }
   let mistakeQuestionIds: number[] = [];
   if (input.mistakeRetest) {
     const queuedMistakes = await getMistakeVault(input.userId);
@@ -372,6 +390,7 @@ export async function startFilteredAttempt(input: { userId: number; filters: Que
     explanation: question.explanation,
     solutionImageUrl: question.solutionImageUrl,
     options: question.options.map(({ isCorrect: _isCorrect, ...option }) => option),
+    questionVersion: question.questionVersion,
     subjectId: question.subjectId,
     chapterId: question.chapterId,
     topicId: question.topicId,
@@ -388,18 +407,28 @@ export async function startFilteredAttempt(input: { userId: number; filters: Que
   if (frozen.some(question => !question.correctOptionId)) throw new Error("Published question is missing a correct option");
   const startedAt = new Date();
   const expiresAt = new Date(startedAt.getTime() + input.durationMinutes * 60_000);
-  const result = await db.insert(examAttempts).values({
-    userId: input.userId,
-    titleSnapshot: input.mistakeRetest ? "MCQ GURU spaced mistake re-test" : "MCQ GURU filtered practice",
-    examVersionSnapshot: "mcq-guru-v1",
-    patternVersionSnapshot: input.mistakeRetest ? "mistake-retest-v1" : "filter-snapshot-v1",
-    questionSetSnapshot: frozen,
-    markingSchemeSnapshot: { marksPerCorrect: 1, negativeMarkPolicy: "per_question", admissionTrack: input.filters.admissionTrack ?? null, maxMarks: frozen.reduce((total, question) => total + Number(question.marks ?? 0), 0) },
-    startedAt,
-    expiresAt,
-  });
+  let attemptId: number;
+  try {
+    const result = await db.insert(examAttempts).values({
+      userId: input.userId,
+      titleSnapshot: input.mistakeRetest ? "MCQ GURU spaced mistake re-test" : "MCQ GURU filtered practice",
+      examVersionSnapshot: "mcq-guru-v1",
+      patternVersionSnapshot: input.mistakeRetest ? "mistake-retest-v1" : "filter-snapshot-v1",
+      questionSetSnapshot: frozen,
+      markingSchemeSnapshot: { marksPerCorrect: 1, negativeMarkPolicy: "per_question", admissionTrack: input.filters.admissionTrack ?? null, maxMarks: frozen.reduce((total, question) => total + Number(question.marks ?? 0), 0) },
+      startedAt,
+      expiresAt,
+      activeSessionKey,
+    });
+    attemptId = Number(result[0].insertId);
+  } catch {
+    const [raced] = await db.select({ id: examAttempts.id, startedAt: examAttempts.startedAt, expiresAt: examAttempts.expiresAt, status: examAttempts.status, questionSetSnapshot: examAttempts.questionSetSnapshot }).from(examAttempts).where(eq(examAttempts.activeSessionKey, activeSessionKey)).limit(1);
+    const racedFrozen = raced?.questionSetSnapshot as RenderFrozenQuestion[] | undefined;
+    if (!raced || raced.status !== "in_progress" || !Array.isArray(racedFrozen) || !racedFrozen.length) throw new Error("Unable to create a recoverable attempt");
+    return { attemptId: raced.id, startedAt: raced.startedAt, expiresAt: raced.expiresAt, questions: safeFrozenQuestions(racedFrozen) };
+  }
   return {
-    attemptId: Number(result[0].insertId),
+    attemptId,
     startedAt,
     expiresAt,
     questions: safeFrozenQuestions(frozen),
@@ -415,11 +444,14 @@ export async function getAttemptResult(userId: number, attemptId: number) {
   if (attempt.status === "in_progress") {
     if (!shouldFinalizeExpiredAttempt(attempt.status, attempt.expiresAt)) return undefined;
     const storedSelections = await db.select({ questionId: attemptAnswers.questionId, selectedOptionIds: attemptAnswers.selectedOptionIds }).from(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId));
-    await submitFrozenAttempt({
+    const finalized = await submitFrozenAttempt({
       userId,
       attemptId,
       selections: storedSelections.map(item => ({ questionId: item.questionId, selectedOptionIds: Array.isArray(item.selectedOptionIds) ? item.selectedOptionIds as number[] : [] })),
     });
+    if (!finalized) {
+      await db.update(examAttempts).set({ status: "expired", activeSessionKey: null, submittedAt: new Date(), resultSummary: { available: false, reason: "This legacy attempt expired before a complete immutable question snapshot was available." } }).where(and(eq(examAttempts.id, attemptId), eq(examAttempts.userId, userId), eq(examAttempts.status, "in_progress")));
+    }
     return getAttemptResult(userId, attemptId);
   }
   const storedAnswers = await db.select({ questionId: attemptAnswers.questionId, selectedOptionId: attemptAnswers.selectedOptionId, selectedOptionIds: attemptAnswers.selectedOptionIds, markedForReview: attemptAnswers.markedForReview, isCorrect: attemptAnswers.isCorrect, awardedMarks: attemptAnswers.awardedMarks }).from(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId));
@@ -455,6 +487,10 @@ export async function getAttemptExamIntelligence(userId: number, attemptId: numb
 export async function getExamHistory(userId: number) {
   const db = await getDb();
   if (!db) return [];
+  const active = await db.select({ id: examAttempts.id, expiresAt: examAttempts.expiresAt, status: examAttempts.status }).from(examAttempts).where(and(eq(examAttempts.userId, userId), eq(examAttempts.status, "in_progress"))).limit(100);
+  for (const attempt of active) {
+    if (shouldFinalizeExpiredAttempt(attempt.status, attempt.expiresAt)) await getAttemptResult(userId, attempt.id);
+  }
   const attempts = await db.select({ id: examAttempts.id, title: examAttempts.titleSnapshot, examVersion: examAttempts.examVersionSnapshot, patternVersion: examAttempts.patternVersionSnapshot, status: examAttempts.status, score: examAttempts.score, startedAt: examAttempts.startedAt, submittedAt: examAttempts.submittedAt, expiresAt: examAttempts.expiresAt, questionSetSnapshot: examAttempts.questionSetSnapshot, resultSummary: examAttempts.resultSummary }).from(examAttempts).where(eq(examAttempts.userId, userId)).orderBy(desc(examAttempts.startedAt)).limit(100);
   return attempts.map(attempt => {
     const frozen = Array.isArray(attempt.questionSetSnapshot) ? attempt.questionSetSnapshot : [];

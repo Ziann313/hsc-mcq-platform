@@ -25,6 +25,15 @@ describe("scoreMcqExam", () => {
     expect(result).toMatchObject({ correct: 1, wrong: 0, skipped: 1, netMarks: 1, accuracy: 100 });
   });
 
+  it("accumulates frozen decimal marks and penalties in exact hundredths", () => {
+    const result = scoreMcqExam([
+      { id: 1, correctOptionIds: [1], marks: 0.1, negativeMarkWeight: 0.1, subject: "Physics", chapter: "Units" },
+      { id: 2, correctOptionIds: [2], marks: 0.2, negativeMarkWeight: 0.1, subject: "Physics", chapter: "Units" },
+      { id: 3, correctOptionIds: [3], marks: 0.1, negativeMarkWeight: 0.1, subject: "Physics", chapter: "Units" },
+    ], [{ questionId: 1, selectedOptionIds: [1] }, { questionId: 2, selectedOptionIds: [2] }, { questionId: 3, selectedOptionIds: [1] }]);
+    expect(result).toMatchObject({ grossMarks: 0.3, negativeMarks: 0.1, netMarks: 0.2 });
+  });
+
   it("derives subject and difficulty breakdowns from the frozen question snapshot", () => {
     const result = scoreMcqExam([
       { id: 1, correctOptionIds: [1], marks: 1, negativeMarkWeight: 0.25, subject: "Physics", chapter: "Motion", difficulty: "easy" },

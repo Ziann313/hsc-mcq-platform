@@ -1,4 +1,4 @@
-import { scoreMcqExam, type McqSelection } from "./mcq";
+import { roundMark, scoreMcqExam, type McqSelection } from "./mcq";
 
 export type FrozenAttemptQuestion = { questionId: number; correctOptionId: number; subject?: string; chapter?: string; difficulty?: string | null; marks?: number; negativeMarkWeight?: number };
 
@@ -13,7 +13,7 @@ export function buildExpiredAttemptFinalization(questions: FrozenAttemptQuestion
     const isCorrect = selectedOptionIds.length === 1 && selectedOptionIds[0] === question.correctOptionId;
     return {
       questionId: question.questionId, selectedOptionIds, selectedOptionId: selectedOptionIds[0] ?? null, isCorrect,
-      awardedMarks: isCorrect ? question.marks ?? 1 : selectedOptionIds.length ? -(question.negativeMarkWeight ?? 0) : 0,
+      awardedMarks: isCorrect ? roundMark(question.marks ?? 1) : selectedOptionIds.length ? roundMark(-(question.negativeMarkWeight ?? 0)) : 0,
     };
   });
   return { result, answers, mistakeQuestionIds: answers.filter(answer => answer.selectedOptionIds.length && !answer.isCorrect).map(answer => answer.questionId) };

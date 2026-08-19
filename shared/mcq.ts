@@ -26,6 +26,16 @@ export type McqExamResult = {
   difficultyAccuracy: Array<{ difficulty: string; correct: number; attempted: number; accuracy: number }>;
 };
 
+const MARK_SCALE = 100;
+
+export function roundMark(value: number) {
+  return Number((Math.round((Number(value) + Number.EPSILON) * MARK_SCALE) / MARK_SCALE).toFixed(2));
+}
+
+function toMarkUnits(value: number) {
+  return Math.round((Number(value) + Number.EPSILON) * MARK_SCALE);
+}
+
 function sameSelections(left: number[], right: number[]) {
   return left.length === right.length && [...left].sort().every((value, index) => value === [...right].sort()[index]);
 }
@@ -35,8 +45,8 @@ export function scoreMcqExam(questions: McqQuestionSnapshot[], selections: McqSe
   let correct = 0;
   let wrong = 0;
   let skipped = 0;
-  let grossMarks = 0;
-  let negativeMarks = 0;
+  let grossMarkUnits = 0;
+  let negativeMarkUnits = 0;
   const chapters = new Map<string, { subject: string; chapter: string; correct: number; attempted: number }>();
   const subjects = new Map<string, { subject: string; correct: number; attempted: number }>();
   const difficulties = new Map<string, { difficulty: string; correct: number; attempted: number }>();
@@ -60,13 +70,13 @@ export function scoreMcqExam(questions: McqQuestionSnapshot[], selections: McqSe
     difficulty.attempted += 1;
     if (sameSelections(selected, question.correctOptionIds)) {
       correct += 1;
-      grossMarks += question.marks;
+      grossMarkUnits += toMarkUnits(question.marks);
       chapter.correct += 1;
       subject.correct += 1;
       difficulty.correct += 1;
     } else {
       wrong += 1;
-      negativeMarks += question.negativeMarkWeight;
+      negativeMarkUnits += toMarkUnits(question.negativeMarkWeight);
     }
     chapters.set(key, chapter);
     subjects.set(question.subject, subject);
@@ -78,9 +88,9 @@ export function scoreMcqExam(questions: McqQuestionSnapshot[], selections: McqSe
     correct,
     wrong,
     skipped,
-    grossMarks: Number(grossMarks.toFixed(2)),
-    negativeMarks: Number(negativeMarks.toFixed(2)),
-    netMarks: Number((grossMarks - negativeMarks).toFixed(2)),
+    grossMarks: roundMark(grossMarkUnits / MARK_SCALE),
+    negativeMarks: roundMark(negativeMarkUnits / MARK_SCALE),
+    netMarks: roundMark((grossMarkUnits - negativeMarkUnits) / MARK_SCALE),
     accuracy: attempted === 0 ? 0 : Number(((correct / attempted) * 100).toFixed(1)),
     chapterAccuracy: Array.from(chapters.values()).map(item => ({
       ...item,

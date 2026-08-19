@@ -227,3 +227,7 @@
 - [x] Add verified recommended-practice outputs that only reference published source-linked content available for the detected learning need.
 - [x] Surface weak-concept and recommended-practice results in responsive student result and learning interfaces with truthful unavailable states.
 - [x] Add regression coverage for the complete Exam Intelligence analytics-to-recommendation path.
+- [x] Audit the entire repository for hardcoded/demo assessment data, unsafe client authority, answer-key leakage, stale/mutable snapshot use, source-year misuse, and database integrity gaps.
+- [x] Remediate every confirmed exam lifecycle, source-version, concurrency, schema/index, and authorization gap without removing working unrelated functionality.
+- [x] Expand regression coverage for secure start, safe responses, snapshots/versioning, answer persistence, clear/review flags, expiry, recovery, double submission, scoring, authorization, source-year selection, and historical labels.
+- [x] Validate migrations, build, actual authenticated exam lifecycle, refresh/recovery, result/review, cross-user access boundaries, network payload safety, and mobile behavior before release.

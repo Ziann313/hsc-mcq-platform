@@ -64,21 +64,31 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
     const [correct] = await db.select({ id: questionOptions.id }).from(questionOptions).where(eq(questionOptions.questionId, questionId)).limit(1);
     expect(correct?.id).toBeTruthy();
     if (!correct) return;
-    const chapterAttempt = await startFilteredAttempt({ userId: studentId, filters: { subjectId: subject.id, chapterId, contentLanguage: "en", limit: 10 }, durationMinutes: 15, marksPerCorrect: 1 });
-    expect(chapterAttempt?.questions).toEqual([expect.objectContaining({ id: questionId })]);
     expect(await startFilteredAttempt({ userId: studentId, filters: { subjectId: subject.id, chapterId, contentLanguage: "bn", limit: 10 }, durationMinutes: 15, marksPerCorrect: 1 })).toBeUndefined();
+    const chapterAttempt = await startFilteredAttempt({ userId: studentId, filters: { subjectId: subject.id, chapterId, contentLanguage: "en", limit: 10 }, durationMinutes: 15, marksPerCorrect: 1 });
     targetedAttemptId = chapterAttempt?.attemptId ?? 0;
+    expect(chapterAttempt?.questions).toEqual([expect.objectContaining({ id: questionId })]);
+    const recoveredChapterAttempt = await startFilteredAttempt({ userId: studentId, filters: { subjectId: subject.id, chapterId, contentLanguage: "en", limit: 10 }, durationMinutes: 15, marksPerCorrect: 1 });
+    expect(recoveredChapterAttempt?.attemptId).toBe(chapterAttempt?.attemptId);
 
     const room = await createLiveExamRoom({ createdByUserId: adminId, title: "Live integration room", mode: "daily_challenge", startsAt: new Date(Date.now() - 1_000), durationMinutes: 5, questionIds: [questionId], marksPerCorrect: 1, negativeMarkPerWrong: 0.25, autoSubmitAfterWarnings: 3 });
     roomId = room.roomId;
     const joined = await joinLiveExamRoom(roomId, studentId);
     attemptId = joined.attemptId;
+    expect(joined.questions[0]?.options[0]).not.toHaveProperty("isCorrect");
+    await db.update(questions).set({ prompt: "Live question changed after the attempt began" }).where(eq(questions.id, questionId));
+    await db.update(questionOptions).set({ text: "Changed option text" }).where(eq(questionOptions.id, correct.id));
     expect(await saveAttemptSelection({ userId: studentId, attemptId, questionId, selectedOptionIds: [correct.id] })).toBe(true);
     const resumed = await joinLiveExamRoom(roomId, studentId);
     expect(resumed.selections).toEqual([{ questionId, selectedOptionIds: [correct.id] }]);
+    expect(resumed.questions[0]).toMatchObject({ prompt: "Live integration question" });
+    expect(resumed.questions[0]?.options.find(option => option.id === correct.id)?.text).toBe("Correct");
+    expect(resumed.questions[0]?.options[0]).not.toHaveProperty("isCorrect");
 
     const closed = await closeLiveExamRoom(roomId);
     expect(closed).toMatchObject({ closed: true, finalizedCount: 1 });
+    const [finalizedAttempt] = await db.select({ activeSessionKey: examAttempts.activeSessionKey }).from(examAttempts).where(eq(examAttempts.id, attemptId)).limit(1);
+    expect(finalizedAttempt?.activeSessionKey).toBeNull();
     const leaderboard = await getLiveLeaderboard(roomId, studentId);
     expect(leaderboard).toEqual([expect.objectContaining({ userId: studentId, rank: 1, isMe: true })]);
     expect(Number(leaderboard[0].finalScore)).toBe(1);

@@ -519,9 +519,10 @@ export const examAttempts = mysqlTable("exam_attempts", {
   expiresAt: timestamp("expiresAt").notNull(),
   submittedAt: timestamp("submittedAt"),
   status: mysqlEnum("status", ["in_progress", "submitted", "expired"]).default("in_progress").notNull(),
+  activeSessionKey: varchar("activeSessionKey", { length: 180 }),
   score: decimal("score", { precision: 8, scale: 2 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-}, table => [index("attempt_user_status_idx").on(table.userId, table.status)]);
+}, table => [index("attempt_user_status_idx").on(table.userId, table.status), uniqueIndex("attempt_active_session_unique").on(table.activeSessionKey)]);
 
 export const attemptAnswers = mysqlTable("attempt_answers", {
   id: int("id").autoincrement().primaryKey(),

@@ -2,7 +2,7 @@ import { eq } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
 import { academicYears, attemptAnswers, attemptIntegrityEvents, examAttempts, leaderboardScores, mistakes, questionOptions, questions, subjects, users } from "../drizzle/schema";
 import { getDb } from "./db";
-import { getAttemptResult, recordAttemptIntegrityEvent, saveAttemptSelection } from "./mcqDb";
+import { getActiveFrozenAttempt, getAttemptResult, recordAttemptIntegrityEvent, saveAttemptSelection } from "./mcqDb";
 
 const enabled = Boolean(process.env.DATABASE_URL);
 let cleanup: (() => Promise<void>) | undefined;
@@ -21,6 +21,8 @@ describe.skipIf(!enabled)("expired attempt database integration", () => {
     if (!year || !subject) return;
     const userResult = await db.insert(users).values({ openId: `mcq-guru-expiry-test-${stamp}`, name: "MCQ GURU integration test", role: "student" });
     const userId = Number(userResult[0].insertId);
+    const intruderResult = await db.insert(users).values({ openId: `mcq-guru-expiry-intruder-${stamp}`, name: "Attempt isolation test", role: "student" });
+    const intruderId = Number(intruderResult[0].insertId);
     let questionId = 0; let attemptId = 0;
     cleanup = async () => {
       if (userId) {
@@ -30,6 +32,7 @@ describe.skipIf(!enabled)("expired attempt database integration", () => {
       if (attemptId) { await db.delete(attemptIntegrityEvents).where(eq(attemptIntegrityEvents.attemptId, attemptId)); await db.delete(attemptAnswers).where(eq(attemptAnswers.attemptId, attemptId)); await db.delete(examAttempts).where(eq(examAttempts.id, attemptId)); }
       if (questionId) { await db.delete(questionOptions).where(eq(questionOptions.questionId, questionId)); await db.delete(questions).where(eq(questions.id, questionId)); }
       if (userId) await db.delete(users).where(eq(users.id, userId));
+      if (intruderId) await db.delete(users).where(eq(users.id, intruderId));
     };
     const questionResult = await db.insert(questions).values({ academicYearId: year.id, subjectId: subject.id, prompt: "Integration verification: choose the correct option.", difficulty: "easy", status: "published", negativeMarkWeight: "0.25" });
     questionId = Number(questionResult[0].insertId);
@@ -41,7 +44,7 @@ describe.skipIf(!enabled)("expired attempt database integration", () => {
     if (!correctOptionId || !wrongOptionId) return;
     const attemptResult = await db.insert(examAttempts).values({
       userId, titleSnapshot: "Integration expiry check", examVersionSnapshot: "test", patternVersionSnapshot: "test",
-      questionSetSnapshot: [{ questionId, correctOptionId, subject: "Integration", chapter: "Expiry", marks: 1, negativeMarkWeight: 0.25 }],
+      questionSetSnapshot: [{ questionId, correctOptionId, subject: "Integration", chapter: "Expiry", marks: 1, negativeMarkWeight: 0.25, options: [{ id: correctOptionId }, { id: wrongOptionId }] }],
       markingSchemeSnapshot: { marksPerCorrect: 1, negativeMarkPerWrong: 0.25 }, startedAt: new Date(stamp - 120_000), expiresAt: new Date(stamp + 60_000),
     });
     attemptId = Number(attemptResult[0].insertId);
@@ -50,6 +53,8 @@ describe.skipIf(!enabled)("expired attempt database integration", () => {
     expect(integrityEvent).toMatchObject({ userId, eventType: "visibility_hidden" });
     await expect(saveAttemptSelection({ userId, attemptId, questionId: questionId + 999_999, selectedOptionIds: [wrongOptionId] })).resolves.toBe(false);
     await expect(saveAttemptSelection({ userId, attemptId, questionId, selectedOptionIds: [wrongOptionId + 999_999] })).resolves.toBe(false);
+    await expect(saveAttemptSelection({ userId: intruderId, attemptId, questionId, selectedOptionIds: [wrongOptionId] })).resolves.toBe(false);
+    await expect(getActiveFrozenAttempt(intruderId, attemptId)).resolves.toBeUndefined();
     await expect(saveAttemptSelection({ userId, attemptId, questionId, selectedOptionIds: [wrongOptionId] })).resolves.toBe(true);
     await db.update(examAttempts).set({ expiresAt: new Date(stamp - 1_000) }).where(eq(examAttempts.id, attemptId));
     const finalized = await getAttemptResult(userId, attemptId);
