@@ -7,8 +7,8 @@ import { questionIntelligenceInput } from "../questionIntelligenceInput";
 
 const importedQuestion = z.object({
   academicYearId: z.number().int().positive(), subjectId: z.number().int().positive(), bookId: z.number().int().positive(), chapterId: z.number().int().positive(), topicId: z.number().int().positive().optional(), conceptId: z.number().int().positive().optional(), contentLanguage: z.enum(["bn", "en"]),
-  prompt: z.string().min(10).max(5000), explanation: z.string().max(5000).optional(), difficulty: z.enum(["easy", "medium", "hard"]), admissionTrack: z.enum(["du", "buet", "medical"]).optional(),
-  sourceVersionId: z.number().int().positive(), pageReference: z.string().min(1).max(100), intelligence: questionIntelligenceInput,
+  prompt: z.string().min(10).max(5000), explanation: z.string().max(5000).optional(), difficulty: z.enum(["easy", "medium", "hard"]), boardStandard: z.enum(["board_standard", "varsity_admission_standard"]).optional(), admissionTrack: z.enum(["du", "buet", "medical"]).optional(),
+  sourceVersionId: z.number().int().positive(), pageReference: z.string().min(1).max(100), additionalSourceReferences: z.array(z.object({ sourceVersionId: z.number().int().positive(), pageReference: z.string().min(1).max(100) })).max(4).optional(), intelligence: questionIntelligenceInput,
   options: z.array(z.object({ text: z.string().min(1).max(1000), isCorrect: z.boolean() })).min(2).max(6).refine(items => items.filter(item => item.isCorrect).length === 1, "Exactly one correct option is required"),
 });
 const questionFilterInput = z.object({

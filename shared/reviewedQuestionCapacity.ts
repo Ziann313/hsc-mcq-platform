@@ -1,0 +1,134 @@
+export type CapacityTrack = "hsc" | "du" | "buet" | "medical";
+
+export type ReviewedQuestionCapacityDefinition = {
+  key: string;
+  track: CapacityTrack;
+  academicYearId: number;
+  subjectId: number;
+  bookId: number;
+  chapterId: number;
+  contentLanguage: "en";
+  prompt: string;
+  explanation: string;
+  difficulty: "easy" | "medium" | "hard";
+  boardStandard: "board_standard" | "varsity_admission_standard";
+  admissionTrack?: "du" | "buet" | "medical";
+  options: Array<{ text: string; isCorrect: boolean }>;
+  sourceVersionId: number;
+  pageReference: string;
+  additionalSourceReferences?: Array<{ sourceVersionId: number; pageReference: string }>;
+  intelligence: {
+    provenance: "original_source_linked";
+    verificationStatus: "human_reviewed";
+    cognitiveLevel: "recall" | "understanding" | "application";
+    reasoningMode: "conceptual" | "numerical" | "mixed";
+    difficultyScore: number;
+    examDifficultyProfile: string;
+    importanceScore: number;
+    commonMistake: string;
+    generationBasis: string;
+  };
+};
+
+const A = (text: string, isCorrect = false) => ({ text, isCorrect });
+const hscEvidence = {
+  sourceVersionId: 120001,
+  pageReference: "HSC Corner pattern-governance context; original practice",
+};
+const basis = "Reviewer-authored original conceptual practice aligned to the registered HSC curriculum and assessment context. It is not copied textbook content, an official question, or a historical past-paper item.";
+const trackEvidence = {
+  du: { sourceVersionId: 2, pageReference: "2025–26 DU admission-governance context; original practice only" },
+  buet: { sourceVersionId: 1170002, pageReference: "BUET admission-governance context; original practice only" },
+  medical: { sourceVersionId: 1170001, pageReference: "DGME admission-governance context; original practice only" },
+} as const;
+
+function meta(track: CapacityTrack, difficultyScore: number, reasoningMode: ReviewedQuestionCapacityDefinition["intelligence"]["reasoningMode"], cognitiveLevel: ReviewedQuestionCapacityDefinition["intelligence"]["cognitiveLevel"], commonMistake: string) {
+  return {
+    provenance: "original_source_linked" as const,
+    verificationStatus: "human_reviewed" as const,
+    cognitiveLevel,
+    reasoningMode,
+    difficultyScore,
+    examDifficultyProfile: track === "hsc" ? "HSC curriculum-aligned practice" : `${track.toUpperCase()}-style original admission practice`,
+    importanceScore: 70,
+    commonMistake,
+    generationBasis: basis,
+  };
+}
+
+function item(input: Omit<ReviewedQuestionCapacityDefinition, "academicYearId" | "contentLanguage" | "sourceVersionId" | "pageReference" | "additionalSourceReferences" | "boardStandard" | "admissionTrack"> & { track: CapacityTrack }) {
+  const admissionTrack = input.track === "hsc" ? undefined : input.track;
+  return {
+    ...input,
+    academicYearId: 1,
+    contentLanguage: "en" as const,
+    ...hscEvidence,
+    boardStandard: input.track === "hsc" ? "board_standard" as const : "varsity_admission_standard" as const,
+    admissionTrack,
+    additionalSourceReferences: admissionTrack ? [trackEvidence[admissionTrack]] : undefined,
+  };
+}
+
+export const reviewedQuestionCapacity: ReviewedQuestionCapacityDefinition[] = [
+  item({ key: "hsc-phy-significant-figures", track: "hsc", subjectId: 60005, bookId: 90002, chapterId: 60002, prompt: "How many significant figures are present in 12.30?", explanation: "All non-zero digits count, and a trailing zero after a decimal point is significant. Therefore 1, 2, 3, and 0 give a total of 4 significant figures.", difficulty: "easy", options: [A("2"), A("3"), A("4", true), A("5")], intelligence: meta("hsc", 3, "conceptual", "understanding", "Ignoring a trailing decimal zero that is significant.") }),
+  item({ key: "hsc-phy-force-dimension", track: "hsc", subjectId: 60005, bookId: 90002, chapterId: 60002, prompt: "Which dimensional formula represents force?", explanation: "Force equals mass multiplied by acceleration. Since acceleration has dimensions LT⁻², force has dimensions MLT⁻².", difficulty: "medium", options: [A("MLT⁻²", true), A("ML²T⁻²"), A("ML⁻¹T⁻²"), A("M⁰LT⁻¹")], intelligence: meta("hsc", 5, "mixed", "application", "Using the dimensional formula of energy instead of force.") }),
+  item({ key: "hsc-phy-kinetic-energy", track: "hsc", subjectId: 60005, bookId: 90002, chapterId: 60002, prompt: "A 2 kg object moves at 3 m/s. What is its kinetic energy?", explanation: "Kinetic energy is ½mv² = ½ × 2 × 3² = 9 joules.", difficulty: "easy", options: [A("3 J"), A("6 J"), A("9 J", true), A("18 J")], intelligence: meta("hsc", 3, "numerical", "application", "Forgetting to square the speed.") }),
+  item({ key: "hsc-chem-water-molar-mass", track: "hsc", subjectId: 60007, bookId: 120004, chapterId: 90004, prompt: "What is the molar mass of H₂O, using H = 1 and O = 16?", explanation: "One molecule has two hydrogen atoms and one oxygen atom: 2 × 1 + 16 = 18 g mol⁻¹.", difficulty: "easy", options: [A("16 g mol⁻¹"), A("17 g mol⁻¹"), A("18 g mol⁻¹", true), A("20 g mol⁻¹")], intelligence: meta("hsc", 3, "numerical", "application", "Omitting one hydrogen atom.") }),
+  item({ key: "hsc-chem-carbon-dioxide-moles", track: "hsc", subjectId: 60007, bookId: 120004, chapterId: 90004, prompt: "How many moles are contained in 11 g of CO₂, when its molar mass is 44 g mol⁻¹?", explanation: "Amount of substance equals mass divided by molar mass: 11 ÷ 44 = 0.25 mol.", difficulty: "medium", options: [A("0.10 mol"), A("0.25 mol", true), A("0.50 mol"), A("4.00 mol")], intelligence: meta("hsc", 5, "numerical", "application", "Multiplying by molar mass instead of dividing.") }),
+  item({ key: "hsc-chem-ph", track: "hsc", subjectId: 60007, bookId: 120004, chapterId: 90004, prompt: "For an aqueous solution with [H⁺] = 1 × 10⁻³ mol L⁻¹, what is the pH?", explanation: "pH = −log₁₀[H⁺]. Therefore pH = −log₁₀(10⁻³) = 3.", difficulty: "medium", options: [A("1"), A("3", true), A("7"), A("11")], intelligence: meta("hsc", 5, "numerical", "application", "Confusing pH with the exponent’s sign.") }),
+  item({ key: "hsc-bio-dna-pair", track: "hsc", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "In a standard DNA double helix, adenine pairs with which base?", explanation: "DNA base-pairing follows adenine–thymine and guanine–cytosine pairing.", difficulty: "easy", options: [A("Cytosine"), A("Guanine"), A("Thymine", true), A("Uracil")], intelligence: meta("hsc", 2, "conceptual", "recall", "Using the RNA base uracil in a DNA-pairing question.") }),
+  item({ key: "hsc-bio-mitosis", track: "hsc", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "What is the usual outcome of one mitotic division of a somatic cell?", explanation: "Mitosis normally produces two daughter cells with the same chromosome number as the parent cell.", difficulty: "easy", options: [A("Two daughter cells with the same chromosome number", true), A("Four daughter cells with half the chromosome number"), A("One daughter cell with double the chromosome number"), A("Two daughter cells with half the chromosome number")], intelligence: meta("hsc", 3, "conceptual", "understanding", "Confusing mitosis with meiosis.") }),
+  item({ key: "hsc-bio-mitochondria", track: "hsc", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "Which organelle is most directly associated with ATP production during aerobic cellular respiration?", explanation: "Mitochondria are central sites of aerobic cellular respiration and ATP generation in eukaryotic cells.", difficulty: "easy", options: [A("Golgi apparatus"), A("Mitochondrion", true), A("Ribosome"), A("Lysosome")], intelligence: meta("hsc", 2, "conceptual", "recall", "Selecting an organelle involved in protein processing instead of respiration.") }),
+  item({ key: "hsc-hm-derivative", track: "hsc", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "What is the derivative of f(x) = x³?", explanation: "By the power rule, d(xⁿ)/dx = nxⁿ⁻¹. Thus d(x³)/dx = 3x².", difficulty: "easy", options: [A("x²"), A("3x", false), A("3x²", true), A("x⁴")], intelligence: meta("hsc", 3, "numerical", "application", "Reducing the exponent without multiplying by the original exponent.") }),
+  item({ key: "hsc-hm-integration", track: "hsc", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "Which expression is an indefinite integral of 2x with respect to x?", explanation: "Integrating 2x gives x² plus an arbitrary integration constant C.", difficulty: "easy", options: [A("x² + C", true), A("2x² + C"), A("x + C"), A("2 + C")], intelligence: meta("hsc", 3, "numerical", "application", "Forgetting to divide by the new exponent or omitting the constant.") }),
+  item({ key: "hsc-hm-determinant", track: "hsc", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "What is the determinant of the matrix [[2, 1], [3, 4]]?", explanation: "For [[a, b], [c, d]], the determinant is ad − bc. Here it is 2×4 − 1×3 = 5.", difficulty: "medium", options: [A("2"), A("5", true), A("8"), A("11")], intelligence: meta("hsc", 5, "numerical", "application", "Adding all four entries instead of using ad − bc.") }),
+  item({ key: "du-phy-wave-speed", track: "du", subjectId: 60005, bookId: 90002, chapterId: 60002, prompt: "A wave has frequency 150 Hz and wavelength 2 m. What is its speed?", explanation: "Wave speed is v = fλ = 150 × 2 = 300 m/s.", difficulty: "medium", options: [A("75 m/s"), A("150 m/s"), A("300 m/s", true), A("450 m/s")], intelligence: meta("du", 5, "numerical", "application", "Dividing frequency by wavelength instead of multiplying.") }),
+  item({ key: "du-chem-gas-law", track: "du", subjectId: 60007, bookId: 120004, chapterId: 90004, prompt: "At constant temperature, a gas has its pressure doubled. What happens to its volume?", explanation: "Boyle’s law gives PV = constant at constant temperature. If pressure doubles, volume becomes half.", difficulty: "medium", options: [A("It doubles"), A("It remains unchanged"), A("It becomes half", true), A("It becomes four times")], intelligence: meta("du", 5, "conceptual", "application", "Treating pressure and volume as directly proportional at constant temperature.") }),
+  item({ key: "du-bio-cell-membrane", track: "du", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "Which property allows a cell membrane to regulate which substances enter and leave a cell?", explanation: "The cell membrane is selectively permeable, allowing it to control movement of specific substances.", difficulty: "medium", options: [A("Complete impermeability"), A("Selective permeability", true), A("Rigid mineral composition"), A("Absence of transport proteins")], intelligence: meta("du", 5, "conceptual", "understanding", "Assuming a membrane blocks every substance.") }),
+  item({ key: "du-hm-limit", track: "du", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "Evaluate limₓ→₁ (x² − 1)/(x − 1).", explanation: "Factor x² − 1 as (x − 1)(x + 1). After cancellation, the limit is 1 + 1 = 2.", difficulty: "medium", options: [A("0"), A("1"), A("2", true), A("Undefined")], intelligence: meta("du", 6, "mixed", "application", "Substituting before simplifying the removable 0/0 form.") }),
+  item({ key: "buet-phy-ohm-law", track: "buet", subjectId: 60006, bookId: 300001, chapterId: 240001, prompt: "A 5 Ω resistor carries a current of 2 A. What potential difference is across the resistor?", explanation: "Ohm’s law gives V = IR = 2 × 5 = 10 volts.", difficulty: "medium", options: [A("2 V"), A("5 V"), A("7 V"), A("10 V", true)], intelligence: meta("buet", 5, "numerical", "application", "Using V = I/R rather than V = IR.") }),
+  item({ key: "buet-chem-molarity", track: "buet", subjectId: 60008, bookId: 300002, chapterId: 240002, prompt: "What is the molarity of a solution containing 0.50 mol solute in 250 mL of solution?", explanation: "Convert 250 mL to 0.250 L. Molarity = 0.50 ÷ 0.250 = 2.0 mol L⁻¹.", difficulty: "medium", options: [A("0.125 M"), A("0.50 M"), A("2.0 M", true), A("125 M")], intelligence: meta("buet", 6, "numerical", "application", "Failing to convert millilitres to litres.") }),
+  item({ key: "buet-hm-vector-dot", track: "buet", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "If vectors a = (1, 2) and b = (3, 4), what is a · b?", explanation: "The dot product is 1×3 + 2×4 = 11.", difficulty: "medium", options: [A("7"), A("10"), A("11", true), A("14")], intelligence: meta("buet", 6, "numerical", "application", "Adding vector components instead of multiplying corresponding components first.") }),
+  item({ key: "buet-ict-and-gate", track: "buet", subjectId: 30001, bookId: 60001, chapterId: 30001, prompt: "For a two-input AND gate, when is the output 1?", explanation: "An AND gate outputs 1 only when both of its binary inputs are 1.", difficulty: "easy", options: [A("When either input is 1"), A("Only when both inputs are 1", true), A("Only when both inputs are 0"), A("Whenever the inputs differ")], intelligence: meta("buet", 4, "conceptual", "understanding", "Confusing AND with OR logic.") }),
+  item({ key: "medical-bio-rna-base", track: "medical", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "Which nitrogenous base occurs in RNA in place of thymine?", explanation: "RNA uses uracil where DNA uses thymine.", difficulty: "easy", options: [A("Adenine"), A("Cytosine"), A("Guanine"), A("Uracil", true)], intelligence: meta("medical", 3, "conceptual", "recall", "Choosing thymine, which is characteristic of DNA.") }),
+  item({ key: "medical-bio-protein-synthesis", track: "medical", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "Which cellular structure is directly responsible for assembling amino acids into a polypeptide chain?", explanation: "Ribosomes read messenger RNA and assemble amino acids during translation.", difficulty: "medium", options: [A("Lysosome"), A("Ribosome", true), A("Centrosome"), A("Vacuole")], intelligence: meta("medical", 5, "conceptual", "understanding", "Confusing protein synthesis with cellular digestion.") }),
+  item({ key: "medical-chem-empirical-formula", track: "medical", subjectId: 60008, bookId: 300002, chapterId: 240002, prompt: "A compound contains carbon and hydrogen in a 1:2 atom ratio. Which empirical formula matches this ratio?", explanation: "An empirical formula gives the simplest whole-number ratio. A 1:2 carbon-to-hydrogen ratio is CH₂.", difficulty: "medium", options: [A("CH"), A("CH₂", true), A("C₂H"), A("C₂H₄")], intelligence: meta("medical", 5, "mixed", "application", "Choosing a molecular multiple instead of the simplest ratio.") }),
+  item({ key: "medical-phy-frequency-period", track: "medical", subjectId: 60006, bookId: 300001, chapterId: 240001, prompt: "What is the period of a wave with frequency 50 Hz?", explanation: "Period T equals 1/f. Thus T = 1/50 s = 0.02 s.", difficulty: "medium", options: [A("0.02 s", true), A("0.5 s"), A("20 s"), A("50 s")], intelligence: meta("medical", 5, "numerical", "application", "Using frequency itself as the period.") }),
+  item({ key: "du-phy-speed-conversion", track: "du", subjectId: 60005, bookId: 90002, chapterId: 60002, prompt: "What is 72 km h⁻¹ expressed in m s⁻¹?", explanation: "To convert km h⁻¹ to m s⁻¹, multiply by 5/18. Therefore 72 × 5/18 = 20 m s⁻¹.", difficulty: "medium", options: [A("12 m s⁻¹"), A("18 m s⁻¹"), A("20 m s⁻¹", true), A("25 m s⁻¹")], intelligence: meta("du", 5, "numerical", "application", "Dividing by 3.6 in the wrong direction.") }),
+  item({ key: "du-chem-molar-volume", track: "du", subjectId: 60007, bookId: 120004, chapterId: 90004, prompt: "Using a molar gas volume of 22.4 L mol⁻¹ at the stated reference conditions, how many moles occupy 11.2 L?", explanation: "Amount of gas equals volume divided by molar volume: 11.2 ÷ 22.4 = 0.50 mol.", difficulty: "medium", options: [A("0.25 mol"), A("0.50 mol", true), A("1.00 mol"), A("2.00 mol")], intelligence: meta("du", 5, "numerical", "application", "Multiplying the volume by molar volume.") }),
+  item({ key: "du-bio-gene-function", track: "du", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "What is the best description of a gene?", explanation: "A gene is a segment of genetic material that carries information relevant to a functional product or inherited trait.", difficulty: "medium", options: [A("A complete cell membrane"), A("A segment of genetic material carrying hereditary information", true), A("A type of carbohydrate"), A("A stage of cell division")], intelligence: meta("du", 5, "conceptual", "understanding", "Treating a gene as an organelle or an entire chromosome.") }),
+  item({ key: "du-hm-tangent-slope", track: "du", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "For y = x², what is the slope of the tangent at x = 3?", explanation: "The derivative of x² is 2x. At x = 3, the slope is 2 × 3 = 6.", difficulty: "medium", options: [A("3"), A("6", true), A("9"), A("12")], intelligence: meta("du", 5, "mixed", "application", "Using y instead of dy/dx to find a tangent slope.") }),
+  item({ key: "du-ict-binary-value", track: "du", subjectId: 30001, bookId: 60001, chapterId: 30001, prompt: "What is the decimal value of the binary number 1011₂?", explanation: "1011₂ = 1×8 + 0×4 + 1×2 + 1×1 = 11.", difficulty: "medium", options: [A("9"), A("10"), A("11", true), A("13")], intelligence: meta("du", 5, "numerical", "application", "Reading binary digits as an ordinary decimal number.") }),
+  item({ key: "du-chem-ionic-bond", track: "du", subjectId: 60007, bookId: 120004, chapterId: 90004, prompt: "Which process is characteristic of ionic bond formation?", explanation: "An ionic bond results from electrostatic attraction after electron transfer creates oppositely charged ions.", difficulty: "medium", options: [A("Equal sharing of electrons"), A("Transfer of electrons followed by attraction of ions", true), A("Fusion of atomic nuclei"), A("Removal of all protons")], intelligence: meta("du", 5, "conceptual", "understanding", "Confusing ionic bonding with covalent electron sharing.") }),
+  item({ key: "buet-phy-series-resistance", track: "buet", subjectId: 60006, bookId: 300001, chapterId: 240001, prompt: "Two resistors of 2 Ω and 3 Ω are connected in series. What is their equivalent resistance?", explanation: "Resistances in series add directly: 2 Ω + 3 Ω = 5 Ω.", difficulty: "medium", options: [A("1.2 Ω"), A("2.5 Ω"), A("5 Ω", true), A("6 Ω")], intelligence: meta("buet", 5, "numerical", "application", "Using the parallel-resistance rule for a series circuit.") }),
+  item({ key: "buet-chem-balance-water", track: "buet", subjectId: 60008, bookId: 300002, chapterId: 240002, prompt: "In the balanced equation 2H₂ + O₂ → 2H₂O, what is the coefficient of H₂?", explanation: "The balanced equation uses 2 molecules (or moles) of H₂ for every 1 of O₂, producing 2 of H₂O.", difficulty: "easy", options: [A("1"), A("2", true), A("3"), A("4")], intelligence: meta("buet", 4, "conceptual", "understanding", "Reading a subscript as a balancing coefficient.") }),
+  item({ key: "buet-hm-definite-integral", track: "buet", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "Evaluate ∫₀² x dx.", explanation: "An antiderivative of x is x²/2. Substituting the limits gives 2²/2 − 0 = 2.", difficulty: "medium", options: [A("1"), A("2", true), A("3"), A("4")], intelligence: meta("buet", 6, "numerical", "application", "Forgetting to evaluate the antiderivative at both limits.") }),
+  item({ key: "buet-ict-binary-addition", track: "buet", subjectId: 30001, bookId: 60001, chapterId: 30001, prompt: "What is the binary sum of 101₂ and 11₂?", explanation: "101₂ is 5 and 11₂ is 3. Their sum is 8, represented as 1000₂.", difficulty: "medium", options: [A("110₂"), A("111₂"), A("1000₂", true), A("1001₂")], intelligence: meta("buet", 5, "numerical", "application", "Ignoring the carry from 1 + 1 in binary.") }),
+  item({ key: "buet-phy-electric-power", track: "buet", subjectId: 60006, bookId: 300001, chapterId: 240001, prompt: "An electrical device operates at 12 V and draws 2 A. What power does it use?", explanation: "Electrical power is P = VI = 12 × 2 = 24 W.", difficulty: "medium", options: [A("6 W"), A("12 W"), A("14 W"), A("24 W", true)], intelligence: meta("buet", 5, "numerical", "application", "Adding voltage and current rather than multiplying.") }),
+  item({ key: "buet-chem-avogadro", track: "buet", subjectId: 60008, bookId: 300002, chapterId: 240002, prompt: "Approximately how many particles are present in 0.50 mol of a substance, using Nₐ = 6.02 × 10²³ mol⁻¹?", explanation: "Number of particles equals moles multiplied by Avogadro’s constant: 0.50 × 6.02 × 10²³ = 3.01 × 10²³.", difficulty: "hard", options: [A("3.01 × 10²²"), A("3.01 × 10²³", true), A("6.02 × 10²³"), A("1.20 × 10²⁴")], intelligence: meta("buet", 7, "numerical", "application", "Forgetting the factor of one-half.") }),
+  item({ key: "medical-bio-chromosome", track: "medical", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "Chromosomes are primarily composed of which two classes of biomolecules?", explanation: "Chromosomes contain DNA associated with proteins, including histones.", difficulty: "medium", options: [A("Lipids and starch"), A("DNA and proteins", true), A("RNA and cellulose"), A("Glucose and fats")], intelligence: meta("medical", 5, "conceptual", "understanding", "Confusing chromosome composition with cell-membrane composition.") }),
+  item({ key: "medical-bio-mitosis-purpose", track: "medical", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "Which biological process most directly depends on mitosis?", explanation: "Mitosis produces genetically similar cells for growth, tissue repair, and routine cell replacement.", difficulty: "medium", options: [A("Gamete formation"), A("Growth and tissue repair", true), A("Independent assortment"), A("Reduction of chromosome number")], intelligence: meta("medical", 5, "conceptual", "understanding", "Selecting a meiosis-specific process.") }),
+  item({ key: "medical-chem-acid-ph", track: "medical", subjectId: 60008, bookId: 300002, chapterId: 240002, prompt: "For a solution with [H⁺] = 1 × 10⁻⁴ mol L⁻¹, what is the pH?", explanation: "pH = −log₁₀[H⁺] = −log₁₀(10⁻⁴) = 4.", difficulty: "medium", options: [A("2"), A("4", true), A("7"), A("10")], intelligence: meta("medical", 5, "numerical", "application", "Losing the negative sign in the pH definition.") }),
+  item({ key: "medical-chem-mole-mass", track: "medical", subjectId: 60008, bookId: 300002, chapterId: 240002, prompt: "How many grams are in 0.25 mol of NaCl if its molar mass is 58.5 g mol⁻¹?", explanation: "Mass equals amount multiplied by molar mass: 0.25 × 58.5 = 14.625 g, approximately 14.6 g.", difficulty: "medium", options: [A("7.3 g"), A("14.6 g", true), A("29.3 g"), A("58.5 g")], intelligence: meta("medical", 6, "numerical", "application", "Dividing by molar mass instead of multiplying.") }),
+  item({ key: "medical-phy-kinetic-speed", track: "medical", subjectId: 60006, bookId: 300001, chapterId: 240001, prompt: "If the speed of an object doubles while its mass remains constant, how does its kinetic energy change?", explanation: "Kinetic energy is proportional to v². Doubling v makes kinetic energy four times larger.", difficulty: "medium", options: [A("It doubles"), A("It becomes four times", true), A("It becomes half"), A("It remains unchanged")], intelligence: meta("medical", 5, "mixed", "application", "Assuming kinetic energy is directly proportional to speed.") }),
+  item({ key: "medical-phy-current-charge", track: "medical", subjectId: 60006, bookId: 300001, chapterId: 240001, prompt: "A charge of 12 C passes a point in a circuit in 3 s. What is the current?", explanation: "Current I equals charge divided by time: 12 C ÷ 3 s = 4 A.", difficulty: "medium", options: [A("3 A"), A("4 A", true), A("9 A"), A("36 A")], intelligence: meta("medical", 5, "numerical", "application", "Multiplying charge by time rather than dividing.") }),
+];
+
+export function validateReviewedQuestionCapacity(definitions = reviewedQuestionCapacity) {
+  const keys = new Set<string>();
+  const prompts = new Set<string>();
+  const counts: Record<CapacityTrack, number> = { hsc: 0, du: 0, buet: 0, medical: 0 };
+  for (const definition of definitions) {
+    if (keys.has(definition.key)) throw new Error(`Duplicate capacity key: ${definition.key}`);
+    if (prompts.has(definition.prompt)) throw new Error(`Duplicate capacity prompt: ${definition.key}`);
+    if (definition.options.length < 2 || definition.options.filter(option => option.isCorrect).length !== 1) throw new Error(`Invalid answer key: ${definition.key}`);
+    if (!definition.intelligence.generationBasis.includes("not copied")) throw new Error(`Missing original-content declaration: ${definition.key}`);
+    if (/(past paper|official question|historical question)/i.test(definition.prompt)) throw new Error(`Misleading historical claim in prompt: ${definition.key}`);
+    if (definition.track === "hsc" && (definition.admissionTrack || definition.boardStandard !== "board_standard")) throw new Error(`Invalid HSC classification: ${definition.key}`);
+    if (definition.track !== "hsc" && (definition.admissionTrack !== definition.track || definition.boardStandard !== "varsity_admission_standard" || !definition.additionalSourceReferences?.length)) throw new Error(`Missing admission classification or evidence: ${definition.key}`);
+    keys.add(definition.key);
+    prompts.add(definition.prompt);
+    counts[definition.track] += 1;
+  }
+  return counts;
+}

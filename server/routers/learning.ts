@@ -282,11 +282,13 @@ export const learningRouter = router({
     prompt: z.string().min(10).max(5000),
     explanation: z.string().max(5000).optional(),
     difficulty: z.enum(["easy", "medium", "hard"]),
+    boardStandard: z.enum(["board_standard", "varsity_admission_standard"]).optional(),
     admissionTrack: z.enum(["du", "buet", "medical"]).optional(),
     options: z.array(z.object({ text: z.string().min(1).max(1000), isCorrect: z.boolean() })).min(2).max(6)
       .refine(options => options.filter(option => option.isCorrect).length === 1, "Exactly one correct option is required"),
     sourceVersionId: z.number().int().positive(),
     pageReference: z.string().min(1).max(100),
+    additionalSourceReferences: z.array(z.object({ sourceVersionId: z.number().int().positive(), pageReference: z.string().min(1).max(100) })).max(4).optional(),
     intelligence: questionIntelligenceInput,
   })).mutation(async ({ ctx, input }) => {
     const questionId = await createReviewQuestion({ ...input, actorUserId: ctx.user.id });

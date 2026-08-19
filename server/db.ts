@@ -743,6 +743,7 @@ async function validateQuestionIntake(input: {
   contentLanguage: "bn" | "en";
   sourceVersionId: number;
   pageReference: string;
+  additionalSourceReferences?: Array<{ sourceVersionId: number; pageReference: string }>;
   prompt: string;
   options: Array<{ text: string; isCorrect: boolean }>;
   intelligence?: QuestionIntelligenceInput;
@@ -768,6 +769,16 @@ async function validateQuestionIntake(input: {
   }
   const [source] = await db.select({ id: sourceVersions.id, status: sourceVersions.status }).from(sourceVersions).where(eq(sourceVersions.id, input.sourceVersionId)).limit(1);
   if (!source || source.status !== "active" || !input.pageReference.trim()) throw new Error("Question intake requires an active source version and page reference");
+  const additionalReferences = input.additionalSourceReferences ?? [];
+  const referenceSignatures = new Set<string>();
+  for (const reference of [{ sourceVersionId: input.sourceVersionId, pageReference: input.pageReference }, ...additionalReferences]) {
+    const signature = `${reference.sourceVersionId}:${reference.pageReference.trim()}`;
+    if (!reference.pageReference.trim()) throw new Error("Every source reference requires a page or section reference");
+    if (referenceSignatures.has(signature)) throw new Error("Duplicate source references are not allowed");
+    referenceSignatures.add(signature);
+    const [referencedSource] = await db.select({ id: sourceVersions.id, status: sourceVersions.status }).from(sourceVersions).where(eq(sourceVersions.id, reference.sourceVersionId)).limit(1);
+    if (!referencedSource || referencedSource.status !== "active") throw new Error("Every source reference must use an active source version");
+  }
   validateQuestionIntelligence(input.intelligence);
 
   const candidates = await db.select({ id: questions.id, prompt: questions.prompt }).from(questions)
@@ -793,10 +804,12 @@ export async function createReviewQuestion(input: {
   prompt: string;
   explanation?: string;
   difficulty: "easy" | "medium" | "hard";
+  boardStandard?: "board_standard" | "varsity_admission_standard";
   admissionTrack?: "du" | "buet" | "medical";
   options: Array<{ text: string; isCorrect: boolean }>;
   sourceVersionId: number;
   pageReference: string;
+  additionalSourceReferences?: Array<{ sourceVersionId: number; pageReference: string }>;
   intelligence?: QuestionIntelligenceInput & { examProfileId?: number };
   actorUserId: number;
 }) {
@@ -814,6 +827,7 @@ export async function createReviewQuestion(input: {
     prompt: input.prompt,
     explanation: input.explanation || null,
     difficulty: input.difficulty,
+    boardStandard: input.boardStandard ?? "board_standard",
     admissionTrack: input.admissionTrack ?? null,
     status: "human_review",
   });
@@ -825,7 +839,8 @@ export async function createReviewQuestion(input: {
     isCorrect: option.isCorrect,
   }));
   await db.insert(questionOptions).values(optionRows);
-  await db.insert(questionSources).values({ questionId, sourceVersionId: input.sourceVersionId, pageReference: input.pageReference });
+  const sourceReferences = [{ sourceVersionId: input.sourceVersionId, pageReference: input.pageReference }, ...(input.additionalSourceReferences ?? [])];
+  await db.insert(questionSources).values(sourceReferences.map(reference => ({ questionId, ...reference })));
   await db.insert(questionIntelligence).values({
     questionId,
     examProfileId: input.intelligence?.examProfileId ?? null,
@@ -852,12 +867,14 @@ export async function createReviewQuestion(input: {
       explanation: input.explanation || null,
       options: input.options,
       contentLanguage: input.contentLanguage,
+      boardStandard: input.boardStandard ?? "board_standard",
       admissionTrack: input.admissionTrack ?? null,
       topicId: input.topicId ?? null,
       conceptId: input.conceptId ?? null,
       intelligence: input.intelligence ?? null,
       sourceVersionId: input.sourceVersionId,
       pageReference: input.pageReference,
+      sourceReferences,
     },
     createdByUserId: input.actorUserId,
     reviewStatus: "human_review",
@@ -867,7 +884,7 @@ export async function createReviewQuestion(input: {
     action: "question.submitted_for_review",
     entityType: "question",
     entityId: String(questionId),
-    metadata: { sourceVersionId: input.sourceVersionId, pageReference: input.pageReference, admissionTrack: input.admissionTrack ?? null, provenance: input.intelligence?.provenance ?? "original_source_linked" },
+    metadata: { sourceVersionId: input.sourceVersionId, pageReference: input.pageReference, sourceReferences, admissionTrack: input.admissionTrack ?? null, provenance: input.intelligence?.provenance ?? "original_source_linked" },
   });
   return questionId;
 }

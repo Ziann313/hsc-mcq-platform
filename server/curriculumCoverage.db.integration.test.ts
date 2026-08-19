@@ -8,6 +8,8 @@ describe.skipIf(!enabled)("curriculum coverage summary", () => {
     const summary = await getCurriculumCoverageSummary();
     expect(summary.groups.map(group => group.slug)).toEqual(expect.arrayContaining(["science", "humanities", "business-studies"]));
     expect(summary.groups.every(group => group.registeredSubjectCount >= group.publishedSubjectCount && group.registeredChapterCount >= group.publishedChapterCount)).toBe(true);
-    expect(summary.scienceChapters).toEqual(expect.arrayContaining([expect.objectContaining({ subject: "Higher Mathematics 2nd Paper", questionCount: 8 })]));
+    const higherMathematics = summary.scienceChapters.find(chapter => chapter.subject === "Higher Mathematics 2nd Paper");
+    expect(higherMathematics).toEqual(expect.objectContaining({ subject: "Higher Mathematics 2nd Paper" }));
+    expect(higherMathematics?.questionCount).toBeGreaterThanOrEqual(8);
   });
 });

@@ -231,3 +231,10 @@
 - [x] Remediate every confirmed exam lifecycle, source-version, concurrency, schema/index, and authorization gap without removing working unrelated functionality.
 - [x] Expand regression coverage for secure start, safe responses, snapshots/versioning, answer persistence, clear/review flags, expiry, recovery, double submission, scoring, authorization, source-year selection, and historical labels.
 - [x] Validate migrations, build, actual authenticated exam lifecycle, refresh/recovery, result/review, cross-user access boundaries, network payload safety, and mobile behavior before release.
+- [x] Audit active approved HSC and admission source evidence, curriculum mappings, existing capacity, and publication eligibility for the highest-value exam tracks.
+- [x] Prepare and independently verify source-linked HSC and admission MCQ batches with exact curriculum links, explanations, answer keys, and reviewer evidence.
+- [x] Load verified capacity through the existing reviewer-governed intake and publication workflow without bypassing source, duplication, or answer-validation controls.
+- [x] Add regression coverage and validate student-facing selection capacity, immutable exam assembly, source lineage, and responsive exam setup after publication.
+- [x] Raise each available DU, BUET, and Medical original-practice track to at least the minimum selectable ten-question capacity, then verify the admission setup cannot silently produce an undersized selected paper.
+- [x] Wire DU, BUET, and Medical admission selections to their actual server-side admission-track filters, show truthful track-specific capacity, and prevent unavailable track labels from silently falling back to the general bank.
+- [x] Ensure admission setup synchronizes its selected question count to the loaded source-tagged capacity before enabling the start action, including an explicit visible count choice on mobile.
