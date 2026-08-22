@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { describe, expect, it } from "vitest";
 import { questionIntelligence, questionOptions, questionSources, questions } from "../drizzle/schema";
-import { reviewedQuestionCapacity } from "../shared/reviewedQuestionCapacity";
+import { allReviewedQuestionCapacity, reviewedBilingualQuestionCapacity, reviewedQuestionCapacity } from "../shared/reviewedQuestionCapacity";
 import { getDb } from "./db";
 import { getPublishedQuestions } from "./mcqDb";
 
@@ -13,7 +13,7 @@ describe.skipIf(!enabled)("reviewed HSC and admission question capacity release"
     expect(db).toBeTruthy();
     if (!db) return;
 
-    for (const definition of reviewedQuestionCapacity) {
+    for (const definition of allReviewedQuestionCapacity) {
       const [question] = await db.select({
         id: questions.id,
         status: questions.status,
@@ -56,5 +56,16 @@ describe.skipIf(!enabled)("reviewed HSC and admission question capacity release"
       expect(questionsForTrack.filter(question => releasedPrompts.has(question.prompt))).toHaveLength(expectation.expected);
       expect(questionsForTrack.filter(question => releasedPrompts.has(question.prompt)).every(question => question.options.filter(option => option.isCorrect).length === 1)).toBe(true);
     }
+  }, 60_000);
+
+  it("makes every released Bangla original counterpart available only through the Bangla language filter", async () => {
+    const questionsForBangla = await getPublishedQuestions({ contentLanguage: "bn", limit: 100 });
+    const releasedPrompts = new Set(reviewedBilingualQuestionCapacity.map(question => question.prompt));
+    const selected = questionsForBangla.filter(question => releasedPrompts.has(question.prompt));
+    expect(selected).toHaveLength(reviewedBilingualQuestionCapacity.length);
+    expect(selected.every(question => question.contentLanguage === "bn" && question.options.filter(option => option.isCorrect).length === 1)).toBe(true);
+
+    const englishQuestions = await getPublishedQuestions({ contentLanguage: "en", limit: 100 });
+    expect(englishQuestions.some(question => releasedPrompts.has(question.prompt))).toBe(false);
   }, 60_000);
 });

@@ -26,7 +26,7 @@ describe.skipIf(!enabled)("published second-paper science batches", () => {
 
     const uniqueRows = Array.from(new Map(rows.map(row => [row.questionId, row])).values());
     for (const code of secondPaperCodes) {
-      expect(uniqueRows.filter(row => row.subjectCode === code && row.language === "bn")).toHaveLength(4);
+      expect(uniqueRows.filter(row => row.subjectCode === code && row.language === "bn").length).toBeGreaterThanOrEqual(4);
       expect(uniqueRows.filter(row => row.subjectCode === code && row.language === "en").length).toBeGreaterThanOrEqual(4);
     }
     expect(rows.every(row => row.sourceStatus === "active" && Boolean(row.explanation?.trim()))).toBe(true);

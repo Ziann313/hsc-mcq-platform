@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { questions, users } from "../drizzle/schema";
-import { reviewedQuestionCapacity, validateReviewedQuestionCapacity } from "../shared/reviewedQuestionCapacity";
+import { allReviewedQuestionCapacity, validateReviewedQuestionCapacity } from "../shared/reviewedQuestionCapacity";
 import { createReviewQuestion, getDb, publishApprovedQuestion, reviewQuestion } from "./db";
 
 export async function releaseReviewedQuestionCapacity(actorUserId: number) {
@@ -13,7 +13,7 @@ export async function releaseReviewedQuestionCapacity(actorUserId: number) {
   const created: number[] = [];
   const published: number[] = [];
   const skipped: number[] = [];
-  for (const definition of reviewedQuestionCapacity) {
+  for (const definition of allReviewedQuestionCapacity) {
     const admissionClause = definition.admissionTrack ? eq(questions.admissionTrack, definition.admissionTrack) : sql`${questions.admissionTrack} is null`;
     const [existing] = await db.select({ id: questions.id, status: questions.status }).from(questions).where(and(
       eq(questions.academicYearId, definition.academicYearId),
@@ -47,5 +47,5 @@ export async function releaseReviewedQuestionCapacity(actorUserId: number) {
       throw new Error(`Question #${questionId} has incompatible release status: ${status}`);
     }
   }
-  return { created, published, skipped, total: reviewedQuestionCapacity.length };
+  return { created, published, skipped, total: allReviewedQuestionCapacity.length };
 }

@@ -7,7 +7,7 @@ export type ReviewedQuestionCapacityDefinition = {
   subjectId: number;
   bookId: number;
   chapterId: number;
-  contentLanguage: "en";
+  contentLanguage: "bn" | "en";
   prompt: string;
   explanation: string;
   difficulty: "easy" | "medium" | "hard";
@@ -56,12 +56,12 @@ function meta(track: CapacityTrack, difficultyScore: number, reasoningMode: Revi
   };
 }
 
-function item(input: Omit<ReviewedQuestionCapacityDefinition, "academicYearId" | "contentLanguage" | "sourceVersionId" | "pageReference" | "additionalSourceReferences" | "boardStandard" | "admissionTrack"> & { track: CapacityTrack }) {
+function item(input: Omit<ReviewedQuestionCapacityDefinition, "academicYearId" | "contentLanguage" | "sourceVersionId" | "pageReference" | "additionalSourceReferences" | "boardStandard" | "admissionTrack"> & { track: CapacityTrack; contentLanguage?: "bn" | "en" }) {
   const admissionTrack = input.track === "hsc" ? undefined : input.track;
   return {
     ...input,
     academicYearId: 1,
-    contentLanguage: "en" as const,
+    contentLanguage: input.contentLanguage ?? "en",
     ...hscEvidence,
     boardStandard: input.track === "hsc" ? "board_standard" as const : "varsity_admission_standard" as const,
     admissionTrack,
@@ -114,7 +114,24 @@ export const reviewedQuestionCapacity: ReviewedQuestionCapacityDefinition[] = [
   item({ key: "medical-phy-current-charge", track: "medical", subjectId: 60006, bookId: 300001, chapterId: 240001, prompt: "A charge of 12 C passes a point in a circuit in 3 s. What is the current?", explanation: "Current I equals charge divided by time: 12 C ÷ 3 s = 4 A.", difficulty: "medium", options: [A("3 A"), A("4 A", true), A("9 A"), A("36 A")], intelligence: meta("medical", 5, "numerical", "application", "Multiplying charge by time rather than dividing.") }),
 ];
 
-export function validateReviewedQuestionCapacity(definitions = reviewedQuestionCapacity) {
+export const reviewedBilingualQuestionCapacity: ReviewedQuestionCapacityDefinition[] = [
+  item({ key: "hsc-bn-phy-significant-figures", track: "hsc", contentLanguage: "bn", subjectId: 60005, bookId: 90002, chapterId: 60002, prompt: "12.30 সংখ্যাটিতে কয়টি অর্থবহ অঙ্ক আছে?", explanation: "শূন্য ব্যতীত প্রতিটি অঙ্ক অর্থবহ। দশমিকের পরে থাকা শেষের শূন্যটিও অর্থবহ। তাই 1, 2, 3 ও 0—মোট 4টি অর্থবহ অঙ্ক আছে।", difficulty: "easy", options: [A("2"), A("3"), A("4", true), A("5")], intelligence: meta("hsc", 3, "conceptual", "understanding", "দশমিকের পরে থাকা শেষের শূন্যকে অর্থবহ অঙ্ক হিসেবে না ধরা।") }),
+  item({ key: "hsc-bn-phy-force-dimension", track: "hsc", contentLanguage: "bn", subjectId: 60005, bookId: 90002, chapterId: 60002, prompt: "বলের মাত্রিক সূত্র কোনটি?", explanation: "বল = ভর × ত্বরণ। ত্বরণের মাত্রা LT⁻² হওয়ায় বলের মাত্রা হয় MLT⁻²।", difficulty: "medium", options: [A("MLT⁻²", true), A("ML²T⁻²"), A("ML⁻¹T⁻²"), A("M⁰LT⁻¹")], intelligence: meta("hsc", 5, "mixed", "application", "বলের বদলে শক্তির মাত্রিক সূত্র ব্যবহার করা।") }),
+  item({ key: "hsc-bn-phy-kinetic-energy", track: "hsc", contentLanguage: "bn", subjectId: 60005, bookId: 90002, chapterId: 60002, prompt: "2 kg ভরের একটি বস্তু 3 m/s বেগে চললে তার গতিশক্তি কত?", explanation: "গতিশক্তি = ½mv² = ½ × 2 × 3² = 9 জুল।", difficulty: "easy", options: [A("3 J"), A("6 J"), A("9 J", true), A("18 J")], intelligence: meta("hsc", 3, "numerical", "application", "বেগের বর্গ না করা।") }),
+  item({ key: "hsc-bn-chem-water-molar-mass", track: "hsc", contentLanguage: "bn", subjectId: 60007, bookId: 120004, chapterId: 90004, prompt: "H = 1 এবং O = 16 হলে H₂O-এর মোলার ভর কত?", explanation: "একটি H₂O অণুতে দুটি হাইড্রোজেন ও একটি অক্সিজেন আছে। তাই মোলার ভর = 2 × 1 + 16 = 18 g mol⁻¹।", difficulty: "easy", options: [A("16 g mol⁻¹"), A("17 g mol⁻¹"), A("18 g mol⁻¹", true), A("20 g mol⁻¹")], intelligence: meta("hsc", 3, "numerical", "application", "হাইড্রোজেনের একটি পরমাণু বাদ দেওয়া।") }),
+  item({ key: "hsc-bn-chem-carbon-dioxide-moles", track: "hsc", contentLanguage: "bn", subjectId: 60007, bookId: 120004, chapterId: 90004, prompt: "CO₂-এর মোলার ভর 44 g mol⁻¹ হলে 11 g CO₂-এ কত মোল পদার্থ আছে?", explanation: "মোল সংখ্যা = ভর ÷ মোলার ভর = 11 ÷ 44 = 0.25 mol।", difficulty: "medium", options: [A("0.10 mol"), A("0.25 mol", true), A("0.50 mol"), A("4.00 mol")], intelligence: meta("hsc", 5, "numerical", "application", "মোলার ভর দিয়ে ভাগ না করে গুণ করা।") }),
+  item({ key: "hsc-bn-chem-ph", track: "hsc", contentLanguage: "bn", subjectId: 60007, bookId: 120004, chapterId: 90004, prompt: "একটি জলীয় দ্রবণে [H⁺] = 1 × 10⁻³ mol L⁻¹ হলে pH কত?", explanation: "pH = −log₁₀[H⁺]। তাই pH = −log₁₀(10⁻³) = 3।", difficulty: "medium", options: [A("1"), A("3", true), A("7"), A("11")], intelligence: meta("hsc", 5, "numerical", "application", "pH নির্ণয়ে সূচকের ঋণাত্মক চিহ্ন ভুল করা।") }),
+  item({ key: "hsc-bn-bio-dna-pair", track: "hsc", contentLanguage: "bn", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "সাধারণ DNA দ্বিসূত্রকে অ্যাডেনিন কোন ক্ষারকের সঙ্গে জোড়া বাঁধে?", explanation: "DNA-তে ক্ষারক-জোড়া হলো অ্যাডেনিন–থাইমিন এবং গুয়ানিন–সাইটোসিন।", difficulty: "easy", options: [A("সাইটোসিন"), A("গুয়ানিন"), A("থাইমিন", true), A("ইউরাসিল")], intelligence: meta("hsc", 2, "conceptual", "recall", "DNA-এর প্রশ্নে RNA-এর ইউরাসিল নির্বাচন করা।") }),
+  item({ key: "hsc-bn-bio-mitosis", track: "hsc", contentLanguage: "bn", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "দেহকোষের একটি সাধারণ মাইটোসিস বিভাজনের ফল কী?", explanation: "মাইটোসিসে সাধারণত মাতৃকোষের সমান ক্রোমোজোম সংখ্যা নিয়ে দুটি কন্যাকোষ তৈরি হয়।", difficulty: "easy", options: [A("মাতৃকোষের সমান ক্রোমোজোম সংখ্যার দুটি কন্যাকোষ", true), A("অর্ধেক ক্রোমোজোম সংখ্যার চারটি কন্যাকোষ"), A("দ্বিগুণ ক্রোমোজোম সংখ্যার একটি কন্যাকোষ"), A("অর্ধেক ক্রোমোজোম সংখ্যার দুটি কন্যাকোষ")], intelligence: meta("hsc", 3, "conceptual", "understanding", "মাইটোসিস ও মিয়োসিসের ফল গুলিয়ে ফেলা।") }),
+  item({ key: "hsc-bn-bio-mitochondria", track: "hsc", contentLanguage: "bn", subjectId: 60010, bookId: 300003, chapterId: 240003, prompt: "বায়বীয় কোষশ্বাসের সময় ATP উৎপাদনের সঙ্গে কোন অঙ্গাণু সবচেয়ে সরাসরি যুক্ত?", explanation: "ইউক্যারিওটিক কোষে মাইটোকন্ড্রিয়া বায়বীয় কোষশ্বাস ও ATP উৎপাদনের প্রধান স্থান।", difficulty: "easy", options: [A("গলজি বস্তু"), A("মাইটোকন্ড্রিয়া", true), A("রাইবোসোম"), A("লাইসোসোম")], intelligence: meta("hsc", 2, "conceptual", "recall", "কোষশ্বাসের বদলে প্রোটিন প্রক্রিয়াজাতকরণে যুক্ত অঙ্গাণু নির্বাচন করা।") }),
+  item({ key: "hsc-bn-hm-derivative", track: "hsc", contentLanguage: "bn", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "f(x) = x³ হলে f-এর অন্তরক কত?", explanation: "ঘাতের নিয়ম অনুযায়ী d(xⁿ)/dx = nxⁿ⁻¹। তাই d(x³)/dx = 3x²।", difficulty: "easy", options: [A("x²"), A("3x"), A("3x²", true), A("x⁴")], intelligence: meta("hsc", 3, "numerical", "application", "মূল ঘাত দিয়ে গুণ না করে শুধু ঘাত এক কমানো।") }),
+  item({ key: "hsc-bn-hm-integration", track: "hsc", contentLanguage: "bn", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "x-এর সাপেক্ষে 2x-এর একটি অনির্দিষ্ট সমাকলন কোনটি?", explanation: "2x-এর সমাকলন হলো x², এবং অনির্দিষ্ট সমাকলনে ধ্রুবক C যোগ হয়।", difficulty: "easy", options: [A("x² + C", true), A("2x² + C"), A("x + C"), A("2 + C")], intelligence: meta("hsc", 3, "numerical", "application", "নতুন ঘাত দিয়ে ভাগ না করা বা ধ্রুবক C বাদ দেওয়া।") }),
+  item({ key: "hsc-bn-hm-determinant", track: "hsc", contentLanguage: "bn", subjectId: 60012, bookId: 390003, chapterId: 330003, prompt: "[[2, 1], [3, 4]] ম্যাট্রিক্সটির নির্ণায়ক কত?", explanation: "[[a, b], [c, d]]-এর নির্ণায়ক ad − bc। এখানে 2×4 − 1×3 = 5।", difficulty: "medium", options: [A("2"), A("5", true), A("8"), A("11")], intelligence: meta("hsc", 5, "numerical", "application", "ad − bc সূত্রের বদলে চারটি উপাদান যোগ করা।") }),
+];
+
+export const allReviewedQuestionCapacity = [...reviewedQuestionCapacity, ...reviewedBilingualQuestionCapacity];
+
+export function validateReviewedQuestionCapacity(definitions = allReviewedQuestionCapacity) {
   const keys = new Set<string>();
   const prompts = new Set<string>();
   const counts: Record<CapacityTrack, number> = { hsc: 0, du: 0, buet: 0, medical: 0 };
