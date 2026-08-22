@@ -1,14 +1,16 @@
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/NotFound";
-import { lazy, Suspense, useState } from "react";
-import { Redirect, Route, Switch } from "wouter";
+import { lazy, Suspense, useEffect, useRef, useState } from "react";
+import { Redirect, Route, Switch, useLocation } from "wouter";
+import { toast } from "sonner";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { homeRoutePaths, legacyRouteRedirects } from "./routePaths";
 import { useAuth } from "./_core/hooks/useAuth";
 import { trpc } from "./lib/trpc";
 import { resolveFirstVisitState } from "./lib/firstVisitFlow";
+import { getSafeInternalPath } from "./lib/safeNavigation";
 import { isAdministratorRole } from "@shared/authorization";
 
 const Home = lazy(() => import("./pages/Home"));
@@ -57,12 +59,26 @@ function FirstVisitRoute({ language, onLanguageChange }: { language: "bn" | "en"
   if (state === "loading") return <RouteLoader />;
   if (state === "public") return <PublicLandingPage language={language} onLanguageChange={onLanguageChange} />;
   if (state === "onboarding") return <Redirect to="/onboarding" />;
-  const postLoginPath = sessionStorage.getItem("mcqGuru.postLoginPath");
-  if (postLoginPath?.startsWith("/")) {
+  const postLoginPath = getSafeInternalPath(sessionStorage.getItem("mcqGuru.postLoginPath"));
+  if (postLoginPath) {
     sessionStorage.removeItem("mcqGuru.postLoginPath");
     return <Redirect to={postLoginPath} />;
   }
   return <Redirect to="/dashboard" />;
+}
+
+function SignInRequiredRedirect({ returnPath }: { returnPath: string }) {
+  const [, navigate] = useLocation();
+  const handled = useRef(false);
+  useEffect(() => {
+    if (handled.current) return;
+    handled.current = true;
+    const safeReturnPath = getSafeInternalPath(returnPath);
+    if (safeReturnPath) sessionStorage.setItem("mcqGuru.postLoginPath", safeReturnPath);
+    toast.info("Please sign in to continue / সাইন ইন করুন");
+    navigate("/");
+  }, [navigate, returnPath]);
+  return <RouteLoader />;
 }
 
 function OnboardingRoute({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
@@ -75,19 +91,21 @@ function OnboardingRoute({ language, onLanguageChange }: { language: "bn" | "en"
 }
 
 function StudentRoute({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
   const { isAuthenticated, loading: authLoading } = useAuth();
   const profile = trpc.learning.profile.useQuery(undefined, { enabled: isAuthenticated && !authLoading, retry: false, refetchOnWindowFocus: false });
   const state = resolveFirstVisitState({ authLoading, authenticated: isAuthenticated, profileLoading: profile.isLoading, onboardingCompleted: Boolean(profile.data?.onboardingCompletedAt) });
   if (state === "loading") return <RouteLoader />;
-  if (state === "public") return <Redirect to="/" />;
+  if (state === "public") return <SignInRequiredRedirect returnPath={location} />;
   if (state === "onboarding") return <Redirect to="/onboarding" />;
   return <>{children}</>;
 }
 
 function AdminRoute({ children }: { children: React.ReactNode }) {
+  const [location] = useLocation();
   const { user, isAuthenticated, loading } = useAuth();
   if (loading) return <RouteLoader />;
-  if (!isAuthenticated) return <Redirect to="/" />;
+  if (!isAuthenticated) return <SignInRequiredRedirect returnPath={location} />;
   if (!isAdministratorRole(user?.role)) return <AccessDeniedPage />;
   return <>{children}</>;
 }

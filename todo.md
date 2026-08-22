@@ -267,3 +267,6 @@
 - [x] Add protected compatibility entry points for `/admission-prep`, `/hsc-prep`, and `/previous-year-questions` without reviving an unsafe catch-all routing model.
 - [x] Reuse the existing HSC preparation workflow as `/hsc-prep`: it already provides live source-linked subject and chapter capacity, persisted readiness data, and frozen server-selected practice handoffs without duplicating a hub.
 - [x] Reconcile the requested previous-year-question system with existing source governance by surfacing only authorised verified historical analysis and explicitly preserving the no-unlicensed-question-text boundary.
+- [x] Extract and reconcile the newly attached routing-fix brief with the current MCQ GURU route registry, protected-route guards, and navigation inventory.
+- [x] Implement only confirmed routing, redirect, or navigation repairs with explicit route registration and regression coverage.
+- [x] Preserve an unauthenticated student’s requested protected route and show a bilingual sign-in notice before handing them to the secure landing sign-in flow.

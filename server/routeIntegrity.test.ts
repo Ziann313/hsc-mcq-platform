@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { dedicatedRoutePaths, homeRoutePaths, legacyRouteRedirects, publicRoutePaths, registeredRoutePaths } from "../client/src/routePaths";
 import { adminNavigationItems, studentNavigationItems } from "../client/src/components/PlatformShell";
@@ -38,5 +39,12 @@ describe("application route integrity", () => {
       "/hsc-prep": "/exams",
       "/previous-year-questions": "/historical-analysis",
     });
+  });
+
+  it("keeps an explicit final NotFound fallback instead of a broad rest-route that masks student pages", () => {
+    const routerSource = readFileSync(new URL("../client/src/App.tsx", import.meta.url), "utf8");
+    expect(routerSource).not.toContain('path="/:rest*"');
+    expect(routerSource).not.toContain('path={":rest*"}');
+    expect(routerSource).toContain("<Route component={NotFound} />");
   });
 });
