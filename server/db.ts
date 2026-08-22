@@ -318,16 +318,16 @@ export async function publishApprovedQuestion(input: { questionId: number; actor
 
 export async function getPublishedContentAvailability(contentLanguage?: "bn" | "en") {
   const db = await getDb();
-  if (!db) return { publishedQuestionCount: 0, subjects: [] as Array<{ subjectId: number; name: string; questionCount: number }> };
-  const published = await db.select({ questionId: questions.id, subjectId: subjects.id, name: subjects.nameEn })
+  if (!db) return { publishedQuestionCount: 0, subjects: [] as Array<{ subjectId: number; name: string; nameEn: string; nameBn: string; questionCount: number }> };
+  const published = await db.select({ questionId: questions.id, subjectId: subjects.id, name: subjects.nameEn, nameEn: subjects.nameEn, nameBn: subjects.nameBn })
     .from(questions)
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
     .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
     .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
     .where(and(eq(questions.status, "published"), eq(sourceVersions.status, "active"), ...(contentLanguage ? [eq(questions.contentLanguage, contentLanguage)] : [])));
-  const subjectCounts = new Map<number, { subjectId: number; name: string; questionCount: number }>();
+  const subjectCounts = new Map<number, { subjectId: number; name: string; nameEn: string; nameBn: string; questionCount: number }>();
   for (const row of Array.from(new Map(published.map(row => [row.questionId, row])).values())) {
-    const current = subjectCounts.get(row.subjectId) ?? { subjectId: row.subjectId, name: row.name, questionCount: 0 };
+    const current = subjectCounts.get(row.subjectId) ?? { subjectId: row.subjectId, name: row.name, nameEn: row.nameEn, nameBn: row.nameBn, questionCount: 0 };
     current.questionCount += 1;
     subjectCounts.set(row.subjectId, current);
   }

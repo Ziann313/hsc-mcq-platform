@@ -244,3 +244,8 @@
 - [x] Replace the remaining tutor and scaffold branding references with MCQ GURU while preserving existing live MCQ GURU metadata.
 - [x] Add a clean authenticated access-denied experience for non-administrators instead of silently redirecting them away from restricted workspace routes.
 - [x] Add bounded in-memory caching and per-user hourly request limits to the approved-source Tutor flow, with deterministic policy tests and no client exposure of model credentials.
+- [x] Extract and reconcile the newly attached MCQ GURU fix brief with the current production architecture and established safety controls.
+- [x] Implement only verified, compatible fixes identified by the new brief, with regression coverage and responsive validation.
+- [x] Add explicit protected compatibility routes for dashboard, nested practice, attempt, insights, and notebook workflows so direct links never fall through to a generic destination.
+- [x] Replace public landing subject placeholders with active source-linked published subject data, real bilingual labels, clear sign-in-to-explore actions, and a concise footer.
+- [x] Align governance navigation visibility with the broader supported administrator-role policy and remove remaining non-runtime Shikha branding from maintained project templates where safely editable.

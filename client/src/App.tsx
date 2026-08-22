@@ -13,6 +13,7 @@ import { isAdministratorRole } from "@shared/authorization";
 
 const Home = lazy(() => import("./pages/Home"));
 const PublicLandingPage = lazy(() => import("./pages/PublicLandingPage"));
+const PublicInformationPage = lazy(() => import("./pages/PublicInformationPage"));
 const AccessDeniedPage = lazy(() => import("./pages/AccessDeniedPage"));
 
 const Onboarding = lazy(() => import("./pages/Onboarding"));
@@ -53,7 +54,12 @@ function FirstVisitRoute({ language, onLanguageChange }: { language: "bn" | "en"
   if (state === "loading") return <RouteLoader />;
   if (state === "public") return <PublicLandingPage language={language} onLanguageChange={onLanguageChange} />;
   if (state === "onboarding") return <Redirect to="/onboarding" />;
-  return <Home language={language} onLanguageChange={onLanguageChange} />;
+  const postLoginPath = sessionStorage.getItem("mcqGuru.postLoginPath");
+  if (postLoginPath?.startsWith("/")) {
+    sessionStorage.removeItem("mcqGuru.postLoginPath");
+    return <Redirect to={postLoginPath} />;
+  }
+  return <Redirect to="/dashboard" />;
 }
 
 function OnboardingRoute({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
@@ -85,6 +91,10 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 
 function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLanguageChange: (value: "bn" | "en") => void }) {
   return <Suspense fallback={<RouteLoader />}><Switch>
+    <Route path="/about">{() => <PublicInformationPage page="about" language={language} />}</Route>
+    <Route path="/privacy">{() => <PublicInformationPage page="privacy" language={language} />}</Route>
+    <Route path="/terms">{() => <PublicInformationPage page="terms" language={language} />}</Route>
+    <Route path="/contact">{() => <PublicInformationPage page="contact" language={language} />}</Route>
     <Route path="/onboarding">{() => <OnboardingRoute language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/image-solver">{() => <StudentRoute><ImageSolver language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/admin">{() => <AdminRoute><AdminWorkspace language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
@@ -101,13 +111,17 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/ai-generation">{() => <AdminRoute><AiGenerationWorkflowPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/historical-analysis">{() => <StudentRoute><HistoricalAnalysisPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/admission">{() => <StudentRoute><AdmissionPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/practice/:subjectId/:chapterId"><Redirect to="/practice" /></Route>
     <Route path="/practice">{() => <StudentRoute><ExamLabPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/tutor">{() => <StudentRoute><TutorPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mcq-lab"><Redirect to="/practice" /></Route>
     <Route path="/study-plan">{() => <StudentRoute><StudyPlanPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mistakes"><Redirect to="/mistake-vault" /></Route>
     <Route path="/bookmarks"><Redirect to="/practice" /></Route>
+    <Route path="/exams/:examId/attempt"><Redirect to="/live-exam" /></Route>
     <Route path="/exams">{() => <StudentRoute><ExamPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/insights">{() => <StudentRoute><LearningProgressPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/notebook"><Redirect to="/mistake-vault" /></Route>
     <Route path="/progress">{() => <StudentRoute><LearningProgressPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/live-exam">{() => <StudentRoute><LiveExamPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/live-exams/:roomId">{() => <StudentRoute><LiveExamsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
@@ -118,7 +132,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/community">{() => <StudentRoute><CommunityPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/import">{() => <AdminRoute><ImporterPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/">{() => <FirstVisitRoute language={language} onLanguageChange={onLanguageChange} />}</Route>
-    {homeRoutePaths.filter(path => path !== "/").map(path => <Route key={path} path={path}>{() => <StudentRoute><Home language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>)}
+    {homeRoutePaths.map(path => <Route key={path} path={path}>{() => <StudentRoute><Home language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>)}
     {Object.entries(legacyRouteRedirects).map(([from, to]) => <Route key={from} path={from}><Redirect to={to} /></Route>)}
     <Route path="/404" component={NotFound} />
     <Route component={NotFound} />

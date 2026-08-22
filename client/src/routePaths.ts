@@ -1,6 +1,8 @@
 export const homeRoutePaths = [
-  "/",
+  "/dashboard",
 ] as const;
+
+export const publicRoutePaths = ["/", "/about", "/privacy", "/terms", "/contact"] as const;
 
 export const dedicatedRoutePaths = [
   "/practice",
@@ -34,6 +36,7 @@ export const dedicatedRoutePaths = [
 ] as const;
 
 export const registeredRoutePaths = new Set<string>([
+  ...publicRoutePaths,
   ...homeRoutePaths,
   ...dedicatedRoutePaths,
 ]);

@@ -23,6 +23,7 @@ import {
 import { useAuth } from "@/_core/hooks/useAuth";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation } from "wouter";
+import { isAdministratorRole } from "@shared/authorization";
 
 const DailyChallengeBrowserAlert = lazy(() => import("@/components/DailyChallengeBrowserAlert").then(module => ({ default: module.DailyChallengeBrowserAlert })));
 
@@ -36,7 +37,7 @@ export type NavigationItem = {
 };
 
 export const studentNavigationItems: NavigationItem[] = [
-  { path: "/", label: "Home", bn: "হোম", icon: Home },
+  { path: "/dashboard", label: "Home", bn: "হোম", icon: Home },
   { path: "/practice", label: "Daily study", bn: "দৈনিক পড়া", icon: BookOpen },
   { path: "/exams", label: "Mock exams", bn: "মক এক্সাম", icon: ClipboardCheck },
   { path: "/admission", label: "Admission prep", bn: "ভর্তি প্রস্তুতি", icon: Landmark },
@@ -64,7 +65,7 @@ export const adminNavigationItems: NavigationItem[] = [
 ];
 
 export function canAccessGovernance(role?: string) {
-  return role === "admin";
+  return isAdministratorRole(role);
 }
 
 export function visibleNavigationItems(role?: string) {
