@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
-import { attemptAnswers, attemptIntegrityEvents, books, chapterCheatSheets, chapters, concepts, examAttempts, leaderboardScores, mistakes, questionComments, questionIntelligence, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, topics, users } from "../drizzle/schema";
+import { academicGroups, attemptAnswers, attemptIntegrityEvents, books, chapterCheatSheets, chapters, concepts, examAttempts, leaderboardScores, mistakes, questionComments, questionIntelligence, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, topics, users } from "../drizzle/schema";
 import { scoreMcqExam, type McqSelection } from "../shared/mcq";
 import { isReviewDue, nextReviewAt } from "../shared/spacedReview";
 import { shouldFinalizeExpiredAttempt } from "../shared/attemptExpiry";
@@ -277,7 +277,7 @@ export async function getMistakeVault(userId: number) {
   });
 }
 
-type QuestionFilter = { subjectId?: number; chapterId?: number; chapterIds?: number[]; topicIds?: number[]; conceptIds?: number[]; examProfileId?: number; sourceMode?: "historical_only" | "generated_only" | "mixed" | "verified_only"; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; admissionTrack?: "du" | "buet" | "medical"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
+type QuestionFilter = { subjectId?: number; chapterId?: number; chapterIds?: number[]; topicIds?: number[]; conceptIds?: number[]; examProfileId?: number; sourceMode?: "historical_only" | "generated_only" | "mixed" | "verified_only"; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; admissionTrack?: "du" | "buet" | "medical"; groupSlug?: "science" | "humanities" | "business-studies"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
 
 function publishedQuestionConditions(filters: QuestionFilter) {
   const conditions = [eq(questions.status, "published")];
@@ -295,6 +295,7 @@ function publishedQuestionConditions(filters: QuestionFilter) {
   if (filters.collegePaper) conditions.push(like(questions.collegePaper, `%${filters.collegePaper}%`));
   if (filters.boardStandard) conditions.push(eq(questions.boardStandard, filters.boardStandard));
   if (filters.admissionTrack) conditions.push(eq(questions.admissionTrack, filters.admissionTrack));
+  if (filters.groupSlug) conditions.push(eq(academicGroups.slug, filters.groupSlug));
   if (filters.questionType) conditions.push(eq(questions.questionType, filters.questionType));
   if (filters.contentLanguage) conditions.push(eq(questions.contentLanguage, filters.contentLanguage));
   if (filters.questionIds?.length) conditions.push(inArray(questions.id, filters.questionIds));
@@ -338,6 +339,7 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
     stemContext: questionStems.contextParagraph,
   }).from(questions)
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .leftJoin(academicGroups, eq(subjects.groupId, academicGroups.id))
     .leftJoin(chapters, eq(questions.chapterId, chapters.id))
     .leftJoin(topics, eq(questions.topicId, topics.id))
     .leftJoin(concepts, eq(questions.conceptId, concepts.id))
@@ -361,6 +363,7 @@ export async function getPublishedQuestionCapacity(filters: Omit<QuestionFilter,
   const rows = await db.select({ questionId: questions.id, subjectId: subjects.id, subject: subjects.nameEn, chapterId: chapters.id, chapter: chapters.titleEn })
     .from(questions)
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .leftJoin(academicGroups, eq(subjects.groupId, academicGroups.id))
     .leftJoin(chapters, eq(questions.chapterId, chapters.id))
     .leftJoin(questionIntelligence, eq(questionIntelligence.questionId, questions.id))
     .innerJoin(questionSources, eq(questionSources.questionId, questions.id))

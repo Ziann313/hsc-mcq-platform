@@ -277,3 +277,6 @@
 - [x] Audit current Bangla and English original question capacity, active curriculum/source evidence, and reviewer-release workflow for lawful bilingual expansion.
 - [x] Publish only independently reviewed original bilingual question batches with active source links, validated answers, explanations, immutable versions, and language-filter regression coverage.
 - [x] Release twelve Bangla HSC counterparts of existing reviewer-authored English originals across Physics, Chemistry, Biology, and Higher Mathematics through the established approval and publication workflow.
+- [x] Extract and reconcile the newly attached all-groups and boards brief with MCQ GURU’s taxonomy, published capacity, board filters, language controls, and immutable assessment engine.
+- [x] Implement only verified all-groups and board-preparation gaps with active source evidence, reviewer approval, answer-key protection, regression coverage, and responsive validation.
+- [x] Add an equal-priority Science, Humanities, and Business Studies selector to HSC preparation, with server-enforced group filters for availability and frozen attempt selection plus truthful zero-capacity states.

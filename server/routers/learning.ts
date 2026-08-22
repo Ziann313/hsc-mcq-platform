@@ -252,7 +252,7 @@ export const learningRouter = router({
     return { published: true } as const;
   }),
 
-  publishedContentAvailability: publicProcedure.input(z.object({ contentLanguage: z.enum(["bn", "en"]).optional() }).optional()).query(async ({ input }) => getPublishedContentAvailability(input?.contentLanguage)),
+  publishedContentAvailability: publicProcedure.input(z.object({ contentLanguage: z.enum(["bn", "en"]).optional(), groupSlug: z.enum(["science", "humanities", "business-studies"]).optional() }).optional()).query(async ({ input }) => getPublishedContentAvailability(input?.contentLanguage, input?.groupSlug)),
   curriculumCoverageSummary: publicProcedure.query(async () => getCurriculumCoverageSummary()),
 
   studentProgressSummary: protectedProcedure.query(async ({ ctx }) => getStudentProgressSummary(ctx.user.id)),

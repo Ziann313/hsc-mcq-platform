@@ -316,18 +316,19 @@ export async function publishApprovedQuestion(input: { questionId: number; actor
   return { outcome: "published" as const };
 }
 
-export async function getPublishedContentAvailability(contentLanguage?: "bn" | "en") {
+export async function getPublishedContentAvailability(contentLanguage?: "bn" | "en", groupSlug?: "science" | "humanities" | "business-studies") {
   const db = await getDb();
-  if (!db) return { publishedQuestionCount: 0, subjects: [] as Array<{ subjectId: number; name: string; nameEn: string; nameBn: string; questionCount: number }> };
-  const published = await db.select({ questionId: questions.id, subjectId: subjects.id, name: subjects.nameEn, nameEn: subjects.nameEn, nameBn: subjects.nameBn })
+  if (!db) return { publishedQuestionCount: 0, subjects: [] as Array<{ subjectId: number; name: string; nameEn: string; nameBn: string; groupSlug: string | null; questionCount: number }> };
+  const published = await db.select({ questionId: questions.id, subjectId: subjects.id, name: subjects.nameEn, nameEn: subjects.nameEn, nameBn: subjects.nameBn, groupSlug: academicGroups.slug })
     .from(questions)
     .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .leftJoin(academicGroups, eq(subjects.groupId, academicGroups.id))
     .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
     .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
-    .where(and(eq(questions.status, "published"), eq(sourceVersions.status, "active"), ...(contentLanguage ? [eq(questions.contentLanguage, contentLanguage)] : [])));
-  const subjectCounts = new Map<number, { subjectId: number; name: string; nameEn: string; nameBn: string; questionCount: number }>();
+    .where(and(eq(questions.status, "published"), eq(sourceVersions.status, "active"), ...(contentLanguage ? [eq(questions.contentLanguage, contentLanguage)] : []), ...(groupSlug ? [eq(academicGroups.slug, groupSlug)] : [])));
+  const subjectCounts = new Map<number, { subjectId: number; name: string; nameEn: string; nameBn: string; groupSlug: string | null; questionCount: number }>();
   for (const row of Array.from(new Map(published.map(row => [row.questionId, row])).values())) {
-    const current = subjectCounts.get(row.subjectId) ?? { subjectId: row.subjectId, name: row.name, nameEn: row.nameEn, nameBn: row.nameBn, questionCount: 0 };
+    const current = subjectCounts.get(row.subjectId) ?? { subjectId: row.subjectId, name: row.name, nameEn: row.nameEn, nameBn: row.nameBn, groupSlug: row.groupSlug, questionCount: 0 };
     current.questionCount += 1;
     subjectCounts.set(row.subjectId, current);
   }
