@@ -257,3 +257,8 @@
 - [x] Prepare SSLCommerz hosted-checkout initiation and server-side validation boundaries that remain disabled until merchant credentials are securely provided and verified.
 - [x] Present the user-supplied bKash and Nagad payment receiver number in a clear, branded manual-payment flow that never grants premium access without a server-side verified payment record.
 - [x] Update database integration-fixture teardown to remove new subscription-dependent rows before deleting transient test users, then re-run the complete regression suite.
+- [x] Audit the existing payment, S3 storage, administrator, and notification contracts for secure manual-payment proof and reconciliation extensions.
+- [x] Add secure image-only payment-confirmation uploads linked to pending manual payment records, with server-side metadata validation and owner-only access.
+- [x] Create a dedicated administrator payment-reconciliation workspace for evidence review, approval/rejection, notes, and clear audit state.
+- [x] Notify the submitting student in-app when a reviewer approves or rejects a manual payment request, with regression coverage and responsive validation.
+- [x] Update route-integrity coverage for the protected payment reconciliation destination and re-run the complete regression suite.

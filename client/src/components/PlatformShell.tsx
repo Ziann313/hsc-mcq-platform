@@ -1,5 +1,6 @@
 import {
   BarChart3,
+  Banknote,
   Bell,
   BookOpen,
   Bot,
@@ -57,6 +58,7 @@ export const studentNavigationItems: NavigationItem[] = [
 
 export const adminNavigationItems: NavigationItem[] = [
   { path: "/admin", label: "Review queue", bn: "রিভিউ কিউ", icon: ClipboardCheck },
+  { path: "/admin/payments", label: "Payment reconciliation", bn: "পেমেন্ট রিকনসিলিয়েশন", icon: Banknote },
   { path: "/governance", label: "Content workspace", bn: "কনটেন্ট ওয়ার্কস্পেস", icon: LockKeyhole },
   { path: "/import", label: "Bulk import", bn: "বাল্ক ইমপোর্ট", icon: Upload },
   { path: "/questions/new", label: "Question intake", bn: "প্রশ্ন ইনটেক", icon: BookOpen },

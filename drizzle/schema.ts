@@ -98,6 +98,17 @@ export const payments = mysqlTable("payments", {
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 }, table => [index("payment_user_created_idx").on(table.userId, table.createdAt), index("payment_status_created_idx").on(table.status, table.createdAt)]);
 
+export const paymentProofs = mysqlTable("payment_proofs", {
+  id: int("id").autoincrement().primaryKey(),
+  paymentId: int("paymentId").notNull().unique().references(() => payments.id),
+  submittedByUserId: int("submittedByUserId").notNull().references(() => users.id),
+  storageKey: varchar("storageKey", { length: 500 }).notNull().unique(),
+  contentType: mysqlEnum("contentType", ["image/jpeg", "image/png", "image/webp"]).notNull(),
+  originalFilename: varchar("originalFilename", { length: 180 }).notNull(),
+  byteSize: int("byteSize").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+}, table => [index("payment_proof_submitter_idx").on(table.submittedByUserId, table.createdAt)]);
+
 export const usageLimits = mysqlTable("usage_limits", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().references(() => users.id),

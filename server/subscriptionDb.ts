@@ -1,7 +1,8 @@
 import { and, desc, eq, lt, sql } from "drizzle-orm";
-import { payments, subscriptionMaintenanceSettings, subscriptionPlans, subscriptions, usageLimits, users } from "../drizzle/schema";
+import { auditLogs, paymentProofs, payments, subscriptionMaintenanceSettings, subscriptionPlans, subscriptions, usageLimits, users } from "../drizzle/schema";
 import { FREE_USAGE_LIMITS, PREMIUM_FEATURES, TRIAL_DURATION_DAYS, hasFullSubscriptionAccess, subscriptionDaysLeft, usagePeriodKey, type UsageLimitType } from "../shared/subscriptionPolicy";
-import { getDb } from "./db";
+import { createNotification, getDb } from "./db";
+import { storePaymentProof, type PaymentProofInput } from "./paymentProof";
 
 const planSeeds = [
   {
@@ -158,7 +159,7 @@ export async function createPaymentIntent(userId: number, planId: number) {
   return { paymentId: Number(result[0].insertId), internalTransactionId, plan, subscriptionId: subscription.id };
 }
 
-export async function createManualPaymentRequest(input: { userId: number; planId: number; method: "bkash_manual" | "nagad_manual"; senderPhone: string; transactionReference: string }) {
+export async function createManualPaymentRequest(input: { userId: number; planId: number; method: "bkash_manual" | "nagad_manual"; senderPhone: string; transactionReference: string; proof?: PaymentProofInput }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const plan = (await db.select().from(subscriptionPlans).where(and(eq(subscriptionPlans.id, input.planId), eq(subscriptionPlans.isActive, true))).limit(1))[0];
@@ -176,18 +177,29 @@ export async function createManualPaymentRequest(input: { userId: number; planId
     status: "pending",
     gatewayPayload: { senderPhone: input.senderPhone, transactionReference: input.transactionReference, submittedAt: new Date().toISOString() },
   });
-  return { paymentId: Number(result[0].insertId), internalTransactionId, amountBDT: plan.priceBDT, planName: plan.name, planNameBn: plan.nameBn };
+  const paymentId = Number(result[0].insertId);
+  if (input.proof) {
+    try {
+      const stored = await storePaymentProof(input.userId, input.proof);
+      await db.insert(paymentProofs).values({ paymentId, submittedByUserId: input.userId, storageKey: stored.storageKey, contentType: stored.contentType, originalFilename: stored.originalFilename, byteSize: stored.byteSize });
+    } catch (error) {
+      await db.delete(payments).where(eq(payments.id, paymentId));
+      throw error;
+    }
+  }
+  return { paymentId, internalTransactionId, amountBDT: plan.priceBDT, planName: plan.name, planNameBn: plan.nameBn, proofUploaded: Boolean(input.proof) };
 }
 
 export async function getPendingManualPayments() {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  return db.select({ id: payments.id, userId: payments.userId, gateway: payments.gateway, internalTransactionId: payments.internalTransactionId, amountBDT: payments.amountBDT, createdAt: payments.createdAt, payload: payments.gatewayPayload, planName: subscriptionPlans.name, planNameBn: subscriptionPlans.nameBn, learnerName: users.name, learnerEmail: users.email })
-    .from(payments).innerJoin(subscriptionPlans, eq(payments.planId, subscriptionPlans.id)).innerJoin(users, eq(payments.userId, users.id))
+  const pending = await db.select({ id: payments.id, userId: payments.userId, gateway: payments.gateway, internalTransactionId: payments.internalTransactionId, amountBDT: payments.amountBDT, createdAt: payments.createdAt, payload: payments.gatewayPayload, planName: subscriptionPlans.name, planNameBn: subscriptionPlans.nameBn, learnerName: users.name, learnerEmail: users.email, proofId: paymentProofs.id, proofStorageKey: paymentProofs.storageKey, proofContentType: paymentProofs.contentType, proofOriginalFilename: paymentProofs.originalFilename, proofByteSize: paymentProofs.byteSize })
+    .from(payments).innerJoin(subscriptionPlans, eq(payments.planId, subscriptionPlans.id)).innerJoin(users, eq(payments.userId, users.id)).leftJoin(paymentProofs, eq(paymentProofs.paymentId, payments.id))
     .where(and(eq(payments.status, "pending"), sql`${payments.gateway} IN ('bkash_manual', 'nagad_manual')`)).orderBy(desc(payments.createdAt));
+  return pending.map(({ proofStorageKey, ...payment }) => ({ ...payment, proofUrl: proofStorageKey ? `/manus-storage/${proofStorageKey}` : null }));
 }
 
-export async function reviewManualPayment(input: { paymentId: number; approved: boolean; reviewerNote?: string; now?: Date }) {
+export async function reviewManualPayment(input: { paymentId: number; approved: boolean; reviewerNote?: string; reviewerUserId?: number; now?: Date }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const now = input.now ?? new Date();
@@ -195,7 +207,10 @@ export async function reviewManualPayment(input: { paymentId: number; approved: 
   if (!row) return false;
   const priorPayload = row.payment.gatewayPayload && typeof row.payment.gatewayPayload === "object" && !Array.isArray(row.payment.gatewayPayload) ? row.payment.gatewayPayload as Record<string, unknown> : {};
   if (!input.approved) {
-    await db.update(payments).set({ status: "failed", gatewayPayload: { ...priorPayload, reviewerNote: input.reviewerNote ?? null, reviewedAt: now.toISOString() } }).where(and(eq(payments.id, input.paymentId), eq(payments.status, "pending")));
+    const rejected = await db.update(payments).set({ status: "failed", gatewayPayload: { ...priorPayload, reviewerNote: input.reviewerNote ?? null, reviewedAt: now.toISOString() } }).where(and(eq(payments.id, input.paymentId), eq(payments.status, "pending")));
+    if (!rejected[0]?.affectedRows) return false;
+    if (input.reviewerUserId) await db.insert(auditLogs).values({ actorUserId: input.reviewerUserId, action: "payment.manual_rejected", entityType: "payment", entityId: String(input.paymentId), metadata: { reviewerNote: input.reviewerNote ?? null } });
+    await createNotification({ userId: row.payment.userId, actorUserId: input.reviewerUserId, type: "account", priority: "critical", title: "Manual payment request needs attention", body: "Your bKash/Nagad payment request could not be verified. Review the transaction ID and contact support if you believe this is incorrect.", actionUrl: "/profile" });
     return true;
   }
   const subscription = await ensureSubscriptionForUser(row.payment.userId, now);
@@ -204,6 +219,8 @@ export async function reviewManualPayment(input: { paymentId: number; approved: 
   const updated = await db.update(payments).set({ status: "success", paidAt: now, gatewayPayload: { ...priorPayload, reviewerNote: input.reviewerNote ?? null, reviewedAt: now.toISOString() } }).where(and(eq(payments.id, input.paymentId), eq(payments.status, "pending")));
   if (!updated[0]?.affectedRows) return false;
   await db.update(subscriptions).set({ planId: row.plan.id, planType: "premium", status: "active", subscriptionStartedAt: subscription.subscriptionStartedAt ?? now, subscriptionEndsAt: nextEnd, autoRenew: false }).where(eq(subscriptions.id, subscription.id));
+  if (input.reviewerUserId) await db.insert(auditLogs).values({ actorUserId: input.reviewerUserId, action: "payment.manual_approved", entityType: "payment", entityId: String(input.paymentId), metadata: { planCode: row.plan.code, reviewerNote: input.reviewerNote ?? null, subscriptionEndsAt: nextEnd.toISOString() } });
+  await createNotification({ userId: row.payment.userId, actorUserId: input.reviewerUserId, type: "account", priority: "critical", title: "Premium payment approved", body: `Your manual bKash/Nagad payment has been verified. MCQ GURU Premium is active until ${nextEnd.toLocaleDateString("en-GB")}.`, actionUrl: "/profile" });
   return true;
 }
 

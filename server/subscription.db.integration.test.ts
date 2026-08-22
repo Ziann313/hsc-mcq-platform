@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { eq } from "drizzle-orm";
-import { payments, subscriptions, usageLimits, users } from "../drizzle/schema";
+import { notifications, paymentProofs, payments, subscriptions, usageLimits, users } from "../drizzle/schema";
 import { createManualPaymentRequest, ensureSubscriptionForUser, getSubscriptionPlans, getSubscriptionStatus, reviewManualPayment } from "./subscriptionDb";
 import { getDb } from "./db";
 
@@ -17,6 +17,8 @@ describe.skipIf(!enabled)("subscription database integration", () => {
     const stamp = Date.now();
     let userId = 0;
     cleanup = async () => {
+      if (userId) await db.delete(notifications).where(eq(notifications.userId, userId));
+      if (userId) await db.delete(paymentProofs).where(eq(paymentProofs.submittedByUserId, userId));
       if (userId) await db.delete(payments).where(eq(payments.userId, userId));
       if (userId) await db.delete(usageLimits).where(eq(usageLimits.userId, userId));
       if (userId) await db.delete(subscriptions).where(eq(subscriptions.userId, userId));
@@ -45,5 +47,16 @@ describe.skipIf(!enabled)("subscription database integration", () => {
     const [confirmed] = await db.select().from(payments).where(eq(payments.id, request.paymentId)).limit(1);
     expect(confirmed?.status).toBe("success");
     expect(confirmed?.paidAt).toBeTruthy();
+    const approvedNotifications = await db.select().from(notifications).where(eq(notifications.userId, userId));
+    expect(approvedNotifications).toEqual(expect.arrayContaining([expect.objectContaining({ type: "account", priority: "critical", title: "Premium payment approved" })]));
+
+    const rejectedRequest = await createManualPaymentRequest({ userId, planId: monthlyPlan.id, method: "nagad_manual", senderPhone: "01956953111", transactionReference: `REJECT-${stamp}` });
+    expect(rejectedRequest).toBeTruthy();
+    if (!rejectedRequest) return;
+    expect(await reviewManualPayment({ paymentId: rejectedRequest.paymentId, approved: false, reviewerNote: "Reference not found", now: new Date("2026-08-03T00:00:00.000Z") })).toBe(true);
+    const [rejected] = await db.select().from(payments).where(eq(payments.id, rejectedRequest.paymentId)).limit(1);
+    expect(rejected?.status).toBe("failed");
+    const allNotifications = await db.select().from(notifications).where(eq(notifications.userId, userId));
+    expect(allNotifications).toEqual(expect.arrayContaining([expect.objectContaining({ type: "account", priority: "critical", title: "Manual payment request needs attention" })]));
   });
 });
