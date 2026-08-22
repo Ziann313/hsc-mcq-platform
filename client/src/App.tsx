@@ -14,6 +14,8 @@ import { isAdministratorRole } from "@shared/authorization";
 const Home = lazy(() => import("./pages/Home"));
 const PublicLandingPage = lazy(() => import("./pages/PublicLandingPage"));
 const PublicInformationPage = lazy(() => import("./pages/PublicInformationPage"));
+const UpgradePage = lazy(() => import("./pages/UpgradePage"));
+const PaymentOutcomePage = lazy(() => import("./pages/PaymentOutcomePage"));
 const AccessDeniedPage = lazy(() => import("./pages/AccessDeniedPage"));
 
 const Onboarding = lazy(() => import("./pages/Onboarding"));
@@ -95,6 +97,10 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/privacy">{() => <PublicInformationPage page="privacy" language={language} />}</Route>
     <Route path="/terms">{() => <PublicInformationPage page="terms" language={language} />}</Route>
     <Route path="/contact">{() => <PublicInformationPage page="contact" language={language} />}</Route>
+    <Route path="/upgrade">{() => <StudentRoute><UpgradePage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
+    <Route path="/payment/success">{() => <StudentRoute><PaymentOutcomePage language={language} outcome="success" /></StudentRoute>}</Route>
+    <Route path="/payment/fail">{() => <StudentRoute><PaymentOutcomePage language={language} outcome="fail" /></StudentRoute>}</Route>
+    <Route path="/payment/cancel">{() => <StudentRoute><PaymentOutcomePage language={language} outcome="cancel" /></StudentRoute>}</Route>
     <Route path="/onboarding">{() => <OnboardingRoute language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/image-solver">{() => <StudentRoute><ImageSolver language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/admin">{() => <AdminRoute><AdminWorkspace language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>

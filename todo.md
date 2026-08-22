@@ -249,3 +249,11 @@
 - [x] Add explicit protected compatibility routes for dashboard, nested practice, attempt, insights, and notebook workflows so direct links never fall through to a generic destination.
 - [x] Replace public landing subject placeholders with active source-linked published subject data, real bilingual labels, clear sign-in-to-explore actions, and a concise footer.
 - [x] Align governance navigation visibility with the broader supported administrator-role policy and remove remaining non-runtime Shikha branding from maintained project templates where safely editable.
+- [x] Extract and reconcile the attached freemium-subscription brief with the current MCQ GURU architecture, source-governance, and student-access controls.
+- [x] Implement only verified, secure freemium entitlement and upgrade requirements with server-side enforcement, tests, and responsive validation.
+- [x] Add additive subscription plans, subscriptions, payment-intent audit records, and Bangladesh-time usage counters with plan data seeded from reviewed product policy.
+- [x] Create server-side entitlement resolution and atomic usage reservations for free users, with a 30-day full-access trial and no client-controlled access decisions.
+- [x] Gate only high-cost or premium capabilities without weakening exam integrity or misrepresenting unavailable payment activation; expose clear bilingual trial, expired, and upgrade states.
+- [x] Prepare SSLCommerz hosted-checkout initiation and server-side validation boundaries that remain disabled until merchant credentials are securely provided and verified.
+- [x] Present the user-supplied bKash and Nagad payment receiver number in a clear, branded manual-payment flow that never grants premium access without a server-side verified payment record.
+- [x] Update database integration-fixture teardown to remove new subscription-dependent rows before deleting transient test users, then re-run the complete regression suite.

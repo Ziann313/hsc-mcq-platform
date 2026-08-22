@@ -24,6 +24,7 @@ import { useAuth } from "@/_core/hooks/useAuth";
 import { lazy, Suspense, useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { isAdministratorRole } from "@shared/authorization";
+import { SubscriptionBanner } from "@/components/SubscriptionBanner";
 
 const DailyChallengeBrowserAlert = lazy(() => import("@/components/DailyChallengeBrowserAlert").then(module => ({ default: module.DailyChallengeBrowserAlert })));
 
@@ -142,7 +143,7 @@ export function PlatformShell({ children, language, onLanguageChange }: { childr
             <button disabled={loading} onClick={() => navigate("/profile")} className="hidden items-center gap-2 rounded-xl bg-white py-1.5 pl-1.5 pr-3 shadow-sm ring-1 ring-slate-200 disabled:opacity-60 sm:flex"><span className="grid size-8 place-items-center rounded-lg bg-[#dff8f1] text-xs font-bold text-[#087b6c]">{initials}</span><span className="text-sm font-semibold text-slate-700">{loading ? copy("Loading", "লোড হচ্ছে") : identityLabel}</span></button>
           </div>
         </header>
-        <main className="mcq-content-wrapper mx-auto w-full max-w-[1480px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-7 lg:px-10 lg:pb-10">{children}</main>
+        <main className="mcq-content-wrapper mx-auto w-full max-w-[1480px] px-4 pb-[calc(6rem+env(safe-area-inset-bottom))] pt-6 sm:px-7 lg:px-10 lg:pb-10">{isAuthenticated && <SubscriptionBanner language={language} />}{children}</main>
       </div>
 
       {mobileOpen && <div className="fixed inset-0 z-50 touch-none lg:hidden"><button type="button" aria-label="Close menu" onClick={() => setMobileOpen(false)} className="absolute inset-0 bg-[#071d33]/50" /><aside className="relative flex h-full w-[82%] max-w-[330px] touch-pan-y flex-col overflow-y-auto bg-[#071d33] px-4 py-5 text-slate-100 shadow-2xl"><div className="mb-7 flex items-center justify-between"><button type="button" onClick={() => navigate("/")} className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-2xl bg-[#16b89b]"><GraduationCap size={22} /></span><b className="font-display text-xl">MCQ GURU</b></button><button type="button" onClick={() => setMobileOpen(false)} className="rounded-xl p-2 text-slate-300"><X /></button></div><nav className="space-y-1">{navItems.map(item => { const Icon = item.icon; return <button type="button" key={item.path} onClick={() => navigate(item.path)} className={`flex w-full items-center gap-3 rounded-xl px-3 py-3 text-left ${location === item.path ? "bg-[#16b89b] font-semibold text-[#04131f]" : "text-slate-200"}`}><Icon size={18} />{copy(item.label, item.bn)}</button>; })}</nav><button type="button" onClick={() => navigate("/profile")} className="mt-5 flex w-full items-center gap-3 rounded-xl border border-white/10 px-3 py-3 text-left text-slate-200"><UserRound size={18} />{isAuthenticated ? copy("My profile", "আমার প্রোফাইল") : copy("Secure sign-in", "নিরাপদ সাইন-ইন")}</button></aside></div>}

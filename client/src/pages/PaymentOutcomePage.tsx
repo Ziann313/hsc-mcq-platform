@@ -1,0 +1,10 @@
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, CircleX, Sparkles } from "lucide-react";
+import { Link } from "wouter";
+
+export default function PaymentOutcomePage({ language, outcome }: { language: "bn" | "en"; outcome: "success" | "fail" | "cancel" }) {
+  const copy = (en: string, bn: string) => language === "bn" ? bn : en;
+  const success = outcome === "success";
+  const Icon = success ? CheckCircle2 : CircleX;
+  return <main className="grid min-h-screen place-items-center bg-[#f4f7f7] px-5"><section className="w-full max-w-xl rounded-[30px] bg-white p-8 text-center shadow-sm ring-1 ring-slate-100"><span className={`mx-auto grid size-16 place-items-center rounded-2xl ${success ? "bg-[#e9fbf7] text-[#088a78]" : "bg-[#fff1f0] text-[#c24a3f]"}`}><Icon size={30} /></span><p className="mt-6 text-xs font-bold uppercase tracking-[.16em] text-[#088a78]">MCQ GURU PREMIUM</p><h1 className="mt-2 font-display text-3xl font-extrabold text-[#071d33]">{success ? copy("Payment received", "পেমেন্ট গ্রহণ করা হয়েছে") : outcome === "cancel" ? copy("Payment cancelled", "পেমেন্ট বাতিল হয়েছে") : copy("Payment was not completed", "পেমেন্ট সম্পন্ন হয়নি")}</h1><p className="mx-auto mt-4 max-w-md text-sm leading-6 text-slate-600">{success ? copy("We are validating your payment with the processor before Premium access is confirmed. Refresh your profile shortly to see the final entitlement state.", "প্রিমিয়াম অ্যাক্সেস নিশ্চিত করার আগে আমরা প্রসেসরের সাথে পেমেন্ট ভ্যালিডেট করছি। কিছুক্ষণ পরে প্রোফাইল রিফ্রেশ করে চূড়ান্ত অবস্থা দেখো।") : copy("No subscription charge is confirmed in MCQ GURU. You can return to the upgrade page whenever you are ready.", "MCQ GURU-তে কোনো সাবস্ক্রিপশন চার্জ নিশ্চিত হয়নি। প্রস্তুত হলে আবার আপগ্রেড পেজে যেতে পারো।")}</p><div className="mt-7 flex flex-wrap justify-center gap-3">{!success && <Link href="/upgrade"><Button className="rounded-xl bg-[#071d33]"><Sparkles size={16} />{copy("Try again", "আবার চেষ্টা করো")}</Button></Link>}<Link href="/dashboard"><Button variant="outline" className="rounded-xl">{copy("Back to dashboard", "ড্যাশবোর্ডে ফিরে যাও")}</Button></Link></div></section></main>;
+}

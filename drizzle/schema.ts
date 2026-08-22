@@ -51,6 +51,69 @@ export const studentNotificationPreferences = mysqlTable("student_notification_p
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
+export const subscriptionPlans = mysqlTable("subscription_plans", {
+  id: int("id").autoincrement().primaryKey(),
+  code: varchar("code", { length: 40 }).notNull().unique(),
+  name: varchar("name", { length: 80 }).notNull(),
+  nameBn: varchar("nameBn", { length: 120 }).notNull(),
+  description: text("description").notNull(),
+  descriptionBn: text("descriptionBn").notNull(),
+  priceBDT: decimal("priceBDT", { precision: 10, scale: 2 }).notNull(),
+  durationDays: int("durationDays").notNull(),
+  features: json("features").$type<string[]>().notNull(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("subscription_plan_active_idx").on(table.isActive)]);
+
+export const subscriptions = mysqlTable("subscriptions", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().unique().references(() => users.id),
+  planId: int("planId").references(() => subscriptionPlans.id),
+  planType: mysqlEnum("planType", ["free", "premium"]).default("free").notNull(),
+  status: mysqlEnum("status", ["trial", "active", "expired", "cancelled"]).default("trial").notNull(),
+  trialStartedAt: timestamp("trialStartedAt").notNull(),
+  trialEndsAt: timestamp("trialEndsAt").notNull(),
+  subscriptionStartedAt: timestamp("subscriptionStartedAt"),
+  subscriptionEndsAt: timestamp("subscriptionEndsAt"),
+  autoRenew: boolean("autoRenew").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("subscription_status_expiry_idx").on(table.status, table.trialEndsAt), index("subscription_premium_expiry_idx").on(table.planType, table.subscriptionEndsAt)]);
+
+export const payments = mysqlTable("payments", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  subscriptionId: int("subscriptionId").references(() => subscriptions.id),
+  planId: int("planId").notNull().references(() => subscriptionPlans.id),
+  gateway: mysqlEnum("gateway", ["sslcommerz", "bkash_manual", "nagad_manual"]).default("sslcommerz").notNull(),
+  internalTransactionId: varchar("internalTransactionId", { length: 64 }).notNull().unique(),
+  gatewayTransactionId: varchar("gatewayTransactionId", { length: 160 }),
+  amountBDT: decimal("amountBDT", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("BDT").notNull(),
+  status: mysqlEnum("status", ["pending", "success", "failed", "cancelled", "refunded"]).default("pending").notNull(),
+  gatewayPayload: json("gatewayPayload").$type<Record<string, unknown>>(),
+  paidAt: timestamp("paidAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [index("payment_user_created_idx").on(table.userId, table.createdAt), index("payment_status_created_idx").on(table.status, table.createdAt)]);
+
+export const usageLimits = mysqlTable("usage_limits", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull().references(() => users.id),
+  limitType: mysqlEnum("limitType", ["practice_questions", "exams", "tutor_questions", "image_solves"]).notNull(),
+  periodKey: varchar("periodKey", { length: 20 }).notNull(),
+  usedCount: int("usedCount").default(0).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+}, table => [uniqueIndex("usage_limit_user_type_period_unique").on(table.userId, table.limitType, table.periodKey), index("usage_limit_period_idx").on(table.periodKey)]);
+
+export const subscriptionMaintenanceSettings = mysqlTable("subscription_maintenance_settings", {
+  id: int("id").autoincrement().primaryKey(),
+  scheduleCronTaskUid: varchar("scheduleCronTaskUid", { length: 65 }).unique(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
 export const academicYears = mysqlTable("academic_years", {
   id: int("id").autoincrement().primaryKey(),
   name: varchar("name", { length: 20 }).notNull().unique(),

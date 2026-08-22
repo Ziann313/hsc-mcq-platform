@@ -1,0 +1,1 @@
+ALTER TABLE `payments` MODIFY COLUMN `gateway` enum('sslcommerz','bkash_manual','nagad_manual') NOT NULL DEFAULT 'sslcommerz';

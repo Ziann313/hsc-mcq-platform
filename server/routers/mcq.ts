@@ -4,6 +4,7 @@ import { createReviewQuestion } from "../db";
 import { addQuestionComment, getActiveFrozenAttempt, getAttemptExamIntelligence, getAttemptResult, getExamHistory, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestions, getQuestionComments, recordAttemptIntegrityEvent, recordImportBatch, saveAttemptSelection, setAttemptMarkForReview, setAttemptQuestionPosition, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { questionIntelligenceInput } from "../questionIntelligenceInput";
+import { releaseSubscriptionUsage, reserveSubscriptionUsage } from "../subscriptionDb";
 
 const importedQuestion = z.object({
   academicYearId: z.number().int().positive(), subjectId: z.number().int().positive(), bookId: z.number().int().positive(), chapterId: z.number().int().positive(), topicId: z.number().int().positive().optional(), conceptId: z.number().int().positive().optional(), contentLanguage: z.enum(["bn", "en"]),
@@ -25,8 +26,15 @@ export const mcqRouter = router({
   }),
   publishedChapterAvailability: publicProcedure.input(z.object({ subjectId: z.number().int().positive().optional(), contentLanguage: z.enum(["bn", "en"]).optional() }).optional()).query(({ input }) => getPublishedChapterAvailability(input?.subjectId, input?.contentLanguage)),
   startFilteredAttempt: protectedProcedure.input(z.object({ filters: questionFilterInput, durationMinutes: z.number().int().min(1).max(240), mistakeRetest: z.boolean().optional() })).mutation(async ({ ctx, input }) => {
+    const usageType = input.filters.examProfileId || input.durationMinutes >= 45 ? "exams" : "practice_questions";
+    const usageAmount = usageType === "exams" ? 1 : input.filters.limit;
+    const usage = await reserveSubscriptionUsage(ctx.user.id, usageType, usageAmount);
+    if (!usage.allowed) throw new TRPCError({ code: "FORBIDDEN", message: usageType === "exams" ? "Free access includes one full exam per week. Upgrade to Premium for unlimited exams." : `Free practice is limited to ${usage.limit} questions per day. Upgrade to Premium for unlimited practice.` });
     const attempt = await startFilteredAttempt({ userId: ctx.user.id, ...input });
+    if (!attempt) await releaseSubscriptionUsage(ctx.user.id, usageType, usageAmount, usage.periodKey);
     if (!attempt) throw new TRPCError({ code: "NOT_FOUND", message: "No approved published questions match this filter" });
+    const actualCount = attempt.questions.length;
+    if (!usage.unlimited && usageType === "practice_questions" && actualCount < input.filters.limit) await releaseSubscriptionUsage(ctx.user.id, usageType, input.filters.limit - actualCount, usage.periodKey);
     return attempt;
   }),
   saveAttemptSelection: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), questionId: z.number().int().positive(), selectedOptionIds: z.array(z.number().int().positive()).max(6).refine(ids => new Set(ids).size === ids.length, "Duplicate options are not allowed") })).mutation(async ({ ctx, input }) => {

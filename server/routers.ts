@@ -8,6 +8,7 @@ import { liveExamRouter } from "./routers/liveExam";
 import { historicalRouter } from "./routers/historical";
 import { aiGenerationRouter } from "./routers/aiGeneration";
 import { examsRouter } from "./routers/exams";
+import { subscriptionRouter } from "./routers/subscription";
 
 export const appRouter = router({
     // if you need to use socket.io, read and register route in server/_core/index.ts, all api should start with '/api/' so that the gateway can route correctly
@@ -28,6 +29,7 @@ export const appRouter = router({
   exams: examsRouter,
   mcq: mcqRouter,
   liveExam: liveExamRouter,
+  subscription: subscriptionRouter,
 });
 
 export type AppRouter = typeof appRouter;

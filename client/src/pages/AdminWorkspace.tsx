@@ -1,7 +1,7 @@
 import { PlatformShell, type Language } from "@/components/PlatformShell";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { Archive, Check, FileText, Flag, Rocket, ShieldCheck, TriangleAlert } from "lucide-react";
+import { Archive, Banknote, Check, FileText, Flag, Rocket, ShieldCheck, TriangleAlert, X } from "lucide-react";
 import { toast } from "sonner";
 
 type Props = { language: Language; onLanguageChange: (value: Language) => void };
@@ -11,6 +11,7 @@ export default function AdminWorkspace({ language, onLanguageChange }: Props) {
   const utils = trpc.useUtils();
   const queue = trpc.learning.questionReviewQueue.useQuery();
   const publicationQueue = trpc.learning.approvedQuestionPublicationQueue.useQuery();
+  const manualPayments = trpc.subscription.pendingManualPayments.useQuery();
   const review = trpc.learning.reviewQuestion.useMutation({
     onSuccess: () => {
       toast.success(copy("Question review recorded", "প্রশ্ন রিভিউ রেকর্ড করা হয়েছে"));
@@ -27,10 +28,14 @@ export default function AdminWorkspace({ language, onLanguageChange }: Props) {
     },
     onError: error => toast.error(error.message),
   });
-  const error = queue.error ?? publicationQueue.error;
+  const reviewManualPayment = trpc.subscription.reviewManualPayment.useMutation({
+    onSuccess: () => { toast.success(copy("Payment review recorded", "পেমেন্ট রিভিউ রেকর্ড করা হয়েছে")); utils.subscription.pendingManualPayments.invalidate(); },
+    onError: error => toast.error(error.message),
+  });
+  const error = queue.error ?? publicationQueue.error ?? manualPayments.error;
   if (error) {
     const accessDenied = error.data?.code === "FORBIDDEN" || error.data?.code === "UNAUTHORIZED";
-    return <PlatformShell language={language} onLanguageChange={onLanguageChange}><AccessState accessDenied={accessDenied} copy={copy} onRetry={() => { queue.refetch(); publicationQueue.refetch(); }} /></PlatformShell>;
+    return <PlatformShell language={language} onLanguageChange={onLanguageChange}><AccessState accessDenied={accessDenied} copy={copy} onRetry={() => { queue.refetch(); publicationQueue.refetch(); manualPayments.refetch(); }} /></PlatformShell>;
   }
 
   return <PlatformShell language={language} onLanguageChange={onLanguageChange}>
@@ -39,6 +44,13 @@ export default function AdminWorkspace({ language, onLanguageChange }: Props) {
         <div><p className="text-xs font-bold uppercase tracking-[.16em] text-[#088a78]">{copy("CONTENT GOVERNANCE", "কনটেন্ট গভর্ন্যান্স")}</p><h1 className="mt-1 font-display text-2xl font-extrabold text-[#071d33]">{copy("Review, then deliberately release", "রিভিউ, তারপর সচেতনভাবে রিলিজ")}</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">{copy("Approval and student publication are separate, auditable decisions. A question is never released until its source version, page reference, and answer structure pass the final gate.", "অনুমোদন ও শিক্ষার্থী রিলিজ আলাদা, অডিটযোগ্য সিদ্ধান্ত। সোর্স ভার্সন, পেজ রেফারেন্স ও উত্তর স্ট্রাকচার চূড়ান্ত গেট পাস না করা পর্যন্ত প্রশ্ন রিলিজ হয় না।")}</p></div>
         <div className="rounded-xl border border-[#bdeadd] bg-[#effcf9] px-3 py-2 text-xs font-bold text-[#087b6c]"><ShieldCheck className="mr-1 inline" size={14} />{copy("Role-protected release control", "রোল-প্রটেক্টেড রিলিজ কন্ট্রোল")}</div>
       </header>
+      <section className="mb-6 rounded-[24px] bg-white p-5 shadow-sm sm:p-6">
+        <SectionHeading title={copy("Manual subscription payment queue", "ম্যানুয়াল সাবস্ক্রিপশন পেমেন্ট কিউ")} count={manualPayments.data?.length ?? 0} detail={copy("Approve only after independently confirming the exact amount and transaction reference in the named payment channel. A submitted request never activates Premium by itself.", "নির্দিষ্ট পেমেন্ট চ্যানেলে সঠিক পরিমাণ ও ট্রানজেকশন রেফারেন্স স্বাধীনভাবে নিশ্চিত করার পরই অনুমোদন দাও। জমা দেওয়া রিকোয়েস্ট নিজে থেকে প্রিমিয়াম চালু করে না।")} />
+        {manualPayments.isLoading ? <SkeletonRows /> : manualPayments.data?.length ? <div className="mt-5 space-y-3">{manualPayments.data.map(payment => {
+          const payload = payment.payload && typeof payment.payload === "object" && !Array.isArray(payment.payload) ? payment.payload as Record<string, unknown> : {};
+          return <article key={payment.id} className="rounded-2xl border border-slate-100 p-4"><div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between"><div className="min-w-0"><div className="flex flex-wrap gap-2"><Tag label={payment.gateway === "bkash_manual" ? "BKASH" : "NAGAD"} /><Tag label={`৳${String(payment.amountBDT)}`} muted /><Tag label={(language === "bn" ? payment.planNameBn : payment.planName).toUpperCase()} muted /></div><p className="mt-3 text-sm font-bold text-[#071d33]">{payment.learnerName ?? copy("Student", "শিক্ষার্থী")} <span className="font-normal text-slate-500">{payment.learnerEmail ?? ""}</span></p><p className="mt-2 text-xs leading-5 text-slate-500">{copy("Sender", "প্রেরক")}: {String(payload.senderPhone ?? "—")} · {copy("Transaction ID", "ট্রানজেকশন আইডি")}: <b>{String(payload.transactionReference ?? "—")}</b></p><p className="mt-1 text-[11px] text-slate-400">{copy("Request", "রিকোয়েস্ট")}: {payment.internalTransactionId}</p></div><div className="flex flex-wrap gap-2"><ActionButton onClick={() => reviewManualPayment.mutate({ paymentId: payment.id, approved: true, reviewerNote: "Approved after independent channel verification" })} disabled={reviewManualPayment.isPending} icon={Check} label={copy("Confirm & grant", "কনফার্ম ও গ্রান্ট")} /><ActionButton onClick={() => reviewManualPayment.mutate({ paymentId: payment.id, approved: false, reviewerNote: "Payment could not be verified" })} disabled={reviewManualPayment.isPending} icon={X} label={copy("Reject", "রিজেক্ট")} variant="amber" /></div></div></article>;
+        })}</div> : <EmptyQueue icon={Banknote} title={copy("No manual payments need review", "কোনো ম্যানুয়াল পেমেন্ট রিভিউ বাকি নেই")} detail={copy("Students who submit bKash or Nagad references will appear here. Do not approve from the request alone.", "bKash বা Nagad রেফারেন্স জমা দিলে শিক্ষার্থীরা এখানে দেখাবে। শুধু রিকোয়েস্ট দেখে অনুমোদন দিও না।")} />}
+      </section>
       <div className="grid gap-6 xl:grid-cols-2">
         <section className="rounded-[24px] bg-white p-5 shadow-sm sm:p-6">
           <SectionHeading title={copy("Human review queue", "হিউম্যান রিভিউ কিউ")} count={queue.data?.length ?? 0} detail={copy("Source-mapped questions awaiting a reviewer decision.", "সোর্স-ম্যাপড প্রশ্ন রিভিউয়ারের সিদ্ধান্তের অপেক্ষায় আছে।")} />

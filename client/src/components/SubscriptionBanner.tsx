@@ -1,0 +1,12 @@
+import { useSubscription } from "@/hooks/useSubscription";
+import { Crown, LockKeyhole, Sparkles } from "lucide-react";
+import { Link } from "wouter";
+
+export function SubscriptionBanner({ language }: { language: "bn" | "en" }) {
+  const { subscription, usage, isLoading } = useSubscription(true);
+  const copy = (en: string, bn: string) => language === "bn" ? bn : en;
+  if (isLoading || !subscription) return null;
+  if (subscription.isPremium) return <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#bdeadd] bg-[#effcf9] px-4 py-3 text-sm text-[#165e54]"><span className="flex items-center gap-2 font-bold"><Crown size={16} />{copy(`Premium active · ${subscription.premiumDaysLeft} days remaining`, `প্রিমিয়াম চালু · ${subscription.premiumDaysLeft} দিন বাকি`)}</span><Link href="/profile" className="text-xs font-bold underline underline-offset-4">{copy("Manage plan", "প্ল্যান ম্যানেজ করো")}</Link></div>;
+  if (subscription.isTrial) return <div className="mb-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-[#cce8ff] bg-[#f4faff] px-4 py-3 text-sm text-[#184c87]"><span className="flex items-center gap-2"><Sparkles size={16} className="text-[#315bb3]" /><b>{copy(`Your free trial ends in ${subscription.trialDaysLeft} days.`, `তোমার ফ্রি ট্রায়াল শেষ হবে ${subscription.trialDaysLeft} দিনে।`)}</b></span><Link href="/upgrade" className="rounded-lg bg-[#315bb3] px-3 py-1.5 text-xs font-bold text-white">{copy("Explore Premium", "প্রিমিয়াম দেখো")}</Link></div>;
+  return <div className="mb-5 rounded-2xl border border-[#f2d8b3] bg-[#fffaf0] px-4 py-3 text-sm text-[#784512]"><div className="flex flex-wrap items-center justify-between gap-3"><span className="flex items-center gap-2 font-bold"><LockKeyhole size={16} />{copy("Your trial has ended. Free learning access remains available with daily limits.", "তোমার ট্রায়াল শেষ হয়েছে। দৈনিক সীমাসহ ফ্রি লার্নিং চালু আছে।")}</span><Link href="/upgrade" className="rounded-lg bg-[#071d33] px-3 py-1.5 text-xs font-bold text-white">{copy("Upgrade", "আপগ্রেড")}</Link></div>{usage && <p className="mt-2 text-xs leading-5">{copy(`Today: ${usage.practice_questions.used}/${usage.practice_questions.limit} practice · ${usage.tutor_questions.used}/${usage.tutor_questions.limit} Tutor`, `আজ: ${usage.practice_questions.used}/${usage.practice_questions.limit} প্র্যাকটিস · ${usage.tutor_questions.used}/${usage.tutor_questions.limit} টিউটর`)}</p>}</div>;
+}

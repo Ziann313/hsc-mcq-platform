@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 import { attemptAnswers, dailyChallengeNotificationDeliveries, dailyChallengeSchedules, examAttempts, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, questionOptions, questionSources, questions, sourceVersions, subjects, chapters, questionStems, users } from "../drizzle/schema";
 import { getDb } from "./db";
+import { releaseSubscriptionUsage, reserveSubscriptionUsage } from "./subscriptionDb";
 import { deliverDailyChallengeNotifications } from "./db";
 import { getAttemptResult, submitFrozenAttempt } from "./mcqDb";
 import { resolveLiveRoomState, shouldAutoSubmitForIntegrityWarnings } from "../shared/liveExam";
@@ -226,13 +227,19 @@ export async function joinLiveExamRoom(roomId: number, userId: number) {
   const questionSet = await getSourceValidatedQuestions(questionIds);
   const frozen = questionSet.map(question => ({ questionId: question.id, questionVersion: question.questionVersion, correctOptionId: question.correctOptionId, prompt: question.prompt, questionType: question.questionType, stemContext: question.stemContext ?? null, subject: question.subject, chapter: question.chapter ?? "General", options: question.options.map(({ isCorrect: _isCorrect, ...option }) => ({ id: option.id, optionKey: option.optionKey, text: option.text })), marks: Number(room.marksPerCorrect), negativeMarkWeight: Number(room.negativeMarkPerWrong) })) satisfies LiveFrozenQuestion[];
   const activeSessionKey = `live-room:${room.id}:${userId}`;
+  const usage = await reserveSubscriptionUsage(userId, "exams", 1);
+  if (!usage.allowed) throw new Error("Free access includes one full exam per week. Upgrade to Premium for unlimited exams.");
   let attemptId: number;
   try {
     const created = await db.insert(examAttempts).values({ userId, titleSnapshot: room.title, examVersionSnapshot: `live-room-${room.id}`, patternVersionSnapshot: room.mode, questionSetSnapshot: frozen, markingSchemeSnapshot: { marksPerCorrect: Number(room.marksPerCorrect), negativeMarkPerWrong: Number(room.negativeMarkPerWrong), liveExamRoomId: room.id }, startedAt: room.startsAt, expiresAt: room.endsAt, activeSessionKey });
     attemptId = Number(created[0].insertId);
   } catch {
     const [racedParticipant] = await db.select().from(liveExamParticipants).where(and(eq(liveExamParticipants.liveExamRoomId, roomId), eq(liveExamParticipants.userId, userId))).limit(1);
-    if (racedParticipant?.attemptId) return getLiveAttempt(room, racedParticipant);
+    if (racedParticipant?.attemptId) {
+      if (!usage.unlimited) await releaseSubscriptionUsage(userId, "exams", 1, usage.periodKey);
+      return getLiveAttempt(room, racedParticipant);
+    }
+    if (!usage.unlimited) await releaseSubscriptionUsage(userId, "exams", 1, usage.periodKey);
     throw new Error("A live-exam join is already being initialized; please retry");
   }
   const participantResult = await db.insert(liveExamParticipants).values({ liveExamRoomId: roomId, userId, attemptId });

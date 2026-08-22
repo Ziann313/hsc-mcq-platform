@@ -31,6 +31,7 @@ import {
   saveNotificationPreferences,
   updateStudentPreferences,
 } from "../db";
+import { ensureSubscriptionForUser, reserveSubscriptionUsage } from "../subscriptionDb";
 import { invokeLLM } from "../_core/llm";
 import { notifyOwner } from "../_core/notification";
 import { storagePut } from "../storage";
@@ -56,6 +57,7 @@ export const learningRouter = router({
 
   completeOnboarding: protectedProcedure.input(onboardingInput).mutation(async ({ ctx, input }) => {
     await saveStudentProfile(ctx.user.id, input);
+    await ensureSubscriptionForUser(ctx.user.id);
     return { success: true } as const;
   }),
 
@@ -100,6 +102,16 @@ export const learningRouter = router({
     academicYear: z.string().max(20),
     language: z.enum(["bn", "en"]),
   })).mutation(async ({ ctx, input }) => {
+    const usage = await reserveSubscriptionUsage(ctx.user.id, "tutor_questions", 1);
+    if (!usage.allowed) return {
+      verified: false,
+      rateLimited: true,
+      subscriptionLimited: true,
+      answer: input.language === "bn"
+        ? `আজকের ফ্রি টিউটর সীমা (${usage.limit}টি প্রশ্ন) পূর্ণ হয়েছে। আনলিমিটেড ব্যবহারের জন্য প্রিমিয়ামে আপগ্রেড করো।`
+        : `You have reached today’s free tutor limit of ${usage.limit} questions. Upgrade to Premium for more access.`,
+      sources: [],
+    } satisfies TutorResponse;
     const allowance = tutorRequestPolicy.consume(ctx.user.id);
     if (!allowance.allowed) {
       return {
@@ -162,6 +174,8 @@ export const learningRouter = router({
     academicYear: z.string().max(20),
     language: z.enum(["bn", "en"]),
   })).mutation(async ({ ctx, input }) => {
+    const usage = await reserveSubscriptionUsage(ctx.user.id, "image_solves", 1);
+    if (!usage.allowed) throw new TRPCError({ code: "FORBIDDEN", message: input.language === "bn" ? "এই সপ্তাহের ফ্রি ইমেজ সলভ সীমা পূর্ণ হয়েছে। প্রিমিয়ামে আপগ্রেড করো।" : "You have reached this week’s free image-solver limit. Upgrade to Premium for more access." });
     const [header, encoded] = input.dataUrl.split(",", 2);
     const contentType = header?.match(/^data:(image\/(?:png|jpeg|webp));base64$/)?.[1];
     if (!encoded || !contentType) throw new TRPCError({ code: "BAD_REQUEST", message: "A valid image is required" });

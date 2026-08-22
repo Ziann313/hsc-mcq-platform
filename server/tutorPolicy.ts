@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 export type TutorSource = { book: string; chapter: string; page: string };
-export type TutorResponse = { verified: boolean; answer: string; sources: TutorSource[]; rateLimited?: boolean; cached?: boolean };
+export type TutorResponse = { verified: boolean; answer: string; sources: TutorSource[]; rateLimited?: boolean; subscriptionLimited?: boolean; cached?: boolean };
 
 type CachedTutorResponse = { expiresAt: number; value: TutorResponse };
 type TutorUsage = { count: number; resetAt: number };

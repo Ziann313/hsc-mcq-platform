@@ -127,6 +127,20 @@
       "when": 1787174180821,
       "tag": "0017_glossy_vengeance",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1787419329231,
+      "tag": "0018_lowly_molly_hayes",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "5",
+      "when": 1787423916512,
+      "tag": "0019_shiny_turbo",
+      "breakpoints": true
     }
   ]
 }

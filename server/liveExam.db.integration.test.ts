@@ -1,6 +1,6 @@
 import { eq, inArray } from "drizzle-orm";
 import { afterEach, describe, expect, it } from "vitest";
-import { academicYears, attemptAnswers, books, chapters, dailyChallengeNotificationDeliveries, dailyChallengeSchedules, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, notifications, questionOptions, questionSources, questions, sourceVersions, sources, studentNotificationPreferences, subjects, users } from "../drizzle/schema";
+import { academicYears, attemptAnswers, books, chapters, dailyChallengeNotificationDeliveries, dailyChallengeSchedules, examAttempts, leaderboardScores, liveExamIntegrityEvents, liveExamParticipants, liveExamRooms, notifications, payments, questionOptions, questionSources, questions, sourceVersions, sources, studentNotificationPreferences, subjects, subscriptions, usageLimits, users } from "../drizzle/schema";
 import { attachDailyChallengeTask, closeLiveExamRoom, createDailyChallengeSchedule, createLiveExamRoom, getLiveExamLaunchReadiness, getLiveExamResult, getLiveLeaderboard, joinLiveExamRoom, runScheduledDailyChallenge } from "./liveExamDb";
 import { getDailyStudyGuide, getDb, getExamReadinessSummary, saveNotificationPreferences } from "./db";
 import { getPublishedChapterAvailability, saveAttemptSelection, startFilteredAttempt } from "./mcqDb";
@@ -40,6 +40,9 @@ describe.skipIf(!enabled)("live-exam database integration", () => {
       if (sourceId) await db.delete(sources).where(eq(sources.id, sourceId));
       if (adminId || studentId) await db.delete(leaderboardScores).where(inArray(leaderboardScores.userId, [adminId, studentId].filter(Boolean)));
       if (studentId) await db.delete(studentNotificationPreferences).where(eq(studentNotificationPreferences.userId, studentId));
+      if (studentId) await db.delete(payments).where(eq(payments.userId, studentId));
+      if (studentId) await db.delete(usageLimits).where(eq(usageLimits.userId, studentId));
+      if (studentId) await db.delete(subscriptions).where(eq(subscriptions.userId, studentId));
       if (adminId) await db.delete(users).where(eq(users.id, adminId));
       if (studentId) await db.delete(users).where(eq(users.id, studentId));
     };
