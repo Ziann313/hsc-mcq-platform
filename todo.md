@@ -238,3 +238,9 @@
 - [x] Raise each available DU, BUET, and Medical original-practice track to at least the minimum selectable ten-question capacity, then verify the admission setup cannot silently produce an undersized selected paper.
 - [x] Wire DU, BUET, and Medical admission selections to their actual server-side admission-track filters, show truthful track-specific capacity, and prevent unavailable track labels from silently falling back to the general bank.
 - [x] Ensure admission setup synchronizes its selected question count to the loaded source-tagged capacity before enabling the start action, including an explicit visible count choice on mobile.
+- [x] Extract and reconcile the attached implementation brief with existing MCQ GURU capabilities, preserving current source governance and exam-lifecycle safeguards.
+- [x] Standardize any remaining user-facing app-name references to MCQ GURU and remove the incorrect Sikkha/Shikha branding where it is not intentional historical content.
+- [x] Implement only compatible, non-duplicative requirements from the reviewed brief with test coverage and responsive validation.
+- [x] Replace the remaining tutor and scaffold branding references with MCQ GURU while preserving existing live MCQ GURU metadata.
+- [x] Add a clean authenticated access-denied experience for non-administrators instead of silently redirecting them away from restricted workspace routes.
+- [x] Add bounded in-memory caching and per-user hourly request limits to the approved-source Tutor flow, with deterministic policy tests and no client exposure of model credentials.

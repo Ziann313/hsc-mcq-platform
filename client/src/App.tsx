@@ -9,9 +9,11 @@ import { homeRoutePaths, legacyRouteRedirects } from "./routePaths";
 import { useAuth } from "./_core/hooks/useAuth";
 import { trpc } from "./lib/trpc";
 import { resolveFirstVisitState } from "./lib/firstVisitFlow";
+import { isAdministratorRole } from "@shared/authorization";
 
 const Home = lazy(() => import("./pages/Home"));
 const PublicLandingPage = lazy(() => import("./pages/PublicLandingPage"));
+const AccessDeniedPage = lazy(() => import("./pages/AccessDeniedPage"));
 
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ImageSolver = lazy(() => import("./pages/ImageSolver"));
@@ -76,7 +78,8 @@ function StudentRoute({ children }: { children: React.ReactNode }) {
 function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, isAuthenticated, loading } = useAuth();
   if (loading) return <RouteLoader />;
-  if (!isAuthenticated || user?.role !== "admin") return <Redirect to="/" />;
+  if (!isAuthenticated) return <Redirect to="/" />;
+  if (!isAdministratorRole(user?.role)) return <AccessDeniedPage />;
   return <>{children}</>;
 }
 
