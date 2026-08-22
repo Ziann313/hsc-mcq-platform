@@ -270,3 +270,7 @@
 - [x] Extract and reconcile the newly attached routing-fix brief with the current MCQ GURU route registry, protected-route guards, and navigation inventory.
 - [x] Implement only confirmed routing, redirect, or navigation repairs with explicit route registration and regression coverage.
 - [x] Preserve an unauthenticated student’s requested protected route and show a bilingual sign-in notice before handing them to the secure landing sign-in flow.
+- [x] Extract and reconcile the newly attached question-bank brief with MCQ GURU’s published-content model, question APIs, review controls, and immutable assessment engine.
+- [x] Implement only verified lawful question-bank gaps with source evidence, reviewer approval, answer-key protection, regression coverage, and responsive validation.
+- [x] Restrict full published-question payloads to authenticated users while retaining the existing public aggregate subject-capacity preview and server-owned frozen-attempt workflow.
+- [x] Separate student-safe published-question capacity metadata from administrator-only full question browsing so active prompts and explanations are delivered only in frozen attempts for students.

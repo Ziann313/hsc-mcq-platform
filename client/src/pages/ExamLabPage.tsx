@@ -10,7 +10,7 @@ export default function ExamLabPage({ language, onLanguageChange }: { language: 
   const [, setLocation] = useLocation();
   const availability = trpc.learning.publishedContentAvailability.useQuery();
   const [admissionTrack, setAdmissionTrack] = useState<"" | "du" | "buet" | "medical">("");
-  const trackQuestions = trpc.mcq.publishedQuestions.useQuery({ admissionTrack: admissionTrack || undefined, boardStandard: "varsity_admission_standard", limit: 1 }, { enabled: Boolean(admissionTrack) });
+  const trackCapacity = trpc.mcq.publishedQuestionCapacity.useQuery({ admissionTrack: admissionTrack || undefined, boardStandard: "varsity_admission_standard" }, { enabled: Boolean(admissionTrack) });
   const count = availability.data?.publishedQuestionCount ?? 0;
   const trackLabel = admissionTrack === "du" ? "DU" : admissionTrack === "buet" ? "BUET" : admissionTrack === "medical" ? copy("Medical", "মেডিকেল") : null;
   const launch = () => {
@@ -32,7 +32,7 @@ export default function ExamLabPage({ language, onLanguageChange }: { language: 
         <section className="rounded-[28px] bg-white p-6 shadow-sm sm:p-8">
           <p className="text-xs font-bold uppercase tracking-[.16em] text-[#088a78]">{copy("LIVE AVAILABILITY", "লাইভ অ্যাভেইলেবিলিটি")}</p>
           <h2 className="mt-2 font-display text-2xl font-extrabold text-[#071d33]">{availability.isLoading ? copy("Checking the published question bank…", "প্রকাশিত প্রশ্ন ব্যাংক যাচাই হচ্ছে…") : count ? copy("Approved questions are ready for practice.", "অনুমোদিত প্রশ্ন প্র্যাকটিসের জন্য প্রস্তুত।") : copy("Practice opens when reviewed questions are published.", "রিভিউ করা প্রশ্ন প্রকাশিত হলেই প্র্যাকটিস চালু হবে।")}</h2>
-          {availability.isLoading ? <div className="mt-8 h-32 animate-pulse rounded-2xl bg-slate-100" /> : count ? <PublishedReady count={count} subjects={availability.data?.subjects ?? []} copy={copy} onStart={launch} admissionTrack={admissionTrack} onAdmissionTrackChange={setAdmissionTrack} trackReady={Boolean(trackQuestions.data?.length)} trackLoading={trackQuestions.isLoading} onOpenAdmission={() => setLocation("/admission")} /> : <NoContent copy={copy} onNotices={() => setLocation("/notices")} />}
+          {availability.isLoading ? <div className="mt-8 h-32 animate-pulse rounded-2xl bg-slate-100" /> : count ? <PublishedReady count={count} subjects={availability.data?.subjects ?? []} copy={copy} onStart={launch} admissionTrack={admissionTrack} onAdmissionTrackChange={setAdmissionTrack} trackReady={Boolean(trackCapacity.data?.total)} trackLoading={trackCapacity.isLoading} onOpenAdmission={() => setLocation("/admission")} /> : <NoContent copy={copy} onNotices={() => setLocation("/notices")} />}
         </section>
       </div>
     </div>

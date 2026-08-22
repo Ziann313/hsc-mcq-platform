@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createReviewQuestion } from "../db";
-import { addQuestionComment, getActiveFrozenAttempt, getAttemptExamIntelligence, getAttemptResult, getExamHistory, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestions, getQuestionComments, recordAttemptIntegrityEvent, recordImportBatch, saveAttemptSelection, setAttemptMarkForReview, setAttemptQuestionPosition, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
+import { addQuestionComment, getActiveFrozenAttempt, getAttemptExamIntelligence, getAttemptResult, getExamHistory, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestionCapacity, getPublishedQuestions, getQuestionComments, recordAttemptIntegrityEvent, recordImportBatch, saveAttemptSelection, setAttemptMarkForReview, setAttemptQuestionPosition, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { questionIntelligenceInput } from "../questionIntelligenceInput";
 import { releaseSubscriptionUsage, reserveSubscriptionUsage } from "../subscriptionDb";
@@ -17,7 +17,8 @@ const questionFilterInput = z.object({
 });
 
 export const mcqRouter = router({
-  publishedQuestions: publicProcedure.input(questionFilterInput).query(async ({ input }) => {
+  publishedQuestionCapacity: publicProcedure.input(questionFilterInput.omit({ limit: true }).optional()).query(({ input }) => getPublishedQuestionCapacity(input ?? {})),
+  publishedQuestions: adminProcedure.input(questionFilterInput).query(async ({ input }) => {
     const published = await getPublishedQuestions(input);
     return published.map(question => ({
       ...question,

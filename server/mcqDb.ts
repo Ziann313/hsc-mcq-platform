@@ -279,6 +279,28 @@ export async function getMistakeVault(userId: number) {
 
 type QuestionFilter = { subjectId?: number; chapterId?: number; chapterIds?: number[]; topicIds?: number[]; conceptIds?: number[]; examProfileId?: number; sourceMode?: "historical_only" | "generated_only" | "mixed" | "verified_only"; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; admissionTrack?: "du" | "buet" | "medical"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
 
+function publishedQuestionConditions(filters: QuestionFilter) {
+  const conditions = [eq(questions.status, "published")];
+  if (filters.subjectId) conditions.push(eq(questions.subjectId, filters.subjectId));
+  if (filters.chapterId) conditions.push(eq(questions.chapterId, filters.chapterId));
+  if (filters.chapterIds?.length) conditions.push(inArray(questions.chapterId, filters.chapterIds));
+  if (filters.topicIds?.length) conditions.push(inArray(questions.topicId, filters.topicIds));
+  if (filters.conceptIds?.length) conditions.push(inArray(questions.conceptId, filters.conceptIds));
+  if (filters.examProfileId) conditions.push(eq(questionIntelligence.examProfileId, filters.examProfileId));
+  if (filters.sourceMode === "historical_only") conditions.push(sql`${questionIntelligence.provenance} IN ('historical_official', 'historical_verified') AND ${questionIntelligence.verificationStatus} = 'approved'`);
+  if (filters.sourceMode === "generated_only") conditions.push(sql`${questionIntelligence.provenance} IN ('generated_from_curriculum', 'generated_from_historical_analysis', 'generated_from_exam_pattern') AND ${questionIntelligence.verificationStatus} = 'approved'`);
+  if (filters.sourceMode === "verified_only") conditions.push(sql`(${questionIntelligence.id} IS NULL OR ${questionIntelligence.verificationStatus} = 'approved')`);
+  if (filters.boardExamYear) conditions.push(eq(questions.boardExamYear, filters.boardExamYear));
+  if (filters.boardName) conditions.push(like(questions.boardName, `%${filters.boardName}%`));
+  if (filters.collegePaper) conditions.push(like(questions.collegePaper, `%${filters.collegePaper}%`));
+  if (filters.boardStandard) conditions.push(eq(questions.boardStandard, filters.boardStandard));
+  if (filters.admissionTrack) conditions.push(eq(questions.admissionTrack, filters.admissionTrack));
+  if (filters.questionType) conditions.push(eq(questions.questionType, filters.questionType));
+  if (filters.contentLanguage) conditions.push(eq(questions.contentLanguage, filters.contentLanguage));
+  if (filters.questionIds?.length) conditions.push(inArray(questions.id, filters.questionIds));
+  return conditions;
+}
+
 export async function getPublishedChapterAvailability(subjectId?: number, contentLanguage?: "bn" | "en") {
   const db = await getDb();
   if (!db) return [] as Array<{ subjectId: number; subject: string; chapterId: number; chapter: string; questionCount: number }>;
@@ -305,24 +327,7 @@ export async function getPublishedChapterAvailability(subjectId?: number, conten
 export async function getPublishedQuestions(filters: QuestionFilter) {
   const db = await getDb();
   if (!db) return [];
-  const conditions = [eq(questions.status, "published")];
-  if (filters.subjectId) conditions.push(eq(questions.subjectId, filters.subjectId));
-  if (filters.chapterId) conditions.push(eq(questions.chapterId, filters.chapterId));
-  if (filters.chapterIds?.length) conditions.push(inArray(questions.chapterId, filters.chapterIds));
-  if (filters.topicIds?.length) conditions.push(inArray(questions.topicId, filters.topicIds));
-  if (filters.conceptIds?.length) conditions.push(inArray(questions.conceptId, filters.conceptIds));
-  if (filters.examProfileId) conditions.push(eq(questionIntelligence.examProfileId, filters.examProfileId));
-  if (filters.sourceMode === "historical_only") conditions.push(sql`${questionIntelligence.provenance} IN ('historical_official', 'historical_verified') AND ${questionIntelligence.verificationStatus} = 'approved'`);
-  if (filters.sourceMode === "generated_only") conditions.push(sql`${questionIntelligence.provenance} IN ('generated_from_curriculum', 'generated_from_historical_analysis', 'generated_from_exam_pattern') AND ${questionIntelligence.verificationStatus} = 'approved'`);
-  if (filters.sourceMode === "verified_only") conditions.push(sql`(${questionIntelligence.id} IS NULL OR ${questionIntelligence.verificationStatus} = 'approved')`);
-  if (filters.boardExamYear) conditions.push(eq(questions.boardExamYear, filters.boardExamYear));
-  if (filters.boardName) conditions.push(like(questions.boardName, `%${filters.boardName}%`));
-  if (filters.collegePaper) conditions.push(like(questions.collegePaper, `%${filters.collegePaper}%`));
-  if (filters.boardStandard) conditions.push(eq(questions.boardStandard, filters.boardStandard));
-  if (filters.admissionTrack) conditions.push(eq(questions.admissionTrack, filters.admissionTrack));
-  if (filters.questionType) conditions.push(eq(questions.questionType, filters.questionType));
-  if (filters.contentLanguage) conditions.push(eq(questions.contentLanguage, filters.contentLanguage));
-  if (filters.questionIds?.length) conditions.push(inArray(questions.id, filters.questionIds));
+  const conditions = publishedQuestionConditions(filters);
   const rows = await db.select({
     id: questions.id, questionVersion: questions.currentVersion, subjectId: questions.subjectId, chapterId: questions.chapterId, topicId: questions.topicId, conceptId: questions.conceptId, contentLanguage: questions.contentLanguage, prompt: questions.prompt, questionType: questions.questionType, difficulty: questions.difficulty, boardStandard: questions.boardStandard,
     boardName: questions.boardName, boardExamYear: questions.boardExamYear, collegePaper: questions.collegePaper,
@@ -347,6 +352,38 @@ export async function getPublishedQuestions(filters: QuestionFilter) {
   if (!distinctRows.length) return [];
   const optionRows = await db.select().from(questionOptions).where(inArray(questionOptions.questionId, distinctRows.map(row => row.id)));
   return distinctRows.map(row => ({ ...row, options: optionRows.filter(option => option.questionId === row.id).map(option => ({ id: option.id, optionKey: option.optionKey, text: option.text, isCorrect: option.isCorrect })) }));
+}
+
+export async function getPublishedQuestionCapacity(filters: Omit<QuestionFilter, "limit">) {
+  const db = await getDb();
+  if (!db) return { total: 0, subjects: [] as Array<{ subjectId: number; subject: string; questionCount: number }>, chapters: [] as Array<{ chapterId: number; chapter: string; questionCount: number }> };
+  const conditions = publishedQuestionConditions({ ...filters, limit: 0 });
+  const rows = await db.select({ questionId: questions.id, subjectId: subjects.id, subject: subjects.nameEn, chapterId: chapters.id, chapter: chapters.titleEn })
+    .from(questions)
+    .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .leftJoin(chapters, eq(questions.chapterId, chapters.id))
+    .leftJoin(questionIntelligence, eq(questionIntelligence.questionId, questions.id))
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(...conditions, eq(sourceVersions.status, "active")));
+  const distinct = Array.from(new Map(rows.map(row => [row.questionId, row])).values());
+  const subjectCounts = new Map<number, { subjectId: number; subject: string; questionCount: number }>();
+  const chapterCounts = new Map<number, { chapterId: number; chapter: string; questionCount: number }>();
+  for (const row of distinct) {
+    const subject = subjectCounts.get(row.subjectId) ?? { subjectId: row.subjectId, subject: row.subject, questionCount: 0 };
+    subject.questionCount += 1;
+    subjectCounts.set(row.subjectId, subject);
+    if (row.chapterId && row.chapter) {
+      const chapter = chapterCounts.get(row.chapterId) ?? { chapterId: row.chapterId, chapter: row.chapter, questionCount: 0 };
+      chapter.questionCount += 1;
+      chapterCounts.set(row.chapterId, chapter);
+    }
+  }
+  return {
+    total: distinct.length,
+    subjects: Array.from(subjectCounts.values()).sort((a, b) => a.subject.localeCompare(b.subject)),
+    chapters: Array.from(chapterCounts.values()).sort((a, b) => a.chapter.localeCompare(b.chapter)),
+  };
 }
 
 export async function startFilteredAttempt(input: { userId: number; filters: QuestionFilter; durationMinutes: number; mistakeRetest?: boolean }) {

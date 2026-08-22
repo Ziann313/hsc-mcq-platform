@@ -10,9 +10,17 @@ function createPublicContext(): TrpcContext {
   };
 }
 
+function createAdministratorContext(): TrpcContext {
+  return {
+    user: { id: 1, openId: "assessment-boundary-admin", email: null, name: "Assessment boundary", loginMethod: "test", role: "admin", createdAt: new Date(), updatedAt: new Date(), lastSignedIn: new Date() },
+    req: { protocol: "https", headers: {} } as TrpcContext["req"],
+    res: {} as TrpcContext["res"],
+  };
+}
+
 describe("assessment API boundary", () => {
-  it("does not expose answer keys through public published-question browsing", async () => {
-    const caller = appRouter.createCaller(createPublicContext());
+  it("does not expose answer keys through administrator published-question browsing", async () => {
+    const caller = appRouter.createCaller(createAdministratorContext());
     const questions = await caller.mcq.publishedQuestions({ limit: 1 });
     expect(questions.length).toBeGreaterThan(0);
     expect(questions[0]?.options[0]).not.toHaveProperty("isCorrect");

@@ -5,7 +5,7 @@ import { AlertTriangle } from "lucide-react";
 
 export function AdminChallengeDataStatus({ language }: { language: Language }) {
   const copy = (en: string, bn: string) => language === "bn" ? bn : en;
-  const questions = trpc.mcq.publishedQuestions.useQuery({ limit: 100 });
+  const questions = trpc.mcq.publishedQuestionCapacity.useQuery();
   const schedules = trpc.liveExam.dailyChallengeSchedules.useQuery();
   const failure = questions.error ?? schedules.error;
   if (!failure) return null;
