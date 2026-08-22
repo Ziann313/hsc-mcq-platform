@@ -33,5 +33,10 @@ describe("application route integrity", () => {
   it("registers direct-link compatibility routes requested by learning and legacy flows", () => {
     expect(registeredRoutePaths.has("/dashboard")).toBe(true);
     expect(dedicatedRoutePaths).toEqual(expect.arrayContaining(["/practice", "/exams"]));
+    expect(legacyRouteRedirects).toMatchObject({
+      "/admission-prep": "/admission",
+      "/hsc-prep": "/exams",
+      "/previous-year-questions": "/historical-analysis",
+    });
   });
 });

@@ -43,6 +43,9 @@ export const registeredRoutePaths = new Set<string>([
 ]);
 
 export const legacyRouteRedirects = {
+  "/admission-prep": "/admission",
+  "/hsc-prep": "/exams",
+  "/previous-year-questions": "/historical-analysis",
   "/question-bank": "/practice",
   "/exam-lab": "/practice",
   "/bulk-import": "/import",

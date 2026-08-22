@@ -262,3 +262,8 @@
 - [x] Create a dedicated administrator payment-reconciliation workspace for evidence review, approval/rejection, notes, and clear audit state.
 - [x] Notify the submitting student in-app when a reviewer approves or rejects a manual payment request, with regression coverage and responsive validation.
 - [x] Update route-integrity coverage for the protected payment reconciliation destination and re-run the complete regression suite.
+- [x] Extract and reconcile the attached HSC and admission implementation brief with current MCQ GURU routes, content governance, assessment, and admission-preparation capabilities.
+- [x] Implement only verified, compatible HSC and admission gaps with source-linked content boundaries, regression coverage, and responsive validation.
+- [x] Add protected compatibility entry points for `/admission-prep`, `/hsc-prep`, and `/previous-year-questions` without reviving an unsafe catch-all routing model.
+- [x] Reuse the existing HSC preparation workflow as `/hsc-prep`: it already provides live source-linked subject and chapter capacity, persisted readiness data, and frozen server-selected practice handoffs without duplicating a hub.
+- [x] Reconcile the requested previous-year-question system with existing source governance by surfacing only authorised verified historical analysis and explicitly preserving the no-unlicensed-question-text boundary.
