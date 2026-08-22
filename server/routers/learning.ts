@@ -10,6 +10,8 @@ import {
   getActiveAdmissionTracks,
   getAdmissionReadiness,
   getStudentAdmissionScoreBenchmarks,
+  getTutorConversationHistory,
+  getTutorConversationMessages,
   getDailyStudyGuide,
   getApprovedSources,
   getApprovedQuestionPublicationQueue,
@@ -28,6 +30,7 @@ import {
   registerOfficialSource,
   reviewQuestion,
   saveStudentProfile,
+  saveTutorConversation,
   saveNotificationPreferences,
   updateStudentPreferences,
 } from "../db";
@@ -53,6 +56,24 @@ export const learningRouter = router({
   profile: protectedProcedure.query(async ({ ctx }) => {
     const profile = await getStudentProfile(ctx.user.id);
     return profile ?? null;
+  }),
+
+  tutorConversationHistory: protectedProcedure.query(({ ctx }) => getTutorConversationHistory(ctx.user.id)),
+
+  tutorConversationMessages: protectedProcedure.input(z.object({ conversationId: z.number().int().positive() })).query(async ({ ctx, input }) => {
+    const conversation = await getTutorConversationMessages(ctx.user.id, input.conversationId);
+    if (!conversation) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+    return conversation;
+  }),
+
+  saveTutorConversation: protectedProcedure.input(z.object({
+    conversationId: z.number().int().positive().optional(),
+    title: z.string().trim().min(1).max(220),
+    messages: z.array(z.object({ role: z.enum(["user", "assistant"]), content: z.string().trim().min(1).max(12_000) })).min(1).max(2),
+  })).mutation(async ({ ctx, input }) => {
+    const conversationId = await saveTutorConversation({ ...input, userId: ctx.user.id });
+    if (!conversationId) throw new TRPCError({ code: "NOT_FOUND", message: "Conversation not found" });
+    return { conversationId };
   }),
 
   completeOnboarding: protectedProcedure.input(onboardingInput).mutation(async ({ ctx, input }) => {

@@ -51,6 +51,9 @@ export type AIChatBoxProps = {
    */
   emptyStateMessage?: string;
 
+  /** Optional human-readable loading text shown while an assistant response is being prepared. */
+  typingMessage?: string;
+
   /**
    * Suggested prompts to display in empty state
    * Click to send directly
@@ -117,6 +120,7 @@ export function AIChatBox({
   className,
   height = "600px",
   emptyStateMessage = "Start a conversation with AI",
+  typingMessage = "Assistant is typing…",
   suggestedPrompts,
 }: AIChatBoxProps) {
   const [input, setInput] = useState("");
@@ -285,8 +289,9 @@ export function AIChatBox({
                   <div className="size-8 shrink-0 mt-1 rounded-full bg-primary/10 flex items-center justify-center">
                     <Sparkles className="size-4 text-primary" />
                   </div>
-                  <div className="rounded-lg bg-muted px-4 py-2.5">
+                  <div className="flex items-center gap-2 rounded-lg bg-muted px-4 py-2.5">
                     <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{typingMessage}</span>
                   </div>
                 </div>
               )}

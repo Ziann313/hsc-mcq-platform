@@ -1,5 +1,5 @@
 import { and, desc, eq, inArray, like, sql } from "drizzle-orm";
-import { academicGroups, attemptAnswers, attemptIntegrityEvents, books, chapterCheatSheets, chapters, concepts, examAttempts, leaderboardScores, mistakes, questionComments, questionIntelligence, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, topics, users } from "../drizzle/schema";
+import { academicGroups, attemptAnswers, attemptIntegrityEvents, bookmarks, books, chapterCheatSheets, chapters, concepts, examAttempts, leaderboardScores, mistakes, questionComments, questionIntelligence, questionOptions, questionSources, questions, questionStems, sourceVersions, subjects, topics, users } from "../drizzle/schema";
 import { scoreMcqExam, type McqSelection } from "../shared/mcq";
 import { isReviewDue, nextReviewAt } from "../shared/spacedReview";
 import { shouldFinalizeExpiredAttempt } from "../shared/attemptExpiry";
@@ -277,6 +277,41 @@ export async function getMistakeVault(userId: number) {
   });
 }
 
+export async function getBookmarks(userId: number, contentLanguage?: "bn" | "en") {
+  const db = await getDb();
+  if (!db) return [] as Array<{ id: number; questionId: number; subject: string; chapter: string | null; contentLanguage: "bn" | "en" | "bilingual"; createdAt: Date }>;
+  const rows = await db.select({ id: bookmarks.id, questionId: questions.id, subject: subjects.nameEn, chapter: chapters.titleEn, contentLanguage: questions.contentLanguage, createdAt: bookmarks.createdAt })
+    .from(bookmarks)
+    .innerJoin(questions, eq(bookmarks.questionId, questions.id))
+    .innerJoin(subjects, eq(questions.subjectId, subjects.id))
+    .leftJoin(chapters, eq(questions.chapterId, chapters.id))
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(eq(bookmarks.userId, userId), eq(questions.status, "published"), eq(sourceVersions.status, "active"), ...(contentLanguage ? [eq(questions.contentLanguage, contentLanguage)] : [])))
+    .orderBy(desc(bookmarks.createdAt));
+  return Array.from(new Map(rows.map(row => [row.id, row])).values());
+}
+
+export async function addBookmark(userId: number, questionId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const eligible = await db.select({ id: questions.id }).from(questions)
+    .innerJoin(questionSources, eq(questionSources.questionId, questions.id))
+    .innerJoin(sourceVersions, eq(questionSources.sourceVersionId, sourceVersions.id))
+    .where(and(eq(questions.id, questionId), eq(questions.status, "published"), eq(sourceVersions.status, "active")))
+    .limit(1);
+  if (!eligible[0]) return false;
+  await db.insert(bookmarks).values({ userId, questionId }).onDuplicateKeyUpdate({ set: { questionId } });
+  return true;
+}
+
+export async function removeBookmark(userId: number, bookmarkId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.delete(bookmarks).where(and(eq(bookmarks.id, bookmarkId), eq(bookmarks.userId, userId)));
+  return Boolean(result[0].affectedRows);
+}
+
 type QuestionFilter = { subjectId?: number; chapterId?: number; chapterIds?: number[]; topicIds?: number[]; conceptIds?: number[]; examProfileId?: number; sourceMode?: "historical_only" | "generated_only" | "mixed" | "verified_only"; boardExamYear?: number; boardName?: string; collegePaper?: string; boardStandard?: "board_standard" | "varsity_admission_standard"; admissionTrack?: "du" | "buet" | "medical"; groupSlug?: "science" | "humanities" | "business-studies"; questionType?: "single_mcq" | "multi_statement" | "stem_subquestion"; contentLanguage?: "bn" | "en"; questionIds?: number[]; limit: number };
 
 function publishedQuestionConditions(filters: QuestionFilter) {
@@ -389,10 +424,10 @@ export async function getPublishedQuestionCapacity(filters: Omit<QuestionFilter,
   };
 }
 
-export async function startFilteredAttempt(input: { userId: number; filters: QuestionFilter; durationMinutes: number; mistakeRetest?: boolean }) {
+export async function startFilteredAttempt(input: { userId: number; filters: QuestionFilter; durationMinutes: number; mistakeRetest?: boolean; bookmarkRetest?: boolean }) {
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
-  const activeSessionKey = input.mistakeRetest ? `mistake-retest:${input.userId}` : `filtered-practice:${input.userId}`;
+  const activeSessionKey = input.mistakeRetest ? `mistake-retest:${input.userId}` : input.bookmarkRetest ? `bookmark-retest:${input.userId}` : `filtered-practice:${input.userId}`;
   const [existing] = await db.select({ id: examAttempts.id, startedAt: examAttempts.startedAt, expiresAt: examAttempts.expiresAt, status: examAttempts.status, questionSetSnapshot: examAttempts.questionSetSnapshot }).from(examAttempts).where(eq(examAttempts.activeSessionKey, activeSessionKey)).limit(1);
   if (existing?.status === "in_progress") {
     if (shouldFinalizeExpiredAttempt(existing.status, existing.expiresAt)) await getAttemptResult(input.userId, existing.id);
@@ -410,13 +445,20 @@ export async function startFilteredAttempt(input: { userId: number; filters: Que
     if (adopted[0].affectedRows) return { attemptId: legacy.id, startedAt: legacy.startedAt, expiresAt: legacy.expiresAt, questions: safeFrozenQuestions(legacyFrozen) };
   }
   let mistakeQuestionIds: number[] = [];
+  let bookmarkQuestionIds: number[] = [];
   if (input.mistakeRetest) {
     const queuedMistakes = await getMistakeVault(input.userId);
     const due = queuedMistakes.filter(item => item.isDue);
     mistakeQuestionIds = (due.length ? due : queuedMistakes).slice(0, input.filters.limit).map(item => item.questionId);
     if (!mistakeQuestionIds.length) return undefined;
   }
-  const questionsForAttempt = await getPublishedQuestions({ ...input.filters, ...(mistakeQuestionIds.length ? { questionIds: mistakeQuestionIds } : {}) });
+  if (input.bookmarkRetest) {
+    const saved = await getBookmarks(input.userId, input.filters.contentLanguage);
+    bookmarkQuestionIds = saved.slice(0, input.filters.limit).map(item => item.questionId);
+    if (!bookmarkQuestionIds.length) return undefined;
+  }
+  const selectedQuestionIds = mistakeQuestionIds.length ? mistakeQuestionIds : bookmarkQuestionIds;
+  const questionsForAttempt = await getPublishedQuestions({ ...input.filters, ...(selectedQuestionIds.length ? { questionIds: selectedQuestionIds } : {}) });
   if (!questionsForAttempt.length) return undefined;
   if (input.mistakeRetest) await db.update(mistakes).set({ status: "reviewing" }).where(and(eq(mistakes.userId, input.userId), inArray(mistakes.questionId, questionsForAttempt.map(question => question.id))));
   const frozen = questionsForAttempt.map((question, position) => ({
@@ -451,7 +493,7 @@ export async function startFilteredAttempt(input: { userId: number; filters: Que
   try {
     const result = await db.insert(examAttempts).values({
       userId: input.userId,
-      titleSnapshot: input.mistakeRetest ? "MCQ GURU spaced mistake re-test" : "MCQ GURU filtered practice",
+      titleSnapshot: input.mistakeRetest ? "MCQ GURU spaced mistake re-test" : input.bookmarkRetest ? "MCQ GURU bookmarked-question practice" : "MCQ GURU filtered practice",
       examVersionSnapshot: "mcq-guru-v1",
       patternVersionSnapshot: input.mistakeRetest ? "mistake-retest-v1" : "filter-snapshot-v1",
       questionSetSnapshot: frozen,

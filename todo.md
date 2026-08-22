@@ -280,3 +280,7 @@
 - [x] Extract and reconcile the newly attached all-groups and boards brief with MCQ GURU’s taxonomy, published capacity, board filters, language controls, and immutable assessment engine.
 - [x] Implement only verified all-groups and board-preparation gaps with active source evidence, reviewer approval, answer-key protection, regression coverage, and responsive validation.
 - [x] Add an equal-priority Science, Humanities, and Business Studies selector to HSC preparation, with server-enforced group filters for availability and frozen attempt selection plus truthful zero-capacity states.
+- [x] Extract and reconcile the newly attached Tutor, Notebook, Study Plan, and Dashboard brief with MCQ GURU’s grounded Tutor, owner-only learning records, study guidance, and real student metrics.
+- [x] Implement only verified learning-workflow gaps with source grounding, student-data isolation, real-data states, regression coverage, and responsive validation.
+- [x] Persist grounded Tutor conversations through the existing ai-conversation tables, with protected owner-only history and message retrieval, a new-conversation control, and responsive history navigation.
+- [x] Wire the existing bookmark records into the revision/notebook workflow, with owner-only retrieval and removal plus bookmarking from a frozen active question.

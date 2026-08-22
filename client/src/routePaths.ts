@@ -31,6 +31,7 @@ export const dedicatedRoutePaths = [
   "/live-exams",
   "/leaderboard",
   "/cheat-sheets",
+  "/bookmarks",
   "/mistake-vault",
   "/community",
   "/import",
@@ -53,5 +54,4 @@ export const legacyRouteRedirects = {
   "/content-workspace": "/governance",
   "/mcq-lab": "/practice",
   "/mistakes": "/mistake-vault",
-  "/bookmarks": "/practice",
 } as const;

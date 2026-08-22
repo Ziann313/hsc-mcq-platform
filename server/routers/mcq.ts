@@ -1,7 +1,7 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
 import { createReviewQuestion } from "../db";
-import { addQuestionComment, getActiveFrozenAttempt, getAttemptExamIntelligence, getAttemptResult, getExamHistory, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestionCapacity, getPublishedQuestions, getQuestionComments, recordAttemptIntegrityEvent, recordImportBatch, saveAttemptSelection, setAttemptMarkForReview, setAttemptQuestionPosition, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
+import { addBookmark, addQuestionComment, getActiveFrozenAttempt, getAttemptExamIntelligence, getAttemptResult, getBookmarks, getExamHistory, getLeaderboard, getMistakeVault, getPublishedChapterAvailability, getPublishedCheatSheets, getPublishedQuestionCapacity, getPublishedQuestions, getQuestionComments, recordAttemptIntegrityEvent, recordImportBatch, removeBookmark, saveAttemptSelection, setAttemptMarkForReview, setAttemptQuestionPosition, startFilteredAttempt, submitFrozenAttempt } from "../mcqDb";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { questionIntelligenceInput } from "../questionIntelligenceInput";
 import { releaseSubscriptionUsage, reserveSubscriptionUsage } from "../subscriptionDb";
@@ -26,7 +26,7 @@ export const mcqRouter = router({
     }));
   }),
   publishedChapterAvailability: publicProcedure.input(z.object({ subjectId: z.number().int().positive().optional(), contentLanguage: z.enum(["bn", "en"]).optional() }).optional()).query(({ input }) => getPublishedChapterAvailability(input?.subjectId, input?.contentLanguage)),
-  startFilteredAttempt: protectedProcedure.input(z.object({ filters: questionFilterInput, durationMinutes: z.number().int().min(1).max(240), mistakeRetest: z.boolean().optional() })).mutation(async ({ ctx, input }) => {
+  startFilteredAttempt: protectedProcedure.input(z.object({ filters: questionFilterInput, durationMinutes: z.number().int().min(1).max(240), mistakeRetest: z.boolean().optional(), bookmarkRetest: z.boolean().optional() })).mutation(async ({ ctx, input }) => {
     const usageType = input.filters.examProfileId || input.durationMinutes >= 45 ? "exams" : "practice_questions";
     const usageAmount = usageType === "exams" ? 1 : input.filters.limit;
     const usage = await reserveSubscriptionUsage(ctx.user.id, usageType, usageAmount);
@@ -78,6 +78,17 @@ export const mcqRouter = router({
   leaderboard: publicProcedure.input(z.object({ period: z.enum(["global", "weekly"]), periodKey: z.string().min(4).max(30) })).query(({ input }) => getLeaderboard(input.period, input.periodKey)),
   cheatSheets: publicProcedure.query(() => getPublishedCheatSheets()),
   mistakeVault: protectedProcedure.query(({ ctx }) => getMistakeVault(ctx.user.id)),
+  bookmarks: protectedProcedure.input(z.object({ contentLanguage: z.enum(["bn", "en"]).optional() }).optional()).query(({ ctx, input }) => getBookmarks(ctx.user.id, input?.contentLanguage)),
+  addBookmark: protectedProcedure.input(z.object({ questionId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const saved = await addBookmark(ctx.user.id, input.questionId);
+    if (!saved) throw new TRPCError({ code: "NOT_FOUND", message: "Published question not found" });
+    return { saved: true } as const;
+  }),
+  removeBookmark: protectedProcedure.input(z.object({ bookmarkId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
+    const removed = await removeBookmark(ctx.user.id, input.bookmarkId);
+    if (!removed) throw new TRPCError({ code: "NOT_FOUND", message: "Bookmark not found" });
+    return { removed: true } as const;
+  }),
   comments: publicProcedure.input(z.object({ questionId: z.number().int().positive() })).query(({ input }) => getQuestionComments(input.questionId)),
   addComment: protectedProcedure.input(z.object({ questionId: z.number().int().positive(), parentCommentId: z.number().int().positive().optional(), content: z.string().trim().min(2).max(1500) })).mutation(async ({ ctx, input }) => {
     const commentId = await addQuestionComment({ ...input, userId: ctx.user.id });

@@ -1,7 +1,7 @@
-import { and, desc, eq, like } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, like } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { InsertUser, studentProfiles, studentNotificationPreferences, users, books, chapters, concepts, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, academicGroups, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternSources, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes, questionIntelligence, topics } from "../drizzle/schema";
+import { InsertUser, aiConversations, aiMessages, studentProfiles, studentNotificationPreferences, users, books, chapters, concepts, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, academicGroups, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternSources, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes, questionIntelligence, topics } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { buildAdmissionBenchmarks, type BenchmarkAttempt } from "../shared/admissionBenchmark";
 import { validateAdmissionPatternActivation } from "../shared/admissionPattern";
@@ -98,6 +98,62 @@ export async function getStudentProfile(userId: number) {
   if (!db) return undefined;
   const rows = await db.select().from(studentProfiles).where(eq(studentProfiles.userId, userId)).limit(1);
   return rows[0];
+}
+
+type TutorConversationMessageInput = { role: "user" | "assistant"; content: string };
+
+export async function getTutorConversationHistory(userId: number) {
+  const db = await getDb();
+  if (!db) return [] as Array<{ id: number; title: string; lastMessagePreview: string; updatedAt: Date }>;
+  const conversations = await db.select({ id: aiConversations.id, title: aiConversations.title, updatedAt: aiConversations.updatedAt })
+    .from(aiConversations)
+    .where(eq(aiConversations.userId, userId))
+    .orderBy(desc(aiConversations.updatedAt))
+    .limit(30);
+  if (!conversations.length) return [];
+  const messages = await db.select({ conversationId: aiMessages.conversationId, content: aiMessages.content })
+    .from(aiMessages)
+    .where(inArray(aiMessages.conversationId, conversations.map(conversation => conversation.id)))
+    .orderBy(desc(aiMessages.createdAt), desc(aiMessages.id));
+  const latestMessage = new Map<number, string>();
+  for (const message of messages) if (!latestMessage.has(message.conversationId)) latestMessage.set(message.conversationId, message.content);
+  return conversations.map(conversation => ({
+    ...conversation,
+    lastMessagePreview: (latestMessage.get(conversation.id) ?? "").replace(/\s+/g, " ").trim().slice(0, 160),
+  }));
+}
+
+export async function getTutorConversationMessages(userId: number, conversationId: number) {
+  const db = await getDb();
+  if (!db) return null;
+  const conversation = await db.select({ id: aiConversations.id, title: aiConversations.title })
+    .from(aiConversations)
+    .where(and(eq(aiConversations.id, conversationId), eq(aiConversations.userId, userId)))
+    .limit(1);
+  if (!conversation[0]) return null;
+  const messages = await db.select({ id: aiMessages.id, role: aiMessages.role, content: aiMessages.content, createdAt: aiMessages.createdAt })
+    .from(aiMessages)
+    .where(eq(aiMessages.conversationId, conversationId))
+    .orderBy(asc(aiMessages.createdAt), asc(aiMessages.id));
+  return { ...conversation[0], messages };
+}
+
+export async function saveTutorConversation(input: { userId: number; conversationId?: number; title: string; messages: TutorConversationMessageInput[] }) {
+  const db = await getDb();
+  if (!db) return null;
+  let conversationId = input.conversationId;
+  if (conversationId) {
+    const owned = await db.select({ id: aiConversations.id }).from(aiConversations)
+      .where(and(eq(aiConversations.id, conversationId), eq(aiConversations.userId, input.userId)))
+      .limit(1);
+    if (!owned[0]) return null;
+    await db.update(aiConversations).set({ title: input.title, updatedAt: new Date() }).where(eq(aiConversations.id, conversationId));
+  } else {
+    const created = await db.insert(aiConversations).values({ userId: input.userId, title: input.title });
+    conversationId = Number(created[0].insertId);
+  }
+  await db.insert(aiMessages).values(input.messages.map(message => ({ conversationId: conversationId!, role: message.role, content: message.content })));
+  return conversationId;
 }
 
 type NotificationPreferenceState = {

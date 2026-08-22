@@ -715,6 +715,7 @@ export const aiConversations = mysqlTable("ai_conversations", {
   userId: int("userId").notNull().references(() => users.id),
   title: varchar("title", { length: 220 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
 export const aiMessages = mysqlTable("ai_messages", {

@@ -43,6 +43,7 @@ const LearningProgressPage = lazy(() => import("./pages/LearningProgressPage"));
 const LiveExamPage = lazy(() => import("./pages/LiveExamPage"));
 const LiveExamsPage = lazy(() => import("./pages/LiveExamsPage"));
 const TutorPage = lazy(() => import("./pages/TutorPage"));
+const BookmarkVaultPage = lazy(() => import("./pages/BookmarkVaultPage"));
 const StudyPlanPage = lazy(() => import("./pages/StudyPlanPage"));
 const LeaderboardPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.LeaderboardPage })));
 const CheatSheetsPage = lazy(() => import("./pages/MCQInsightsPage").then(module => ({ default: module.CheatSheetsPage })));
@@ -143,7 +144,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/mcq-lab"><Redirect to="/practice" /></Route>
     <Route path="/study-plan">{() => <StudentRoute><StudyPlanPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/mistakes"><Redirect to="/mistake-vault" /></Route>
-    <Route path="/bookmarks"><Redirect to="/practice" /></Route>
+    <Route path="/bookmarks">{() => <StudentRoute><BookmarkVaultPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/exams/:examId/attempt"><Redirect to="/live-exam" /></Route>
     <Route path="/exams">{() => <StudentRoute><ExamPreparationPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/insights">{() => <StudentRoute><LearningProgressPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
