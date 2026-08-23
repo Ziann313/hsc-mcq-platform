@@ -326,3 +326,5 @@
 - [x] Execute only safe, meaningful automated and route-level QA checks; document stale/unsafe guide assumptions and remediate only confirmed defects.
 - [x] Study the supplied homepage reference and redesign MCQ GURU’s public landing and loading motion with original content, layout, and CSS animation rather than copying reference assets or code.
 - [x] Preserve the existing sign-in, source-governed capacity, return-path, accessibility, PWA, and reduced-motion safeguards while validating the new public experience on desktop and mobile.
+- [x] Reconcile the attached HSC MCQ P0 fixes brief with MCQ GURU’s explicit routes, SPA fallback, OAuth, protected attempts, real dashboard data, pooling, dependency lockfile, and administrator guards.
+- [x] Implement only confirmed P0 routing, reliability, or authentication gaps without adding an unverified local-password system, duplicate dashboard data path, hash-route regression, or weaker access control.
