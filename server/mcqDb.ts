@@ -255,9 +255,15 @@ export async function recordAttemptIntegrityEvent(input: { userId: number; attem
   const db = await getDb();
   if (!db) throw new Error("Database unavailable");
   const [attempt] = await db.select({ id: examAttempts.id }).from(examAttempts).where(and(eq(examAttempts.id, input.attemptId), eq(examAttempts.userId, input.userId), eq(examAttempts.status, "in_progress"))).limit(1);
-  if (!attempt) return false;
+  if (!attempt) return { recorded: false, warningCount: 0, autoSubmitted: false };
   await db.insert(attemptIntegrityEvents).values({ attemptId: input.attemptId, userId: input.userId, eventType: input.eventType, metadata: input.metadata ?? null });
-  return true;
+  if (input.eventType !== "visibility_hidden") return { recorded: true, warningCount: 0, autoSubmitted: false };
+  const [count] = await db.select({ total: sql<number>`count(*)` }).from(attemptIntegrityEvents)
+    .where(and(eq(attemptIntegrityEvents.attemptId, input.attemptId), eq(attemptIntegrityEvents.userId, input.userId), eq(attemptIntegrityEvents.eventType, "visibility_hidden")));
+  const warningCount = Number(count?.total ?? 0);
+  if (warningCount < 3) return { recorded: true, warningCount, autoSubmitted: false };
+  const result = await submitFrozenAttempt({ userId: input.userId, attemptId: input.attemptId, selections: [] });
+  return { recorded: true, warningCount, autoSubmitted: Boolean(result) };
 }
 
 export async function getMistakeVault(userId: number) {

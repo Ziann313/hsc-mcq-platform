@@ -1,23 +1,33 @@
 import { and, asc, desc, eq, inArray, like } from "drizzle-orm";
 import { sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+import { createPool, type Pool, type PoolOptions } from "mysql2/promise";
 import { InsertUser, aiConversations, aiMessages, studentProfiles, studentNotificationPreferences, users, books, chapters, concepts, knowledgeChunks, sourceVersions, sources, examAttempts, attemptAnswers, auditLogs, questions, subjects, academicGroups, notifications, admissionNotices, questionOptions, questionSources, questionVersions, examPatternSources, examPatternVersions, examProfiles, academicYears, dailyChallengeNotificationDeliveries, mistakes, questionIntelligence, topics } from "../drizzle/schema";
 import { ENV } from './_core/env';
 import { buildAdmissionBenchmarks, type BenchmarkAttempt } from "../shared/admissionBenchmark";
 import { validateAdmissionPatternActivation } from "../shared/admissionPattern";
 import { duplicateRisk, normalizeQuestionText, validateQuestionIntelligence, type QuestionIntelligenceInput } from "../shared/questionIntelligence";
 
-let _db: ReturnType<typeof drizzle> | null = null;
+type Database = ReturnType<typeof drizzle<Record<string, never>, Pool>>;
 
-// Lazily create the drizzle instance so local tooling can run without a DB.
+let _db: Database | null = null;
+let _pool: Pool | null = null;
+
+function createSharedPool(uri: string) {
+  return createPool({ uri, connectionLimit: 10, maxIdle: 10, idleTimeout: 60_000, enableKeepAlive: true } as unknown as PoolOptions);
+}
+
+// Lazily create the shared connection pool so local tooling can still load modules without opening a database connection.
 export async function getDb() {
-  if (!_db && process.env.DATABASE_URL) {
-    try {
-      _db = drizzle(process.env.DATABASE_URL);
-    } catch (error) {
-      console.warn("[Database] Failed to connect:", error);
-      _db = null;
-    }
+  if (_db) return _db;
+  const databaseUrl = process.env.DATABASE_URL;
+  if (!databaseUrl) throw new Error("Database unavailable — check DATABASE_URL");
+  try {
+    _pool = createSharedPool(databaseUrl);
+    _db = drizzle(_pool);
+  } catch (error) {
+    _pool = null;
+    throw new Error(`Database unavailable — check DATABASE_URL: ${error instanceof Error ? error.message : "connection initialization failed"}`);
   }
   return _db;
 }
@@ -275,7 +285,7 @@ export async function getActiveSourceEvidence(query: string, academicYear: strin
     .innerJoin(academicYears, eq(knowledgeChunks.academicYearId, academicYears.id))
     .leftJoin(books, eq(knowledgeChunks.bookId, books.id))
     .leftJoin(chapters, eq(knowledgeChunks.chapterId, chapters.id))
-    .where(and(eq(sourceVersions.status, "active"), eq(academicYears.name, academicYear), like(knowledgeChunks.content, `%${query.slice(0, 120)}%`)))
+    .where(and(eq(sourceVersions.status, "active"), eq(academicYears.name, academicYear), like(knowledgeChunks.content, sql`CONCAT('%', ${query.slice(0, 120)}, '%')`)))
     .orderBy(desc(knowledgeChunks.id))
     .limit(4);
   return rows.map(row => ({

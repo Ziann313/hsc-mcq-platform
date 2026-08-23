@@ -48,7 +48,7 @@ describe.skipIf(!enabled)("expired attempt database integration", () => {
       markingSchemeSnapshot: { marksPerCorrect: 1, negativeMarkPerWrong: 0.25 }, startedAt: new Date(stamp - 120_000), expiresAt: new Date(stamp + 60_000),
     });
     attemptId = Number(attemptResult[0].insertId);
-    await expect(recordAttemptIntegrityEvent({ userId, attemptId, eventType: "visibility_hidden", metadata: { source: "test" } })).resolves.toBe(true);
+    await expect(recordAttemptIntegrityEvent({ userId, attemptId, eventType: "visibility_hidden", metadata: { source: "test" } })).resolves.toMatchObject({ recorded: true, warningCount: 1, autoSubmitted: false });
     const [integrityEvent] = await db.select().from(attemptIntegrityEvents).where(eq(attemptIntegrityEvents.attemptId, attemptId)).limit(1);
     expect(integrityEvent).toMatchObject({ userId, eventType: "visibility_hidden" });
     await expect(saveAttemptSelection({ userId, attemptId, questionId: questionId + 999_999, selectedOptionIds: [wrongOptionId] })).resolves.toBe(false);

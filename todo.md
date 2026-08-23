@@ -289,3 +289,10 @@
 - [x] Extract and reconcile the updated administrator-grant brief with MCQ GURU’s current payment reconciliation, subscription entitlement, audit-log, and notification controls.
 - [x] Implement only confirmed protected administrator entitlement actions with explicit reason capture, audit events, student notification, regression coverage, and responsive validation.
 - [x] Add protected administrator search, grant, revoke, and extension actions inside the existing payment reconciliation workspace, recording a distinct manual-grant payment origin, required reason, audit event, and learner notification.
+- [x] Extract and reconcile the newly attached P0/P1 fix brief with MCQ GURU’s live routes, content APIs, assessment safeguards, learning workflows, and payment controls.
+- [x] Implement only confirmed P0/P1 defects with focused regression coverage, responsive validation, and no duplicate or unsafe feature rebuilds.
+- [x] Replace silent database fallbacks with explicit failures, use a shared mysql2 connection pool, and parameterize source-evidence matching without changing governed source-selection behavior.
+- [x] Apply shared plain-text input sanitization to Tutor and learner-profile fields, and add a separate server-side two-image-per-hour image-solver guard alongside the existing subscription limits.
+- [x] Add progressive tab-switch warnings to the existing frozen-attempt runner and server-recorded third-warning auto-submission, while retaining current timer, focus-mode, and immutable scoring behavior.
+- [x] Show final-five-minute urgency styling in the existing server-clock frozen-attempt timer without changing its persistence or automatic expiry behavior.
+- [x] Require acknowledgement of the existing frozen-attempt instructions before enabling the start action, without creating a duplicate exam setup flow.

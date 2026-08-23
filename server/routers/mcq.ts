@@ -59,9 +59,9 @@ export const mcqRouter = router({
     return { saved: true } as const;
   }),
   reportAttemptIntegrity: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), eventType: z.enum(["tab_blur", "visibility_hidden", "fullscreen_exit"]), metadata: z.record(z.string(), z.unknown()).optional() })).mutation(async ({ ctx, input }) => {
-    const saved = await recordAttemptIntegrityEvent({ ...input, userId: ctx.user.id });
-    if (!saved) throw new TRPCError({ code: "CONFLICT", message: "This attempt is no longer accepting integrity events" });
-    return { saved: true } as const;
+    const outcome = await recordAttemptIntegrityEvent({ ...input, userId: ctx.user.id });
+    if (!outcome.recorded) throw new TRPCError({ code: "CONFLICT", message: "This attempt is no longer accepting integrity events" });
+    return outcome;
   }),
   submitFrozenAttempt: protectedProcedure.input(z.object({ attemptId: z.number().int().positive(), selections: z.array(z.object({ questionId: z.number().int().positive(), selectedOptionIds: z.array(z.number().int().positive()).max(6).refine(ids => new Set(ids).size === ids.length, "Duplicate options are not allowed") })) })).mutation(async ({ ctx, input }) => {
     const result = await submitFrozenAttempt({ ...input, userId: ctx.user.id });
