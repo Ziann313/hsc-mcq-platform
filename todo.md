@@ -300,3 +300,6 @@
 - [x] Implement only confirmed question-bank gaps with source governance, owner/access boundaries, focused regression coverage, and no duplicated or client-exposed question-serving API.
 - [x] Extract and reconcile the attached previous-year-question and admission/HSC brief with MCQ GURU’s historical-analysis records, source governance, admission patterns, and immutable attempts.
 - [x] Implement only confirmed source-authorized prior-question or admission/HSC preparation gaps with truthful availability states, access-boundary coverage, and no unlicensed historical-question copying.
+- [x] Preserve the standing project rule to audit every future brief first, retain existing working features, and implement only confirmed non-duplicative, proportionate changes.
+- [x] Extract and reconcile the attached learning-enhancement brief with MCQ GURU’s existing Mistake Vault, bookmarks, Tutor history, study guidance, and frozen-attempt integrity safeguards.
+- [x] Implement only confirmed learning-system gaps without recreating existing APIs, exposing answer keys, weakening source governance, or removing active schema relied on by the assessment engine.
