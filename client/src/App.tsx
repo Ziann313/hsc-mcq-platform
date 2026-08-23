@@ -6,6 +6,7 @@ import { Redirect, Route, Switch, useLocation } from "wouter";
 import { toast } from "sonner";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import OfflineIndicator from "./components/OfflineIndicator";
 import { homeRoutePaths, legacyRouteRedirects } from "./routePaths";
 import { useAuth } from "./_core/hooks/useAuth";
 import { trpc } from "./lib/trpc";
@@ -171,7 +172,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
 
 function App() {
   const [language, setLanguage] = useState<"bn" | "en">("bn");
-  return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster /><Router language={language} onLanguageChange={setLanguage} /></TooltipProvider></ThemeProvider></ErrorBoundary>;
+  return <ErrorBoundary><ThemeProvider defaultTheme="light"><TooltipProvider><Toaster /><OfflineIndicator /><Router language={language} onLanguageChange={setLanguage} /></TooltipProvider></ThemeProvider></ErrorBoundary>;
 }
 
 export default App;

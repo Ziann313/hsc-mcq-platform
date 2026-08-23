@@ -319,3 +319,6 @@
 - [x] Implement only confirmed P2 learning gaps without accepting client-reported correctness, exposing answer keys, duplicating persistence models, or weakening server-authoritative attempts.
 - [x] Extract and reconcile the attached Week 4 P3 content-cleanup brief with MCQ GURU’s prior-question analysis, HSC/admission preparation, real analytics, KaTeX, source governance, and active schema/dependencies.
 - [x] Implement only confirmed lawful P3 gaps without copying historical papers, exposing answer keys, fabricating predictions, or removing active content-governance and assessment infrastructure.
+- [x] Extract and reconcile the attached Week 5 P4 production-readiness brief with MCQ GURU’s active subscription, payment, PWA, notifications, scheduling, performance, accessibility, and legal safeguards.
+- [x] Implement only confirmed P4 production gaps with verified credentials, supported scheduling, privacy-preserving caching, and no duplicate payment, entitlement, PWA, analytics, or deployment system.
+- [x] Add an accessible shared offline-status indicator that reports connectivity changes without caching authenticated tRPC responses or queued exam submissions.
