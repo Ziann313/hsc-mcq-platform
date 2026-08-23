@@ -284,3 +284,5 @@
 - [x] Implement only verified learning-workflow gaps with source grounding, student-data isolation, real-data states, regression coverage, and responsive validation.
 - [x] Persist grounded Tutor conversations through the existing ai-conversation tables, with protected owner-only history and message retrieval, a new-conversation control, and responsive history navigation.
 - [x] Wire the existing bookmark records into the revision/notebook workflow, with owner-only retrieval and removal plus bookmarking from a frozen active question.
+- [x] Extract and reconcile the newly attached freemium-subscription brief with MCQ GURU’s existing trial, entitlement, payment-proof, manual-review, and notification workflows.
+- [x] Implement only confirmed subscription gaps with server-side enforcement, payment safety, regression coverage, and responsive validation; no duplicate entitlement or payment flow was necessary, and the credential-dependent gateway boundary is documented.
