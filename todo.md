@@ -317,3 +317,5 @@
 - [x] Implement only confirmed P1 learning-loop gaps with protected server-owned attempts, source-governed question delivery, owner checks, and no client answer-key or grading contract.
 - [x] Extract and reconcile the attached Week 3 P2 learning-enhancement brief with MCQ GURU’s existing Mistake Vault, bookmarks, Tutor history, adaptive study guidance, instructions, and integrity policies.
 - [x] Implement only confirmed P2 learning gaps without accepting client-reported correctness, exposing answer keys, duplicating persistence models, or weakening server-authoritative attempts.
+- [x] Extract and reconcile the attached Week 4 P3 content-cleanup brief with MCQ GURU’s prior-question analysis, HSC/admission preparation, real analytics, KaTeX, source governance, and active schema/dependencies.
+- [x] Implement only confirmed lawful P3 gaps without copying historical papers, exposing answer keys, fabricating predictions, or removing active content-governance and assessment infrastructure.
