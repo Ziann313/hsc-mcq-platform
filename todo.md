@@ -296,3 +296,5 @@
 - [x] Add progressive tab-switch warnings to the existing frozen-attempt runner and server-recorded third-warning auto-submission, while retaining current timer, focus-mode, and immutable scoring behavior.
 - [x] Show final-five-minute urgency styling in the existing server-clock frozen-attempt timer without changing its persistence or automatic expiry behavior.
 - [x] Require acknowledgement of the existing frozen-attempt instructions before enabling the start action, without creating a duplicate exam setup flow.
+- [x] Extract and reconcile the attached Question Bank brief with MCQ GURU’s existing published-capacity contract, reviewer workflow, immutable attempt engine, and answer-key protections.
+- [x] Implement only confirmed question-bank gaps with source governance, owner/access boundaries, focused regression coverage, and no duplicated or client-exposed question-serving API.
