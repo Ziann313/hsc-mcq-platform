@@ -311,3 +311,5 @@
 - [x] Extract and reconcile the attached growth, advanced AI, analytics, and DevOps brief with MCQ GURU’s active governance, learning intelligence, privacy, analytics, and deployment safeguards.
 - [x] Implement only confirmed growth or operations gaps with explicit authorization, privacy boundaries, source governance, and no duplicate social, analytics, scheduling, or admin systems.
 - [x] Add a protected administrator analytics summary using live aggregate user, attempt, published-content, review-queue, and Premium-entitlement counts without collecting IP addresses or creating a second content-management system.
+- [x] Extract and reconcile the attached Week 1 P0 critical-fixes brief with MCQ GURU’s current routing, database, brand, authentication, rate-limit, and immutable-attempt safeguards.
+- [x] Implement only confirmed P0 reliability or security gaps with focused regression coverage, preserving existing server-authoritative assessment and source-governance controls.
