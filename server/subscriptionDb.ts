@@ -1,4 +1,4 @@
-import { and, desc, eq, lt, sql } from "drizzle-orm";
+import { and, desc, eq, like, lt, or, sql } from "drizzle-orm";
 import { auditLogs, paymentProofs, payments, subscriptionMaintenanceSettings, subscriptionPlans, subscriptions, usageLimits, users } from "../drizzle/schema";
 import { FREE_USAGE_LIMITS, PREMIUM_FEATURES, TRIAL_DURATION_DAYS, hasFullSubscriptionAccess, subscriptionDaysLeft, usagePeriodKey, type UsageLimitType } from "../shared/subscriptionPolicy";
 import { createNotification, getDb } from "./db";
@@ -222,6 +222,79 @@ export async function reviewManualPayment(input: { paymentId: number; approved: 
   if (input.reviewerUserId) await db.insert(auditLogs).values({ actorUserId: input.reviewerUserId, action: "payment.manual_approved", entityType: "payment", entityId: String(input.paymentId), metadata: { planCode: row.plan.code, reviewerNote: input.reviewerNote ?? null, subscriptionEndsAt: nextEnd.toISOString() } });
   await createNotification({ userId: row.payment.userId, actorUserId: input.reviewerUserId, type: "account", priority: "critical", title: "Premium payment approved", body: `Your manual bKash/Nagad payment has been verified. MCQ GURU Premium is active until ${nextEnd.toLocaleDateString("en-GB")}.`, actionUrl: "/profile" });
   return true;
+}
+
+type AdminSubscriptionSearch = { search?: string; status?: "trial" | "active" | "expired" | "cancelled"; limit: number; offset: number };
+
+export async function getAdminSubscriptionUsers(input: AdminSubscriptionSearch) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const search = input.search?.trim();
+  const conditions = search ? [or(like(users.name, `%${search}%`), like(users.email, `%${search}%`))] : [];
+  if (input.status) conditions.push(eq(subscriptions.status, input.status));
+  const rows = await db.select({ userId: users.id, userName: users.name, userEmail: users.email, subscriptionId: subscriptions.id, planId: subscriptions.planId, planType: subscriptions.planType, status: subscriptions.status, trialEndsAt: subscriptions.trialEndsAt, subscriptionEndsAt: subscriptions.subscriptionEndsAt, updatedAt: subscriptions.updatedAt, planName: subscriptionPlans.name, planNameBn: subscriptionPlans.nameBn })
+    .from(users)
+    .leftJoin(subscriptions, eq(subscriptions.userId, users.id))
+    .leftJoin(subscriptionPlans, eq(subscriptions.planId, subscriptionPlans.id))
+    .where(conditions.length ? and(...conditions) : undefined)
+    .orderBy(desc(subscriptions.updatedAt), desc(users.createdAt))
+    .limit(input.limit)
+    .offset(input.offset);
+  return rows.map(row => ({ ...row, planType: row.planType ?? "free", status: row.status ?? "uninitialized" as const }));
+}
+
+async function getGrantPlan(planId?: number) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const where = planId ? and(eq(subscriptionPlans.id, planId), eq(subscriptionPlans.isActive, true)) : and(eq(subscriptionPlans.code, "premium-monthly"), eq(subscriptionPlans.isActive, true));
+  return (await db.select().from(subscriptionPlans).where(where).limit(1))[0];
+}
+
+export async function grantPremiumByAdmin(input: { actorUserId: number; actorName?: string | null; userId: number; planId?: number; durationDays: number; amountBDT: number; reason: string; now?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const now = input.now ?? new Date();
+  const learner = (await db.select({ id: users.id, name: users.name }).from(users).where(eq(users.id, input.userId)).limit(1))[0];
+  const plan = await getGrantPlan(input.planId);
+  if (!learner || !plan) return undefined;
+  const subscription = await ensureSubscriptionForUser(input.userId, now);
+  const base = subscription.planType === "premium" && subscription.status === "active" && subscription.subscriptionEndsAt && subscription.subscriptionEndsAt > now ? subscription.subscriptionEndsAt : now;
+  const subscriptionEndsAt = new Date(base.getTime() + input.durationDays * 86_400_000);
+  const subscriptionStartedAt = subscription.planType === "premium" && subscription.status === "active" ? subscription.subscriptionStartedAt ?? now : now;
+  await db.update(subscriptions).set({ planId: plan.id, planType: "premium", status: "active", subscriptionStartedAt, subscriptionEndsAt, autoRenew: false }).where(eq(subscriptions.id, subscription.id));
+  const transactionId = `mcqg_grant_${crypto.randomUUID().replace(/-/g, "").slice(0, 22)}`;
+  const payment = await db.insert(payments).values({ userId: input.userId, subscriptionId: subscription.id, planId: plan.id, internalTransactionId: transactionId, amountBDT: input.amountBDT.toFixed(2), currency: "BDT", gateway: "manual_grant", status: "success", paidAt: now, gatewayPayload: { reason: input.reason, grantedByUserId: input.actorUserId, grantedByName: input.actorName ?? null, durationDays: input.durationDays, baseEndsAt: base.toISOString() } });
+  await db.insert(auditLogs).values({ actorUserId: input.actorUserId, action: "subscription.manual_grant", entityType: "subscription", entityId: String(subscription.id), metadata: { targetUserId: input.userId, planCode: plan.code, durationDays: input.durationDays, amountBDT: input.amountBDT, reason: input.reason, transactionId } });
+  await createNotification({ userId: input.userId, actorUserId: input.actorUserId, type: "account", priority: "critical", title: "Premium access granted", body: `MCQ GURU Premium has been granted until ${subscriptionEndsAt.toLocaleDateString("en-GB")}.`, actionUrl: "/profile" });
+  return { subscriptionId: subscription.id, paymentId: Number(payment[0].insertId), subscriptionEndsAt, learnerName: learner.name, planId: plan.id };
+}
+
+export async function revokePremiumByAdmin(input: { actorUserId: number; userId: number; reason: string; now?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const now = input.now ?? new Date();
+  const subscription = (await db.select().from(subscriptions).where(eq(subscriptions.userId, input.userId)).limit(1))[0];
+  if (!subscription || subscription.planType !== "premium" || subscription.status !== "active") return false;
+  const changed = await db.update(subscriptions).set({ planId: null, planType: "free", status: "expired", subscriptionEndsAt: now, autoRenew: false }).where(and(eq(subscriptions.id, subscription.id), eq(subscriptions.planType, "premium"), eq(subscriptions.status, "active")));
+  if (!changed[0]?.affectedRows) return false;
+  await db.insert(auditLogs).values({ actorUserId: input.actorUserId, action: "subscription.manual_revoke", entityType: "subscription", entityId: String(subscription.id), metadata: { targetUserId: input.userId, previousEndsAt: subscription.subscriptionEndsAt?.toISOString() ?? null, reason: input.reason } });
+  await createNotification({ userId: input.userId, actorUserId: input.actorUserId, type: "account", priority: "critical", title: "Premium access updated", body: "Your MCQ GURU Premium access has been ended by an administrator. Review your account or contact support if you need help.", actionUrl: "/profile" });
+  return true;
+}
+
+export async function extendPremiumByAdmin(input: { actorUserId: number; userId: number; additionalDays: number; reason: string; now?: Date }) {
+  const db = await getDb();
+  if (!db) throw new Error("Database unavailable");
+  const now = input.now ?? new Date();
+  const subscription = (await db.select().from(subscriptions).where(eq(subscriptions.userId, input.userId)).limit(1))[0];
+  if (!subscription || subscription.planType !== "premium" || subscription.status !== "active") return undefined;
+  const base = subscription.subscriptionEndsAt && subscription.subscriptionEndsAt > now ? subscription.subscriptionEndsAt : now;
+  const subscriptionEndsAt = new Date(base.getTime() + input.additionalDays * 86_400_000);
+  const changed = await db.update(subscriptions).set({ subscriptionEndsAt, autoRenew: false }).where(and(eq(subscriptions.id, subscription.id), eq(subscriptions.planType, "premium"), eq(subscriptions.status, "active")));
+  if (!changed[0]?.affectedRows) return undefined;
+  await db.insert(auditLogs).values({ actorUserId: input.actorUserId, action: "subscription.manual_extend", entityType: "subscription", entityId: String(subscription.id), metadata: { targetUserId: input.userId, additionalDays: input.additionalDays, priorEndsAt: base.toISOString(), reason: input.reason } });
+  await createNotification({ userId: input.userId, actorUserId: input.actorUserId, type: "account", priority: "critical", title: "Premium access extended", body: `Your MCQ GURU Premium access has been extended until ${subscriptionEndsAt.toLocaleDateString("en-GB")}.`, actionUrl: "/profile" });
+  return { subscriptionEndsAt };
 }
 
 export async function runSubscriptionMaintenance(now = new Date()) {

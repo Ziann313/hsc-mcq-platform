@@ -86,7 +86,7 @@ export const payments = mysqlTable("payments", {
   userId: int("userId").notNull().references(() => users.id),
   subscriptionId: int("subscriptionId").references(() => subscriptions.id),
   planId: int("planId").notNull().references(() => subscriptionPlans.id),
-  gateway: mysqlEnum("gateway", ["sslcommerz", "bkash_manual", "nagad_manual"]).default("sslcommerz").notNull(),
+  gateway: mysqlEnum("gateway", ["sslcommerz", "bkash_manual", "nagad_manual", "manual_grant"]).default("sslcommerz").notNull(),
   internalTransactionId: varchar("internalTransactionId", { length: 64 }).notNull().unique(),
   gatewayTransactionId: varchar("gatewayTransactionId", { length: 160 }),
   amountBDT: decimal("amountBDT", { precision: 10, scale: 2 }).notNull(),

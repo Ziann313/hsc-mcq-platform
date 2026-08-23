@@ -1,6 +1,6 @@
 import { TRPCError } from "@trpc/server";
 import { z } from "zod";
-import { createPaymentIntent, cancelSubscriptionAutoRenew, createManualPaymentRequest, getPaymentHistory, getPendingManualPayments, getSubscriptionPlans, getSubscriptionStatus, getUsageSummary, reviewManualPayment } from "../subscriptionDb";
+import { createPaymentIntent, cancelSubscriptionAutoRenew, createManualPaymentRequest, extendPremiumByAdmin, getAdminSubscriptionUsers, getPaymentHistory, getPendingManualPayments, getSubscriptionPlans, getSubscriptionStatus, getUsageSummary, grantPremiumByAdmin, reviewManualPayment, revokePremiumByAdmin } from "../subscriptionDb";
 import { createSslCommerzCheckout, sslCommerzConfigured } from "../sslCommerz";
 import { adminProcedure, protectedProcedure, publicProcedure, router } from "../_core/trpc";
 import { PAYMENT_PROOF_MAX_BYTES, PAYMENT_PROOF_MIME_TYPES } from "../paymentProof";
@@ -21,6 +21,22 @@ export const subscriptionRouter = router({
     const reviewed = await reviewManualPayment({ ...input, reviewerUserId: ctx.user.id });
     if (!reviewed) throw new TRPCError({ code: "NOT_FOUND", message: "A pending manual payment request was not found" });
     return { reviewed: true } as const;
+  }),
+  adminSubscriptionUsers: adminProcedure.input(z.object({ search: z.string().trim().max(160).optional(), status: z.enum(["trial", "active", "expired", "cancelled"]).optional(), limit: z.number().int().min(1).max(100).default(30), offset: z.number().int().min(0).default(0) })).query(({ input }) => getAdminSubscriptionUsers(input)),
+  grantPremium: adminProcedure.input(z.object({ userId: z.number().int().positive(), planId: z.number().int().positive().optional(), durationDays: z.number().int().min(1).max(3650).default(30), amountBDT: z.number().min(0).max(1_000_000).default(0), reason: z.string().trim().min(5).max(500) })).mutation(async ({ ctx, input }) => {
+    const granted = await grantPremiumByAdmin({ ...input, actorUserId: ctx.user.id, actorName: ctx.user.name });
+    if (!granted) throw new TRPCError({ code: "NOT_FOUND", message: "The learner or selected plan was not found" });
+    return granted;
+  }),
+  revokePremium: adminProcedure.input(z.object({ userId: z.number().int().positive(), reason: z.string().trim().min(5).max(500) })).mutation(async ({ ctx, input }) => {
+    const revoked = await revokePremiumByAdmin({ ...input, actorUserId: ctx.user.id });
+    if (!revoked) throw new TRPCError({ code: "NOT_FOUND", message: "No active Premium entitlement was found for this learner" });
+    return { revoked: true } as const;
+  }),
+  extendPremium: adminProcedure.input(z.object({ userId: z.number().int().positive(), additionalDays: z.number().int().min(1).max(365).default(30), reason: z.string().trim().min(5).max(500) })).mutation(async ({ ctx, input }) => {
+    const extended = await extendPremiumByAdmin({ ...input, actorUserId: ctx.user.id });
+    if (!extended) throw new TRPCError({ code: "NOT_FOUND", message: "No active Premium entitlement was found for this learner" });
+    return extended;
   }),
   initiateCheckout: protectedProcedure.input(z.object({ planId: z.number().int().positive() })).mutation(async ({ ctx, input }) => {
     if (!sslCommerzConfigured()) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Secure payment checkout is not configured yet. Please contact MCQ GURU support." });

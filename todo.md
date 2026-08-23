@@ -286,3 +286,6 @@
 - [x] Wire the existing bookmark records into the revision/notebook workflow, with owner-only retrieval and removal plus bookmarking from a frozen active question.
 - [x] Extract and reconcile the newly attached freemium-subscription brief with MCQ GURU’s existing trial, entitlement, payment-proof, manual-review, and notification workflows.
 - [x] Implement only confirmed subscription gaps with server-side enforcement, payment safety, regression coverage, and responsive validation; no duplicate entitlement or payment flow was necessary, and the credential-dependent gateway boundary is documented.
+- [x] Extract and reconcile the updated administrator-grant brief with MCQ GURU’s current payment reconciliation, subscription entitlement, audit-log, and notification controls.
+- [x] Implement only confirmed protected administrator entitlement actions with explicit reason capture, audit events, student notification, regression coverage, and responsive validation.
+- [x] Add protected administrator search, grant, revoke, and extension actions inside the existing payment reconciliation workspace, recording a distinct manual-grant payment origin, required reason, audit event, and learner notification.
