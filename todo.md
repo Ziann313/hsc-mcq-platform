@@ -315,3 +315,5 @@
 - [x] Implement only confirmed P0 reliability or security gaps with focused regression coverage, preserving existing server-authoritative assessment and source-governance controls.
 - [x] Extract and reconcile the attached Week 2 P1 core-learning-loop brief with MCQ GURU’s existing frozen-attempt runner, server scoring, Mistake Vault, bookmarks, Tutor, dashboard, and study guidance.
 - [x] Implement only confirmed P1 learning-loop gaps with protected server-owned attempts, source-governed question delivery, owner checks, and no client answer-key or grading contract.
+- [x] Extract and reconcile the attached Week 3 P2 learning-enhancement brief with MCQ GURU’s existing Mistake Vault, bookmarks, Tutor history, adaptive study guidance, instructions, and integrity policies.
+- [x] Implement only confirmed P2 learning gaps without accepting client-reported correctness, exposing answer keys, duplicating persistence models, or weakening server-authoritative attempts.
