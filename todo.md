@@ -324,3 +324,5 @@
 - [x] Add an accessible shared offline-status indicator that reports connectivity changes without caching authenticated tRPC responses or queued exam submissions.
 - [x] Reconcile the attached verification and QA guide with MCQ GURU’s current protected routes, immutable attempts, source governance, subscriptions, PWA, and legal boundaries.
 - [x] Execute only safe, meaningful automated and route-level QA checks; document stale/unsafe guide assumptions and remediate only confirmed defects.
+- [x] Study the supplied homepage reference and redesign MCQ GURU’s public landing and loading motion with original content, layout, and CSS animation rather than copying reference assets or code.
+- [x] Preserve the existing sign-in, source-governed capacity, return-path, accessibility, PWA, and reduced-motion safeguards while validating the new public experience on desktop and mobile.
