@@ -322,3 +322,5 @@
 - [x] Extract and reconcile the attached Week 5 P4 production-readiness brief with MCQ GURU’s active subscription, payment, PWA, notifications, scheduling, performance, accessibility, and legal safeguards.
 - [x] Implement only confirmed P4 production gaps with verified credentials, supported scheduling, privacy-preserving caching, and no duplicate payment, entitlement, PWA, analytics, or deployment system.
 - [x] Add an accessible shared offline-status indicator that reports connectivity changes without caching authenticated tRPC responses or queued exam submissions.
+- [x] Reconcile the attached verification and QA guide with MCQ GURU’s current protected routes, immutable attempts, source governance, subscriptions, PWA, and legal boundaries.
+- [x] Execute only safe, meaningful automated and route-level QA checks; document stale/unsafe guide assumptions and remediate only confirmed defects.
