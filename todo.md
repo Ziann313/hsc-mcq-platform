@@ -298,3 +298,5 @@
 - [x] Require acknowledgement of the existing frozen-attempt instructions before enabling the start action, without creating a duplicate exam setup flow.
 - [x] Extract and reconcile the attached Question Bank brief with MCQ GURU’s existing published-capacity contract, reviewer workflow, immutable attempt engine, and answer-key protections.
 - [x] Implement only confirmed question-bank gaps with source governance, owner/access boundaries, focused regression coverage, and no duplicated or client-exposed question-serving API.
+- [x] Extract and reconcile the attached previous-year-question and admission/HSC brief with MCQ GURU’s historical-analysis records, source governance, admission patterns, and immutable attempts.
+- [x] Implement only confirmed source-authorized prior-question or admission/HSC preparation gaps with truthful availability states, access-boundary coverage, and no unlicensed historical-question copying.
