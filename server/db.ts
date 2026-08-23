@@ -1034,6 +1034,30 @@ export async function getStudentAdmissionScoreBenchmarks(userId: number) {
   return buildAdmissionBenchmarks(tracks, completed);
 }
 
+export async function getAdminAnalyticsSummary() {
+  const db = await getDb();
+  const activeSince = new Date(Date.now() - 7 * 86_400_000);
+  const [totalUsers, activeUsers, totalAttempts, completedAttempts, publishedQuestions, reviewQuestions] = await Promise.all([
+    db.select({ count: sql<number>`count(*)` }).from(users),
+    db.select({ count: sql<number>`count(*)` }).from(users).where(sql`${users.lastSignedIn} >= ${activeSince}`),
+    db.select({ count: sql<number>`count(*)` }).from(examAttempts),
+    db.select({ count: sql<number>`count(*)` }).from(examAttempts).where(inArray(examAttempts.status, ["submitted", "expired"])),
+    db.select({ count: sql<number>`count(*)` }).from(questions).where(eq(questions.status, "published")),
+    db.select({ count: sql<number>`count(*)` }).from(questions).where(eq(questions.status, "human_review")),
+  ]);
+  const started = Number(totalAttempts[0]?.count ?? 0);
+  const completed = Number(completedAttempts[0]?.count ?? 0);
+  return {
+    totalUsers: Number(totalUsers[0]?.count ?? 0),
+    activeUsersLast7Days: Number(activeUsers[0]?.count ?? 0),
+    totalAttempts: started,
+    completedAttempts: completed,
+    completionRate: started ? Math.round(completed / started * 100) : null,
+    publishedQuestions: Number(publishedQuestions[0]?.count ?? 0),
+    questionsAwaitingReview: Number(reviewQuestions[0]?.count ?? 0),
+  };
+}
+
 export async function createAdmissionPatternVersion(input: {
   examType: "medical" | "engineering" | "university";
   institution: string;

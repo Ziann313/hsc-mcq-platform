@@ -58,6 +58,7 @@ export const studentNavigationItems: NavigationItem[] = [
 
 export const adminNavigationItems: NavigationItem[] = [
   { path: "/admin", label: "Review queue", bn: "রিভিউ কিউ", icon: ClipboardCheck },
+  { path: "/admin/analytics", label: "Platform analytics", bn: "প্ল্যাটফর্ম অ্যানালিটিক্স", icon: BarChart3 },
   { path: "/admin/payments", label: "Payment reconciliation", bn: "পেমেন্ট রিকনসিলিয়েশন", icon: Banknote },
   { path: "/governance", label: "Content workspace", bn: "কনটেন্ট ওয়ার্কস্পেস", icon: LockKeyhole },
   { path: "/import", label: "Bulk import", bn: "বাল্ক ইমপোর্ট", icon: Upload },

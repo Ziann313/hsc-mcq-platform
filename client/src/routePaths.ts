@@ -11,6 +11,7 @@ export const dedicatedRoutePaths = [
   "/onboarding",
   "/image-solver",
   "/admin",
+  "/admin/analytics",
   "/admin/payments",
   "/governance",
   "/notifications",

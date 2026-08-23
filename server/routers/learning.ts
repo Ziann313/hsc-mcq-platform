@@ -7,6 +7,7 @@ import {
   createReviewQuestion,
   getActiveSourceEvidence,
   getAdmissionPatternVersions,
+  getAdminAnalyticsSummary,
   getActiveAdmissionTracks,
   getAdmissionReadiness,
   getStudentAdmissionScoreBenchmarks,
@@ -55,6 +56,8 @@ const onboardingInput = z.object({
 });
 
 export const learningRouter = router({
+  adminAnalytics: adminProcedure.query(() => getAdminAnalyticsSummary()),
+
   profile: protectedProcedure.query(async ({ ctx }) => {
     const profile = await getStudentProfile(ctx.user.id);
     return profile ?? null;

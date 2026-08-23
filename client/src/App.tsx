@@ -23,6 +23,7 @@ const AccessDeniedPage = lazy(() => import("./pages/AccessDeniedPage"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const ImageSolver = lazy(() => import("./pages/ImageSolver"));
 const AdminWorkspace = lazy(() => import("./pages/AdminWorkspace"));
+const AdminAnalyticsPage = lazy(() => import("./pages/AdminAnalyticsPage"));
 const PaymentReconciliationPage = lazy(() => import("./pages/PaymentReconciliationPage"));
 const NotificationsPage = lazy(() => import("./pages/NotificationsPage"));
 const SettingsPage = lazy(() => import("./pages/SettingsPage"));
@@ -125,6 +126,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/onboarding">{() => <OnboardingRoute language={language} onLanguageChange={onLanguageChange} />}</Route>
     <Route path="/image-solver">{() => <StudentRoute><ImageSolver language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/admin">{() => <AdminRoute><AdminWorkspace language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
+    <Route path="/admin/analytics">{() => <AdminRoute><AdminAnalyticsPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/admin/payments">{() => <AdminRoute><PaymentReconciliationPage language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/governance">{() => <AdminRoute><GovernanceWorkspace language={language} onLanguageChange={onLanguageChange} /></AdminRoute>}</Route>
     <Route path="/notifications">{() => <StudentRoute><NotificationsPage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>

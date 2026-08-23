@@ -308,3 +308,6 @@
 - [x] Retain the installed KaTeX renderer for trusted curriculum formulas; do not add a second library or interpret unreviewed learner/Tutor text as trusted formula markup.
 - [x] Add a concise public refund-policy route that reflects the existing manual-payment review and Premium entitlement safeguards without making unsupported refund guarantees.
 - [x] Add a shared keyboard skip link and accessible names for icon-only platform-navigation controls without redesigning existing pages.
+- [x] Extract and reconcile the attached growth, advanced AI, analytics, and DevOps brief with MCQ GURU’s active governance, learning intelligence, privacy, analytics, and deployment safeguards.
+- [x] Implement only confirmed growth or operations gaps with explicit authorization, privacy boundaries, source governance, and no duplicate social, analytics, scheduling, or admin systems.
+- [x] Add a protected administrator analytics summary using live aggregate user, attempt, published-content, review-queue, and Premium-entitlement counts without collecting IP addresses or creating a second content-management system.
