@@ -18,7 +18,7 @@ describe("application route integrity", () => {
 
   it("keeps the authenticated dashboard Home-backed and gives student destinations dedicated routes or clear modern redirects", () => {
     expect(homeRoutePaths).toEqual(["/dashboard"]);
-    expect(publicRoutePaths).toEqual(expect.arrayContaining(["/", "/about", "/privacy", "/terms", "/contact"]));
+    expect(publicRoutePaths).toEqual(expect.arrayContaining(["/", "/about", "/privacy", "/terms", "/refund", "/contact"]));
     expect(dedicatedRoutePaths).toEqual(expect.arrayContaining(["/practice", "/tutor", "/exams", "/admission", "/progress", "/settings", "/profile", "/live-exam", "/live-exams"]));
     expect(studentNavigationItems.map(item => item.path)).not.toEqual(expect.arrayContaining(["/study-plan", "/mistakes", "/bookmarks", "/mcq-lab"]));
     expect(studentNavigationItems.filter(item => item.path === "/practice")).toHaveLength(1);
@@ -46,5 +46,12 @@ describe("application route integrity", () => {
     expect(routerSource).not.toContain('path="/:rest*"');
     expect(routerSource).not.toContain('path={":rest*"}');
     expect(routerSource).toContain("<Route component={NotFound} />");
+  });
+
+  it("keeps public refund information and keyboard skip navigation explicit", () => {
+    expect(publicRoutePaths).toContain("/refund");
+    const shellSource = readFileSync(new URL("../client/src/components/PlatformShell.tsx", import.meta.url), "utf8");
+    expect(shellSource).toContain('href="#main-content"');
+    expect(shellSource).toContain('id="main-content"');
   });
 });

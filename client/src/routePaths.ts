@@ -2,7 +2,7 @@ export const homeRoutePaths = [
   "/dashboard",
 ] as const;
 
-export const publicRoutePaths = ["/", "/about", "/privacy", "/terms", "/contact"] as const;
+export const publicRoutePaths = ["/", "/about", "/privacy", "/terms", "/refund", "/contact"] as const;
 
 export const dedicatedRoutePaths = [
   "/practice",

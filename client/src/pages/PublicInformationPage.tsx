@@ -2,12 +2,13 @@ import { Button } from "@/components/ui/button";
 import { ArrowLeft, FileText, Mail, Scale, ShieldCheck } from "lucide-react";
 import { Link } from "wouter";
 
-type InformationPage = "about" | "privacy" | "terms" | "contact";
+type InformationPage = "about" | "privacy" | "terms" | "refund" | "contact";
 
 const pageContent: Record<InformationPage, { icon: typeof FileText; label: string; heading: string; body: string }> = {
   about: { icon: FileText, label: "ABOUT MCQ GURU", heading: "A source-governed preparation space for Bangladesh.", body: "MCQ GURU helps HSC and admission learners practise only with published, reviewer-approved questions, use transparent timed attempts, and track their real activity rather than sample results." },
   privacy: { icon: ShieldCheck, label: "PRIVACY", heading: "Your learning record stays tied to your account.", body: "MCQ GURU uses your account and persisted learning activity to provide attempts, results, and recommendations. It does not display another learner’s private record to you." },
   terms: { icon: Scale, label: "TERMS OF USE", heading: "Use learning content responsibly.", body: "Practice content is released through a source and reviewer workflow. Official notices and patterns are informational unless they are explicitly active and source-evidenced in the platform." },
+  refund: { icon: Scale, label: "REFUND POLICY", heading: "Payment requests are reviewed before any Premium entitlement changes.", body: "Manual bKash and Nagad payment requests remain pending until an authorised reviewer verifies the payment record. A payment request or screenshot is not a payment confirmation. For a refund or payment dispute, contact support with the payment reference so it can be reviewed under the applicable payment and consumer-protection requirements." },
   contact: { icon: Mail, label: "CONTACT", heading: "Get in touch about content or account support.", body: "For support, use the in-app notification and account channels after signing in. Reviewer and content-governance work is handled through the protected workspace." },
 };
 

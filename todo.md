@@ -303,3 +303,8 @@
 - [x] Preserve the standing project rule to audit every future brief first, retain existing working features, and implement only confirmed non-duplicative, proportionate changes.
 - [x] Extract and reconcile the attached learning-enhancement brief with MCQ GURU’s existing Mistake Vault, bookmarks, Tutor history, study guidance, and frozen-attempt integrity safeguards.
 - [x] Implement only confirmed learning-system gaps without recreating existing APIs, exposing answer keys, weakening source governance, or removing active schema relied on by the assessment engine.
+- [x] Extract and reconcile the attached content, monetization, performance, and compliance brief with MCQ GURU’s existing source governance, subscription controls, PWA, performance safeguards, and compliance surfaces.
+- [x] Implement only confirmed P3/P4 gaps with evidence-backed content, secure entitlement/payment boundaries, performance/accessibility validation, and no duplicate or unsafe endpoint, page, cache, or scheduler.
+- [x] Retain the installed KaTeX renderer for trusted curriculum formulas; do not add a second library or interpret unreviewed learner/Tutor text as trusted formula markup.
+- [x] Add a concise public refund-policy route that reflects the existing manual-payment review and Premium entitlement safeguards without making unsupported refund guarantees.
+- [x] Add a shared keyboard skip link and accessible names for icon-only platform-navigation controls without redesigning existing pages.

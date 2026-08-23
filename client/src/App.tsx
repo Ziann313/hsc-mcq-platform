@@ -116,6 +116,7 @@ function Router({ language, onLanguageChange }: { language: "bn" | "en"; onLangu
     <Route path="/about">{() => <PublicInformationPage page="about" language={language} />}</Route>
     <Route path="/privacy">{() => <PublicInformationPage page="privacy" language={language} />}</Route>
     <Route path="/terms">{() => <PublicInformationPage page="terms" language={language} />}</Route>
+    <Route path="/refund">{() => <PublicInformationPage page="refund" language={language} />}</Route>
     <Route path="/contact">{() => <PublicInformationPage page="contact" language={language} />}</Route>
     <Route path="/upgrade">{() => <StudentRoute><UpgradePage language={language} onLanguageChange={onLanguageChange} /></StudentRoute>}</Route>
     <Route path="/payment/success">{() => <StudentRoute><PaymentOutcomePage language={language} outcome="success" /></StudentRoute>}</Route>
