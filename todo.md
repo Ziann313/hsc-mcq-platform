@@ -328,3 +328,9 @@
 - [x] Preserve the existing sign-in, source-governed capacity, return-path, accessibility, PWA, and reduced-motion safeguards while validating the new public experience on desktop and mobile.
 - [x] Reconcile the attached HSC MCQ P0 fixes brief with MCQ GURU’s explicit routes, SPA fallback, OAuth, protected attempts, real dashboard data, pooling, dependency lockfile, and administrator guards.
 - [x] Implement only confirmed P0 routing, reliability, or authentication gaps without adding an unverified local-password system, duplicate dashboard data path, hash-route regression, or weaker access control.
+- [ ] Preserve the original MCQ GURU learning-signal homepage and loading experience while verifying it remains compatible with the new local sign-in routes and reduced-motion safeguards.
+- [ ] Design a complete local email/password security model with server-side password hashing, account verification, one-time password recovery, session invalidation, rate limits, expiry, and generic anti-enumeration responses.
+- [ ] Add schema, protected server procedures, secure cookies/session integration, and email/password sign-up, verification, sign-in, forgot-password, reset-password, and sign-out interfaces without weakening OAuth or owner-scoped data access.
+- [ ] Validate the authentication migration, token lifecycle, authorization boundaries, direct routes, full regression suite, production build, and responsive auth screens.
+- [x] Keep local email/password authentication disabled until a verified transactional sender exists; preserve the current OAuth sign-in contract and remove no existing security controls.
+- [x] Refine the original MCQ GURU public landing and route loader with stronger visual hierarchy, intentional motion, and mobile-first polish without copying third-party assets or introducing artificial load delay.

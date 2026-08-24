@@ -22,6 +22,8 @@ describe("public landing motion", () => {
     expect(app).toContain("Finding your next learning signal");
     expect(app).toContain("mcq-route-loader__ring");
     expect(styles).toContain("mcq-signal-board__orbit");
+    expect(styles).toContain("mcq-signal-scan");
+    expect(styles).toContain("mcq-loader-satellite");
     expect(styles).toContain("prefers-reduced-motion");
   });
 });
