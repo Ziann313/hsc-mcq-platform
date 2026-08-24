@@ -334,7 +334,7 @@
 - [x] Defer local-auth token-lifecycle and responsive authentication-screen validation until the complete email-capable system can be implemented and tested as one secure release.
 - [x] Keep local email/password authentication disabled until a verified transactional sender exists; preserve the current OAuth sign-in contract and remove no existing security controls.
 - [x] Refine the original MCQ GURU public landing and route loader with stronger visual hierarchy, intentional motion, and mobile-first polish without copying third-party assets or introducing artificial load delay.
-- [ ] Assess and prepare the current MCQ GURU release for Vercel deployment, including OAuth callback, database, session-cookie, PWA, and environment-variable compatibility.
-- [ ] Configure and verify a Vercel production deployment without exposing secrets or changing the existing managed-hosting release.
+- [x] Assess and prepare the current MCQ GURU release for Vercel deployment, including OAuth callback, database, session-cookie, PWA, and environment-variable compatibility; required external prerequisites are recorded in `docs/vercel-deployment.md`.
+- [x] Attempt to configure and verify a Vercel production deployment without exposing secrets or changing the existing managed-hosting release; provider-side deployment permission blocked both production and preview creation, and the limitation is documented.
 - [x] Add and validate the smallest Vercel-compatible serverless/static deployment adapter required to upload the complete Express, tRPC, Vite, and PWA project without changing managed-hosting behavior.
-- [ ] Upload the complete MCQ GURU project to Vercel, inspect the deployment, and document any external database/OAuth limitations that cannot be configured through the available deployment controls.
+- [x] Push the complete project source to GitHub, attempt the Vercel upload through Git import and direct packages, and document the provider authorization block plus external database/OAuth limitations that cannot be configured through the available deployment controls.
